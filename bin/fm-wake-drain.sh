@@ -23,6 +23,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SCRIPT_DIR/fm-timeout-lib.sh"
 # shellcheck source=bin/fm-lease-lib.sh
 . "$SCRIPT_DIR/fm-lease-lib.sh"
+# shellcheck source=bin/fm-lifecycle-lib.sh
+. "$SCRIPT_DIR/fm-lifecycle-lib.sh"
 
 DRAIN_TMP=
 DRAIN_VIEW_TMP=
@@ -606,6 +608,8 @@ print_status_presentation() {  # [<deduped-raw-rows>]
   fi
   if [ "$rc" -eq 0 ] && [ -n "$snapshot" ]; then print_status_sections "$snapshot" "$fully_presented" || rc=1; fi
   fm_lock_release "$lock"
+  # Best-effort lifecycle transcription of new status lines (bin/fm-lifecycle-lib.sh).
+  fm_lifecycle_transcribe_all "$STATE"
   return "$rc"
 }
 

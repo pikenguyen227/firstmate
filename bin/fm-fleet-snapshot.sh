@@ -111,6 +111,9 @@
 #     with the bearings projection so one Recently Landed section has one owner.
 #   contributions: cached owned-contribution coverage; fm-contributions.sh owns it.
 #   secondmate_guidance: return-channel action note for renderers and bearings.
+#   lifecycle: additive pointer to this home's fm-lifecycle.v1 event feed and each
+#     secondmate home's feed, or null when the feed is off; bin/fm-lifecycle-lib.sh
+#     builds it and docs/configuration.md "Lifecycle event feed" owns its shape.
 #
 # --contribution-input prints only the canonical backlog/tasks ownership pair,
 # without worker observations or cross-home collection, for the home-local poll.
@@ -218,6 +221,9 @@ esac
 # shellcheck source=bin/fm-classify-lib.sh
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/fm-classify-lib.sh"
+# shellcheck source=bin/fm-lifecycle-lib.sh
+# shellcheck disable=SC1091
+. "$SCRIPT_DIR/fm-lifecycle-lib.sh"
 # shellcheck source=bin/fm-ff-lib.sh
 # shellcheck disable=SC1091
 . "$SCRIPT_DIR/fm-ff-lib.sh"  # validate_secondmate_home: shared seeded-home boundary checks
@@ -2032,6 +2038,8 @@ secondmate_current_json "$TASKS_JSON_FILE" "$SECONDMATE_CURRENT_JSON_FILE" \
   || { echo "fm-fleet-snapshot: registered secondmate aggregation failed" >&2; exit 1; }
 secondmate_landed_from_current_json "$SECONDMATE_CURRENT_JSON_FILE" "$SECONDMATE_LANDED_JSON_FILE" \
   || { echo "fm-fleet-snapshot: secondmate landed projection failed" >&2; exit 1; }
+LIFECYCLE_JSON=$(fm_lifecycle_snapshot_json "$STATE" 2>/dev/null) || LIFECYCLE_JSON=null
+printf '%s' "$LIFECYCLE_JSON" | jq -e . >/dev/null 2>&1 || LIFECYCLE_JSON=null
 
 jq -n \
   --arg generated "$SNAPSHOT_NOW" \
@@ -2048,6 +2056,7 @@ jq -n \
   --slurpfile scout_reports "$SCOUT_REPORTS_JSON_FILE" \
   --slurpfile secondmate_current "$SECONDMATE_CURRENT_JSON_FILE" \
   --slurpfile secondmate_landed "$SECONDMATE_LANDED_JSON_FILE" \
+  --argjson lifecycle "$LIFECYCLE_JSON" \
   '($backlog[0]) as $backlog
    | ($tasks[0]) as $tasks
    | ($main_inventory[0]) as $main_inventory
@@ -2069,6 +2078,7 @@ jq -n \
      scout_reports:($scout_reports | map(. + {kind:report_kind(.id)})),
      secondmate_current:$secondmate_current,
      secondmate_landed:$secondmate_landed,
+     lifecycle:$lifecycle,
      secondmate_guidance:{
        note:"For kind=secondmate, bearings selects validated structured state from that registered home; parent events and bounded terminal evidence are fallback-only supplements and never current-state authority."
      }
