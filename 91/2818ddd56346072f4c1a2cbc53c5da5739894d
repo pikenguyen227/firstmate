@@ -1,0 +1,78 @@
+bin/fm-wake-drain.sh
+  s_68e9dcb699566a::t_6fdb432afd36d9 26-27,611-612
+bin/fm-spawn.sh
+  s_68e9dcb699566a::t_6fdb432afd36d9 559-560,1073,4982-4983
+bin/fm-lifecycle.sh
+  s_68e9dcb699566a::t_e519d17d85b5a1 1-60
+tests/fm-lifecycle.test.sh
+  s_68e9dcb699566a::t_235fdb0f9d4d84 270
+  s_68e9dcb699566a::t_dedde4383bbd84 1-163,168-178,181,190-269,272-333,357-539,542-598,600-630,632-634
+  s_68e9dcb699566a::t_f3c123d00b4c72 271
+  s_68e9dcb699566a::t_7a6628a6de4d2d 540-541
+  s_68e9dcb699566a::t_db73b74a5dcd4a 182-189
+  s_68e9dcb699566a::t_f8eb056333be62 334-356,631
+  s_68e9dcb699566a::t_fc2927b4ea8686 599
+  s_68e9dcb699566a::t_874479352fb2f0 164-167,179-180
+bin/fm-teardown.sh
+  s_68e9dcb699566a::t_6fdb432afd36d9 987,3658-3660
+  s_68e9dcb699566a::t_3703f44f67a91e 316-317
+bin/fm-lifecycle-lib.sh
+  s_68e9dcb699566a::t_fc2927b4ea8686 361,374,421
+  s_68e9dcb699566a::t_7a6628a6de4d2d 50-53,660-668,810-813,849,885-888,935-941
+  s_68e9dcb699566a::t_4bf8441353e115 308,310-316
+  s_68e9dcb699566a::t_3523c911d0fbee 46-48,537,548,557
+  s_68e9dcb699566a::t_36d62635b998ca 1-28,32-43,49,54-220,224-227,248-283,286-300,304-305,307,309,317-343,345-346,348-360,362-364,367,369-373,375-380,382-384,388-390,392-418,420,422-439,442-536,538,540-541,543-547,549-556,558-563,571-633,640,644-647,649-650,653-654,658-659,669-670,672,674,677-773,775-783,785-809,814-848,850-884,889-931,933-934,942-945,947,952-1012,1014-1047,1049-1083,1085-1088,1090-1096
+  s_68e9dcb699566a::t_585a1669cc3beb 221-223,228-247,344,347,419,440-441,539,673,784,1048
+  s_68e9dcb699566a::t_0350cf52794593 381,385-387,391,774
+  s_68e9dcb699566a::t_7bc2092c75de5c 1013,1084,1089
+  s_68e9dcb699566a::t_04bbbc882eb0df 542,564-570,671,675-676
+  s_68e9dcb699566a::t_85f72ae59ce9b8 29-31,306,365-366,368
+  s_68e9dcb699566a::t_6b504d2ae4d278 284-285,301-303,634-639,641-643,648,651-652,655-657,932,946,948-951
+  s_68e9dcb699566a::t_f81f2a206f3531 44-45
+bin/fm-watch.sh
+  s_68e9dcb699566a::t_221f60330d2cd5 459
+docs/configuration.md
+  s_68e9dcb699566a::t_b39c4a50cfa893 1091,1139
+  s_68e9dcb699566a::t_f81f2a206f3531 1141
+  s_68e9dcb699566a::t_d34c9e3c5be6c9 23,1084-1090,1092-1138,1140,1142-1158,1206
+bin/fm-task-inbox-lib.sh
+  s_68e9dcb699566a::t_f33d9074e0e2e2 81,162
+  s_68e9dcb699566a::t_6fdb432afd36d9 74
+  s_68e9dcb699566a::t_f6370f5e256d5e 82
+  s_68e9dcb699566a::t_132cfb48355b73 163
+docs/scripts.md
+  s_68e9dcb699566a::t_d34c9e3c5be6c9 76-77
+bin/fm-promote.sh
+  s_68e9dcb699566a::t_3703f44f67a91e 52-53
+  s_68e9dcb699566a::t_6fdb432afd36d9 280-281
+bin/fm-fleet-snapshot.sh
+  s_68e9dcb699566a::t_c9f6d34e474262 114-116,224-226,2041-2042,2059,2081
+tests/fm-gotmp.test.sh
+  s_d867164ea0f8db::t_62f34fa25cfeab 96-98,197
+tests/fm-remote-transport-lanes.test.sh
+  s_d867164ea0f8db::t_783461995df407 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "912818ddd56346072f4c1a2cbc53c5da5739894d",
+  "prompts": {},
+  "sessions": {
+    "s_68e9dcb699566a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c10ad87d-95dd-464e-952f-64f8c4e5b86a",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_d867164ea0f8db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f35a55e4-37bf-41c4-a39b-2883246e2da2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
