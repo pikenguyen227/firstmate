@@ -1250,6 +1250,38 @@ fm_treehouse_project_lock_path() {  # <project-dir>
   printf '%s/.treehouse-project-%s.lock\n' "$root/state" "$hash"
 }
 
+# The Treehouse root a home's crewmate and scout spawns allocate project
+# worktrees from, printed for `treehouse --root`; empty means Treehouse's own
+# configured default.
+#
+# Treehouse names a pool by repository, not by the clone that invokes it, so
+# every clone of one repository under the same root shares one pool, and its
+# slots are linked worktrees of whichever clone created them. A secondmate home
+# holds its own clone of a project the primary may also hold, so on the shared
+# default root it is handed the primary's slots - worktrees of a clone that is
+# not its own. Each secondmate home therefore gets a root inside its own
+# gitignored state directory, while a primary home keeps the configured default
+# so its existing pool and in-use slots stay exactly where they are.
+# `--root` is the lever because it outranks both TREEHOUSE_ROOT and Treehouse
+# config, and a wrapper that injects its own leading `--root` is still
+# overridden by the later one. A secondmate marker that exists but cannot be
+# read as one fails, so an unclassifiable home never falls back to the shared
+# pool. The worktree actually entered is still checked against the spawning
+# clone (bin/fm-spawn.sh), because no root choice can prove that on its own.
+fm_treehouse_home_pool_root() {  # <home> <state-dir>
+  local home=$1 state=$2 marker id
+  marker="$home/.fm-secondmate-home"
+  if [ ! -e "$marker" ] && [ ! -L "$marker" ]; then
+    return 0
+  fi
+  [ -f "$marker" ] && [ ! -L "$marker" ] || return 1
+  IFS= read -r id < "$marker" 2>/dev/null || return 1
+  [ -n "$id" ] || return 1
+  [ -n "$state" ] && [ -d "$state" ] || return 1
+  state=$(CDPATH='' cd -- "$state" 2>/dev/null && pwd -P) || return 1
+  printf '%s/treehouse-pool\n' "$state"
+}
+
 # A Treehouse slot has the managed pool's fixed <pool>/<slot>/<repo> layout.
 # Require both its pool state and the same Git common directory as the recorded
 # project; an ordinary linked worktree is not evidence that Treehouse owns it.

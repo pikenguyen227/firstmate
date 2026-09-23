@@ -2925,6 +2925,29 @@ spawn_worktree_isolated() { # <path>
   return 0
 }
 
+# A freshly acquired worktree must also belong to the spawning clone itself:
+# sharing its Git common directory is what makes it this home's copy. Treehouse
+# pools by repository, so a slot created by another home's clone of the same
+# repository is isolated yet not this home's, and bin/fm-claude-trust.sh rightly
+# refuses it later; naming the owning clone here is the concrete reason.
+spawn_worktree_of_project() { # <path>
+  local path=$1 wt_common proj_common
+  SPAWN_WT_REASON=
+  wt_common=$(git -C "$path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) &&
+    wt_common=$(cd "$wt_common" 2>/dev/null && pwd -P) || wt_common=
+  proj_common=$(git -C "$PROJ_ABS" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) &&
+    proj_common=$(cd "$proj_common" 2>/dev/null && pwd -P) || proj_common=
+  if [ -z "$wt_common" ] || [ -z "$proj_common" ]; then
+    SPAWN_WT_REASON="its git common directory could not be resolved"
+    return 1
+  fi
+  if [ "$wt_common" != "$proj_common" ]; then
+    SPAWN_WT_REASON="it is a worktree of another clone (git common dir '$wt_common'), not of this home's project (git common dir '$proj_common')"
+    return 1
+  fi
+  return 0
+}
+
 validate_spawn_worktree() { # <source> <inspect-target>
   local source=$1 inspect_target=$2
   if ! spawn_worktree_isolated "$WT"; then
@@ -3862,7 +3885,16 @@ if [ "$RELAUNCH" -eq 1 ]; then
   fi
   [ "$KIND" = secondmate ] || validate_spawn_worktree "relaunch" "$T"
 elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
-  spawn_send_text_line "$WT_TARGET" 'treehouse get'
+  # Allocate from this home's own pool (fm_treehouse_home_pool_root owns why),
+  # never from another home's clone of the same repository.
+  if ! SPAWN_TREEHOUSE_ROOT=$(fm_treehouse_home_pool_root "$FM_HOME" "$STATE"); then
+    echo "error: could not resolve this home's own Treehouse pool root: '$FM_HOME/.fm-secondmate-home' is not a readable secondmate marker or state dir '$STATE' is unusable; refusing to allocate a worktree from another home's pool; inspect window $T" >&2
+    exit 1
+  fi
+  SPAWN_TREEHOUSE_GET='treehouse get'
+  [ -z "$SPAWN_TREEHOUSE_ROOT" ] ||
+    SPAWN_TREEHOUSE_GET="treehouse --root $(shell_quote "$SPAWN_TREEHOUSE_ROOT") get"
+  spawn_send_text_line "$WT_TARGET" "$SPAWN_TREEHOUSE_GET"
 
   # Wait for the treehouse subshell: the pane's cwd moves from the project to the worktree.
   # Target the stable window id, not the name: if the name is ever lost (e.g. an
@@ -3889,7 +3921,9 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   # Every candidate is screened with the isolation guard's own predicate, so a
   # read of the project itself or of the repository primary checkout is treated
   # as the transient it is and the wait continues, instead of being adopted and
-  # then refused by the guard.
+  # then refused by the guard. A worktree of another clone of the repository is
+  # screened the same way (spawn_worktree_of_project), so a slot from another
+  # home's pool is never adopted and the deadline refusal names its owner.
   # A candidate the screen rejects is never adopted, so a host where the pane
   # never reaches an isolated worktree spends the whole window before refusing.
   # That wait is deliberate - telling a transient apart from a terminal
@@ -3902,7 +3936,7 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   for _ in $(seq 1 60); do
     p=$(spawn_current_path "$WT_TARGET" || true)
     [ -z "$p" ] || last_seen="$p"
-    if [ -n "$p" ] && spawn_worktree_isolated "$p"; then
+    if [ -n "$p" ] && spawn_worktree_isolated "$p" && spawn_worktree_of_project "$p"; then
       p_real=$(real_path_or_raw "$p")
       last_reason="it is an isolated worktree, but no second read agreed with it"
       if [ -n "$candidate" ] && [ "$p_real" = "$candidate" ]; then
@@ -3917,7 +3951,7 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
     sleep 1
   done
   if [ -z "$WT" ]; then
-    echo "error: treehouse get did not enter an isolated worktree within 60s (last seen '${last_seen:-none}': $last_reason; spawning project '$PROJ_ABS'); inspect window $T" >&2
+    echo "error: treehouse get did not enter an isolated worktree of this home's project within 60s (last seen '${last_seen:-none}': $last_reason; spawning project '$PROJ_ABS'; treehouse root '${SPAWN_TREEHOUSE_ROOT:-configured default}'); inspect window $T" >&2
     exit 1
   fi
 
