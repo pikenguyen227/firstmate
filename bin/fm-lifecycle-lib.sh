@@ -33,9 +33,9 @@
 # every event whose `key` already appears in any feed file.
 #
 # Status transcription keeps its own per-task cursor,
-# state/.<task>.lifecycle-cursor: `version`, `stream` (the spawn_gen current
-# when this status file was first transcribed, which anchors every key read
-# from it), `offset`, `ident` (the status file identity from
+# state/.<task>.lifecycle-cursor: `version`, `stream` (fixed when this status
+# file is first transcribed by _fm_lifecycle_stream_pick, which anchors every
+# key read from it), `offset`, `ident` (the status file identity from
 # bin/fm-classify-lib.sh), `spawned` (the last spawn_gen recorded as
 # task.spawned), then the folded open-decision set in that library's
 # "<key>\t<verb>\t<note>" form. Each pass reads only bytes past `offset`, and
@@ -484,6 +484,27 @@ EOF
   return 1
 }
 
+# The stream a status log's lines are keyed under, from the cursor just read
+# by _fm_lifecycle_cursor_read (_FM_LC_VALID=0 when there is none): the cursor's
+# stream while it follows the log; otherwise a new stream anchored on the last
+# recorded spawn_gen, else <gen>, suffixed with the log's identity when it
+# replaced the one the cursor followed. Anchoring on the recorded spawn_gen
+# rather than the caller's <gen> is what lets a reader outside the writer
+# predict the stream before the first pass (fm_lifecycle_status_stream).
+_fm_lifecycle_stream_pick() {  # <cur-ident> <gen> <outvar>
+  local __base
+  if [ "$_FM_LC_VALID" != 1 ]; then
+    printf -v "$3" '%s' "${2:-unknown}"
+    return 0
+  fi
+  __base=${_FM_LC_SPAWNED:-${2:-unknown}}
+  if [ -n "$_FM_LC_IDENT" ] && [ "$_FM_LC_IDENT" != "$1" ]; then
+    printf -v "$3" '%s~%s' "$__base" "${1##*:}"
+  else
+    printf -v "$3" '%s' "${_FM_LC_STREAM:-$__base}"
+  fi
+}
+
 # Queue task.decision events for the change from <before> to <after> caused by
 # one status line.
 _fm_lifecycle_queue_decisions() {  # <task> <gen> <stream> <offset> <at> <src> <bf> <verb> <before> <after>
@@ -534,7 +555,7 @@ EOF
 _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> <backfill>
   local state=$1 dir=$2 task=$3 final=$4 gen=$5 bf=$6 f cursor cur_ident size once=0 stream offset open spawned
   local span chunk_max lines=0 line len off verb at src note dkey until data before kind resolve held unstamped
-  local rest end status=0 chunk_file replaced=0
+  local rest end status=0 chunk_file
   f="$state/$task.status"
   _fm_lifecycle_cursor_path "$state" "$task" cursor
   [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] || return 0
@@ -543,18 +564,17 @@ _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> 
   _fm_lifecycle_meta_load "$state/$task.meta"
   [ -n "$gen" ] || _fm_lifecycle_mget spawn_gen gen
   if _fm_lifecycle_cursor_read "$cursor"; then
-    stream=$_FM_LC_STREAM offset=$_FM_LC_OFFSET open=$_FM_LC_OPEN spawned=$_FM_LC_SPAWNED
+    offset=$_FM_LC_OFFSET open=$_FM_LC_OPEN spawned=$_FM_LC_SPAWNED
     if [ -n "$_FM_LC_IDENT" ] && [ "$_FM_LC_IDENT" != "$cur_ident" ]; then
-      stream='' offset=0 open='' once=1 replaced=1
+      offset=0 open='' once=1
     elif [ "$offset" -gt "$size" ]; then
       offset=0 open='' once=1
     fi
   else
     [ -e "$cursor" ] && once=1
-    stream='' offset=0 open='' spawned=''
+    offset=0 open='' spawned=''
   fi
-  [ -n "$stream" ] || stream=${gen:-unknown}
-  [ "$replaced" = 0 ] || stream="$stream~${cur_ident##*:}"
+  _fm_lifecycle_stream_pick "$cur_ident" "$gen" stream
   [ "$bf" = true ] && once=1
   if [ "$offset" -ge "$size" ]; then
     [ "$_FM_LC_IDENT" = "$cur_ident" ] && [ "$_FM_LC_VALID" = 1 ] && return 0
@@ -614,7 +634,7 @@ _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> 
     until=''
     [ "$verb" != "${FM_CLASSIFY_PAUSED_VERB:-$FM_CLASSIFY_PAUSED_VERB_DEFAULT}" ] \
       || until=$(status_paused_until "$line") || until=''
-    _fm_lifecycle_obj data "verb?=$verb" "key?=$dkey" "until#=$until" "note=$note" "offset#=$off"
+    _fm_lifecycle_obj data "verb?=$verb" "key?=$dkey" "until#=$until" "note=$note" "offset#=$off" "stream=$stream"
     _fm_lifecycle_queue task.status "$task" "$gen" "status/$task/$stream/@$off" "$at" "$src" "$bf" "$data"
     case "$verb" in
       needs-decision|blocked|done|failed|"$resolve"|"$held")
@@ -1002,6 +1022,21 @@ fm_lifecycle_snapshot_json() {  # <state>
   _fm_lifecycle_uint_ok "$head" || head=null
   printf '{"schema":"%s","id":%s,"path":%s,"present":%s,"head_seq":%s,"homes":[%s]}' \
     "$FM_LIFECYCLE_SCHEMA" "$jid" "$jpath" "$present" "$head" "$homes"
+}
+
+# The identity of <task>'s status log as it stands now, "<ident>\t<stream>",
+# where <stream> is the one its task.status keys use (_fm_lifecycle_stream_pick)
+# and <gen> is the spawn_gen in the task's metadata. Read-only, silent, and 1 when the
+# log cannot be read; bin/fm-fleet-snapshot.sh samples it around its own copy
+# of the log to publish the feed key of the line it reports.
+fm_lifecycle_status_stream() {  # <state> <task> <gen>
+  local cursor ident size stream
+  [ -f "$1/$2.status" ] && [ ! -L "$1/$2.status" ] || return 1
+  _fm_lifecycle_stat "$1/$2.status" ident size || return 1
+  _fm_lifecycle_cursor_path "$1" "$2" cursor
+  _fm_lifecycle_cursor_read "$cursor" 2>/dev/null || _FM_LC_VALID=0
+  _fm_lifecycle_stream_pick "$ident" "$3" stream
+  printf '%s\t%s\n' "$ident" "$stream"
 }
 
 # --- backfill ---------------------------------------------------------------------------

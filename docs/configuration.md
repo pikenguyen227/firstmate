@@ -1146,7 +1146,7 @@ New fields may appear in `data` or the envelope within `fm-lifecycle.v1`; a brea
 | `feed.started` | The first event this feed ever holds. | `{firstmate_rev}` | `started` |
 | `task.spawned` | A spawn or relaunch reaches its commit point. | `{kind, harness, model, effort, mode, yolo, project, backend, endpoint: {target}, relaunch, previous_spawn_gen, secondmate: {home, projects} or null, remote: {host} or null}` | `spawned/<task>/<spawn_gen>` |
 | `task.reclassified` | A scout is promoted to a ship. | `{from: {kind}, to: {kind, mode, yolo}}` | `reclassified/<task>/<spawn_gen>/<from>-<to>` |
-| `task.status` | A status line is transcribed. | `{verb, key, until, note, offset}` | `status/<task>/<stream>/@<offset>` |
+| `task.status` | A status line is transcribed. | `{verb, key, until, note, offset, stream}` | `status/<task>/<stream>/@<offset>` |
 | `task.decision` | That line opens, replaces, or closes a keyed decision. | `{key, change: opened, replaced, or closed, verb, closed_by: resolved, captain-held, terminal, or null, note}` | `decision/<task>/<stream>/@<offset>/<decision-key>` |
 | `task.steered` | A steering-inbox record is written. | `{msg, delivery: ringing or fire-and-forget, bytes, sha256}` | `steered/<task>/<msg>/<record-at>` |
 | `task.steer_acked` | That record is first found acknowledged. | `{msg}` | `steer_acked/<task>/<msg>/<record-at>` |
@@ -1156,7 +1156,7 @@ New fields may appear in `data` or the envelope within `fm-lifecycle.v1`; a brea
 A key whose task has no `spawn_gen` uses `@<recorded_at>` in its place.
 A backfilled `task.spawned` takes `at` from the `spawn_gen` epoch and carries `relaunch` and `previous_spawn_gen` as `null`.
 `task.status` carries every non-blank status line: `verb` is the recognized status verb or `null` for continuation prose, `key` is the decision key the line states (or `default` for a decision verb without one), `until` is a pause's declared clear time, `note` is the text after the first colon cut to 200 characters, and `offset` is the line's byte offset in the task's status log.
-`<stream>` is the `spawn_gen` current when that status log was first transcribed, so a log's keys stay stable across relaunches, and a status log that was replaced gets a stream suffixed with its file identity; the envelope's `task.spawn_gen` names the attempt the line is attributed to.
+`<stream>`, also carried as `data.stream`, is fixed when that status log is first transcribed: the `spawn_gen` of the task's last recorded `task.spawned`, or its current `spawn_gen` when none is recorded, so a log's keys stay stable across relaunches, and a status log that was replaced gets a stream suffixed with its file identity; the envelope's `task.spawn_gen` names the attempt the line is attributed to.
 `task.decision` records the transitions of the same keyed-decision fold the wake drain uses ([`bin/fm-classify-lib.sh`](../bin/fm-classify-lib.sh)), so a consumer never re-implements it: a `done` or `failed` line on a ship or scout closes every open decision with `closed_by: terminal`.
 Steering events never carry the message body, only its size and SHA-256.
 `outcome` follows the record's kind and delivery: a scout is `reported`, a secondmate `retired`, a local-only ship `landed`, a ship with a recorded PR `merged`, and a forced teardown or anything else `unknown`.
@@ -1173,6 +1173,15 @@ Within a home, `seq` gives the total order in which facts were recorded; order f
 A local secondmate's `path` is its own home's feed; a remote secondmate is listed with `remote: true` and `path: null` because its feed is not mirrored.
 The object is `null` when the feed is off.
 `bin/fm-lifecycle.sh backfill` replays the tasks that are live now, idempotently; history of tasks torn down before the feed existed is gone and is not reconstructed.
+
+### Matching a polled status line to its event
+
+Each snapshot task's `paths.status_log.last_event` carries additive `offset`, `stream`, and `lifecycle_key` fields naming that line's `task.status` event: `lifecycle_key` is exactly the event's `key`, and `offset` and `stream` equal its `data.offset` and `data.stream`.
+An event written before `data.stream` existed carries its stream only inside `key`, so matching on `lifecycle_key` covers every event.
+This is how a consumer matches a polled status line to a feed event, whether or not the line carries a readable `[at=]` stamp, and it tells apart two identical lines appended at different offsets.
+The identity is published before the wake drain transcribes the line, stays the same across repeated snapshots and after transcription, and follows the status log across relaunches and replacement the same way the feed's keys do.
+All three fields are `null` together when the snapshot could not establish the identity, such as an empty log or a log replaced while it was being read; a consumer then falls back to its own matching for that line.
+They are published whether or not the feed is on.
 
 ## Environment variables
 

@@ -19,7 +19,10 @@
 #      fm-promote, a steer through the inbox writer, the watcher's
 #      acknowledgement scan, and fm-teardown's final flush before it deletes
 #      the task's status, metadata, and inbox.
-#   5. Discovery: the fleet snapshot's additive `lifecycle` pointer.
+#   5. Discovery: the fleet snapshot's additive `lifecycle` pointer, and the
+#      feed key it publishes for each task's last status line, matched exactly
+#      against the feed for stamped, unstamped, repeated, relaunched, and
+#      replaced lines.
 #   6. fm-lifecycle.sh backfill replays live tasks once and only once.
 set -u
 
@@ -272,7 +275,7 @@ test_drain_transcribes_status_and_decisions() {
   assert_feed_valid "$home" "drain pass 1"
   assert_equals 4 "$(count_type "$home" task.status t1)" "every complete status line should be transcribed once, the incomplete one held back"
   feed_json "$home" | jq -e '[.[] | select(.type == "task.status")] |
-    .[0].data == {verb:"working", key:null, until:null, note:"setup done", offset:0}
+    .[0].data == {verb:"working", key:null, until:null, note:"setup done", offset:0, stream:"s1790000000.5.6"}
     and .[0].at == 1790000010 and .[0].at_source == "stamp"
     and .[1].data.verb == "needs-decision" and .[1].data.key == "api"
     and .[3].data.verb == null and .[3].at == null and .[3].at_source == "unknown"
@@ -581,6 +584,114 @@ test_snapshot_carries_the_lifecycle_pointer() {
   pass "discovery: the fleet snapshot points at this home's feed and each secondmate's"
 }
 
+# The snapshot's last status line, as "<lifecycle_key>\t<stream>\t<offset>\t<raw>".
+snapshot_status_id() {  # <home> <task>
+  FM_HOME="$1" FM_ROOT_OVERRIDE='' FM_CREW_STATE_BIN=/usr/bin/true "$SNAPSHOT" --json 2>/dev/null \
+    | jq -r --arg id "$2" '.tasks[] | select(.id == $id) | .paths.status_log.last_event
+      | [(.lifecycle_key // "null"), (.stream // "null"), (.offset // "null" | tostring), .raw] | @tsv'
+}
+
+# 0 when the feed holds exactly one task.status event under <key>, for <offset>
+# and <stream>, attributed to spawn_gen <gen>.
+feed_has_status_key() {  # <home> <key> <stream> <offset> <gen>
+  feed_json "$1" | jq -e --arg k "$2" --arg s "$3" --argjson o "$4" --arg g "$5" '
+    [.[] | select(.type == "task.status" and .key == $k)]
+    | length == 1 and .[0].data.stream == $s and .[0].data.offset == $o and .[0].task.spawn_gen == $g' >/dev/null
+}
+
+test_snapshot_status_line_matches_its_feed_event() {
+  local home state status id k1 k2 k3 k4 k5 again stream off rest
+  home=$(new_home status-id)
+  state="$home/state"
+  status="$state/t1.status"
+  fm_write_meta "$state/t1.meta" "kind=ship" "spawn_gen=s1790000000.1.1" "window=fmses:fm-t1"
+  lc "$home" fm_lifecycle_task_spawned "$state" t1 0
+
+  # A stamped line, read before the drain has transcribed anything.
+  printf '%s\n' 'working [at=1790000010]: setup done' > "$status"
+  id=$(snapshot_status_id "$home" t1)
+  k1=${id%%$'\t'*}
+  assert_equals "status/t1/s1790000000.1.1/@0" "$k1" "a stamped line should carry the feed key before any drain: $id"
+  again=$(snapshot_status_id "$home" t1)
+  assert_equals "$id" "$again" "repeated snapshots should publish the same identity"
+  run_drain "$home" >/dev/null
+  feed_has_status_key "$home" "$k1" s1790000000.1.1 0 s1790000000.1.1 \
+    || fail "the feed does not hold the stamped line under the snapshot's key: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,data}')"
+  assert_equals "$id" "$(snapshot_status_id "$home" t1)" "transcription must not change the published identity"
+
+  # An unstamped line, then the identical line again at a later offset.
+  printf '%s\n' 'working: no stamp here' >> "$status"
+  id=$(snapshot_status_id "$home" t1)
+  k2=${id%%$'\t'*}
+  rest=${id#*$'\t'}; stream=${rest%%$'\t'*}; rest=${rest#*$'\t'}; off=${rest%%$'\t'*}
+  assert_equals "status/t1/s1790000000.1.1/@36" "$k2" "an unstamped line should carry its byte-offset key: $id"
+  printf '%s\n' 'working: no stamp here' >> "$status"
+  id=$(snapshot_status_id "$home" t1)
+  k3=${id%%$'\t'*}
+  assert_equals "status/t1/s1790000000.1.1/@59" "$k3" "a repeated identical line should get its own key: $id"
+  assert_equals "$(snapshot_status_id "$home" t1)" "$id" "the repeated line's identity should be stable"
+  run_drain "$home" >/dev/null
+  feed_has_status_key "$home" "$k2" "$stream" "$off" s1790000000.1.1 \
+    || fail "the feed does not hold the unstamped line under the snapshot's key $k2"
+  feed_has_status_key "$home" "$k3" "$stream" 59 s1790000000.1.1 \
+    || fail "the feed does not hold the repeated line under the snapshot's key $k3"
+  feed_json "$home" | jq -e --arg a "$k2" --arg b "$k3" '
+    [.[] | select(.type == "task.status" and (.key == $a or .key == $b))]
+    | length == 2 and .[0].data.note == .[1].data.note and .[0].at == null and .[1].at == null' >/dev/null \
+    || fail "two identical unstamped lines should be two feed events told apart only by key"
+
+  # A new attempt: the line written between the relaunch's metadata commit and
+  # its feed record is attributed to the predecessor, under the key the
+  # snapshot published in that window.
+  fm_write_meta "$state/t2.meta" "kind=ship" "spawn_gen=s1790000100.2.1" "window=fmses:fm-t2"
+  lc "$home" fm_lifecycle_task_spawned "$state" t2 0
+  printf '%s\n' 'working: first attempt' > "$state/t2.status"
+  fm_write_meta "$state/t2.meta" "kind=ship" "spawn_gen=s1790000200.2.2" "window=fmses:fm-t2"
+  id=$(snapshot_status_id "$home" t2)
+  k4=${id%%$'\t'*}
+  assert_equals "status/t2/s1790000100.2.1/@0" "$k4" "mid-relaunch, the line should keep its predecessor's stream: $id"
+  lc "$home" fm_lifecycle_task_spawned "$state" t2 1
+  feed_has_status_key "$home" "$k4" s1790000100.2.1 0 s1790000100.2.1 \
+    || fail "the relaunch flush did not record the line under the snapshot's key: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status" and .task.id == "t2") | {key,task,data}')"
+  printf '%s\n' 'working: second attempt' >> "$state/t2.status"
+  id=$(snapshot_status_id "$home" t2)
+  k5=${id%%$'\t'*}
+  assert_equals "status/t2/s1790000100.2.1/@23" "$k5" "after a relaunch the log keeps its stream and keys by offset: $id"
+  run_drain "$home" >/dev/null
+  feed_has_status_key "$home" "$k5" s1790000100.2.1 23 s1790000200.2.2 \
+    || fail "the new attempt's line is not in the feed under the snapshot's key $k5"
+
+  # A replaced status log starts a new stream on both sides.
+  rm -f "$status"
+  printf '%s\n' 'working: replaced log' > "$status"
+  id=$(snapshot_status_id "$home" t1)
+  k1=${id%%$'\t'*}
+  case "$k1" in
+    status/t1/s1790000000.1.1~*/@0) ;;
+    *) fail "a replaced log should be keyed under a suffixed stream: $id" ;;
+  esac
+  rest=${id#*$'\t'}; stream=${rest%%$'\t'*}
+  run_drain "$home" >/dev/null
+  feed_has_status_key "$home" "$k1" "$stream" 0 s1790000000.1.1 \
+    || fail "the replaced log's line is not in the feed under the snapshot's key $k1"
+  assert_feed_valid "$home" "status identity"
+
+  # Best effort: an unreadable cursor or a disabled feed never fails the
+  # snapshot, and a line whose identity cannot be sampled publishes null.
+  printf 'garbage\n' > "$state/.t1.lifecycle-cursor"
+  FM_HOME="$home" FM_ROOT_OVERRIDE='' FM_CREW_STATE_BIN=/usr/bin/true "$SNAPSHOT" --json >/dev/null 2>&1 \
+    || fail "a corrupt lifecycle cursor must not fail the snapshot"
+  FM_LIFECYCLE=off FM_HOME="$home" FM_ROOT_OVERRIDE='' FM_CREW_STATE_BIN=/usr/bin/true "$SNAPSHOT" --json 2>/dev/null \
+    | jq -e '.lifecycle == null and all(.tasks[]; .paths.status_log.last_event | has("lifecycle_key"))' >/dev/null \
+    || fail "a disabled feed must not fail the snapshot or drop the identity fields"
+  : > "$state/t2.status"
+  FM_HOME="$home" FM_ROOT_OVERRIDE='' FM_CREW_STATE_BIN=/usr/bin/true "$SNAPSHOT" --json 2>/dev/null \
+    | jq -e '.tasks[] | select(.id == "t2") | .paths.status_log.last_event
+      | .raw == "" and .offset == null and .stream == null and .lifecycle_key == null' >/dev/null \
+    || fail "an empty status log should publish a null identity"
+  pass "identity: the snapshot's last status line carries the exact feed key, stamped or not, repeated, relaunched, or replaced"
+}
+
 # --- 6. backfill --------------------------------------------------------------------
 
 test_backfill_is_idempotent() {
@@ -631,4 +742,5 @@ test_chunked_and_replaced_status_logs
 test_reused_task_id_starts_fresh
 test_emit_sites_end_to_end
 test_snapshot_carries_the_lifecycle_pointer
+test_snapshot_status_line_matches_its_feed_event
 test_backfill_is_idempotent

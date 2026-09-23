@@ -60,6 +60,10 @@
 #     fm-classify-lib.sh owns the optional emission-time field, and only the
 #     age derived from it is published here. A future event time leaves that age
 #     unknown rather than clamped to zero.
+#     last_event.offset, .stream, and .lifecycle_key are that line's identity in
+#     the fm-lifecycle.v1 feed, or null when it could not be established; the
+#     stream comes from bin/fm-lifecycle-lib.sh's fm_lifecycle_status_stream and
+#     docs/configuration.md "Lifecycle event feed" owns their meaning.
 #     hints.open_decisions is the keyed open-decision set returned by
 #     fm-classify-lib.sh's authoritative status_open_decisions fold and reconciled
 #     against current_state; hints.pending_decision and hints.blocked_event are
@@ -323,6 +327,21 @@ last_nonempty_line() {  # <file>
   grep -v '^[[:space:]]*$' "$1" 2>/dev/null | tail -1
 }
 
+# "<byte-offset>\t<line>" for the last line holding a non-blank byte.
+last_nonempty_line_offset() {  # <file>
+  [ -f "$1" ] || return 1
+  LC_ALL=C awk '/[^ \t\r\v\f]/ { off = pos; line = $0; found = 1 }
+    { pos += length($0) + 1 }
+    END { if (found) printf "%d\t%s", off, line }' "$1" 2>/dev/null
+}
+
+# "<ident>\t<stream>" of a task's live status log, or nothing; best-effort.
+status_stream_sample() {  # <id> <captured-meta>
+  local gen
+  gen=$(meta_value "$2" spawn_gen)
+  ( set +eu; fm_lifecycle_status_stream "$STATE" "$1" "$gen" ) 2>/dev/null || true
+}
+
 # A local crew-state read is bounded so one slow child cannot extend this
 # snapshot without limit. Remote secondmate endpoint liveness is never read here.
 # A local read that hits the bound folds to state unknown.
@@ -360,8 +379,9 @@ crew_state_json() {  # <id> [<captured-meta>] [<captured-status>]
     '{state:$state,source:$source,detail:$detail,raw:$raw}'
 }
 
-status_event_json() {  # <observed-status-log> [<contract-path>]
-  local log=$1 path=${2:-$1} present=0 raw='' verb='' note='' epoch=null age=null
+status_event_json() {  # <observed-status-log> [<contract-path>] [<task> <stream-file>]
+  local log=$1 path=${2:-$1} task=${3:-} stream_file=${4:-} present=0 raw='' verb='' note='' epoch=null age=null
+  local located='' offset=null stream=''
   if [ -f "$log" ]; then
     present=1
     raw=$(last_nonempty_line "$log" || true)
@@ -371,15 +391,36 @@ status_event_json() {  # <observed-status-log> [<contract-path>]
     if [ "$epoch" != null ] && [ "$epoch" -le "$SNAPSHOT_EPOCH" ]; then
       age=$((SNAPSHOT_EPOCH - epoch))
     fi
+    # The line's feed identity is published only when both reads name the
+    # same line and the stream was sampled unchanged around the capture.
+    if [ -n "$raw" ] && [ -n "$task" ] && [ -s "$stream_file" ]; then
+      located=$(last_nonempty_line_offset "$log" || true)
+      case "${located%%$'\t'*}" in
+        ''|*[!0-9]*) ;;
+        *)
+          if [ "${located#*$'\t'}" = "$raw" ]; then
+            offset=${located%%$'\t'*}
+            IFS= read -r stream < "$stream_file" || true
+          fi
+          ;;
+      esac
+      [ -n "$stream" ] || offset=null
+    fi
   fi
   jq -n \
     --arg path "$path" \
     --arg raw "$raw" \
     --arg verb "$verb" \
     --arg note "$note" \
+    --arg task "$task" \
+    --arg stream "$stream" \
+    --argjson offset "$offset" \
     --argjson age "$age" \
     --argjson present "$(bool_json "$present")" \
-    '{path:$path,present:$present,kind:"event_history",last_event:{state:$verb,note:$note,raw:$raw,age_seconds:$age}}'
+    '{path:$path,present:$present,kind:"event_history",last_event:{state:$verb,note:$note,raw:$raw,age_seconds:$age,
+      offset:$offset,
+      stream:(if $offset == null then null else $stream end),
+      lifecycle_key:(if $offset == null then null else "status/\($task)/\($stream)/@\($offset)" end)}}'
 }
 
 first_pr_url_in_file() {  # <file>
@@ -635,7 +676,7 @@ snapshot_task_generation_is_current() {  # <captured-meta> <id>
 
 prefetch_task_observations() {  # <meta> <id>
   local meta=$1 id=$2 remote_host current_file endpoint_file current_pid='' current_rc=0
-  local status_log status_capture report_path report_capture
+  local status_log status_capture report_path report_capture stream_before stream_after
   local kind backend target endpoint_exists=null agent_alive=not_checked generation_current=1
   remote_host=$(meta_value "$meta" remote_host)
   current_file="$SNAPSHOT_TASK_DIR/$id.json"
@@ -647,7 +688,12 @@ prefetch_task_observations() {  # <meta> <id>
 
   snapshot_task_generation_is_current "$meta" "$id" || generation_current=0
   if [ "$generation_current" = 1 ]; then
+    stream_before=$(status_stream_sample "$id" "$meta")
     snapshot_capture_optional "$status_log" "$status_capture" || current_rc=1
+    stream_after=$(status_stream_sample "$id" "$meta")
+    if [ -n "$stream_before" ] && [ "$stream_before" = "$stream_after" ] && [ -f "$status_capture" ]; then
+      printf '%s\n' "${stream_before#*$'\t'}" > "$SNAPSHOT_TASK_DIR/$id.status-stream" 2>/dev/null || true
+    fi
     snapshot_mark_optional_present "$report_path" "$report_capture" || current_rc=1
   fi
 
@@ -681,7 +727,7 @@ prefetch_task_observations() {  # <meta> <id>
   # All mutable observations must belong to the metadata generation captured in
   # the manifest. If teardown/relaunch raced any read, discard the whole sample.
   if ! snapshot_task_generation_is_current "$meta" "$id"; then
-    rm -f -- "$status_capture" "$report_capture"
+    rm -f -- "$status_capture" "$report_capture" "$SNAPSHOT_TASK_DIR/$id.status-stream"
     jq -n '{state:"unknown",source:"none",detail:"task generation changed during snapshot",raw:""}' \
       > "$current_file" || current_rc=1
     endpoint_exists=null
@@ -795,7 +841,7 @@ task_json_lines() {
       snapshot_task_cleanup
       return 1
     }
-    event_json=$(status_event_json "$status_log" "$STATE/$id.status")
+    event_json=$(status_event_json "$status_log" "$STATE/$id.status" "$id" "$SNAPSHOT_TASK_DIR/$id.status-stream")
     last_event_raw=$(printf '%s' "$event_json" | jq -r '.last_event.raw // ""')
     read -r current_state current_source < <(
       printf '%s' "$current_json" | jq -r '[.state // "", .source // ""] | @tsv'
