@@ -61,7 +61,7 @@ case "${1:-}" in
       shift
     done
     case "$text" in
-      treehouse*)
+      treehouse*|"cd -- "*)
         printf '%s\n' "$text" >> "${FM_FAKE_TYPED_LOG:-/dev/null}"
         cwd=$(cat "$pane")
         out=$(cd "$cwd" && eval "$text") || exit 0
@@ -117,7 +117,7 @@ esac
 exit 0
 SH
   chmod +x "$fakebin/tmux" "$fakebin/treehouse"
-  fm_test_fake_sleep_noop "$fakebin"
+  fm_test_fake_sleep_log "$fakebin"
   printf '%s\n' "$fakebin"
 }
 
@@ -150,8 +150,9 @@ run_pool_spawn() {  # <home> <id>
   local home=$1 id=$2
   fm_test_spawn_brief "$home" "$id"
   : > "$CASE/pane"
-  FM_FAKE_PANE_FILE="$CASE/pane" FM_FAKE_TYPED_LOG="$CASE/typed.$id" \
-    TREEHOUSE_ROOT="$SHARED_ROOT" FM_BACKEND=tmux \
+  : > "$CASE/sleeps.$id"
+  FM_FAKE_PANE_FILE="$CASE/pane" FM_FAKE_TYPED_LOG="$CASE/typed.$id" FM_SLEEP_LOG="$CASE/sleeps.$id" \
+    TREEHOUSE_ROOT="${POOL_ROOT:-$SHARED_ROOT}" FM_BACKEND=tmux \
     fm_test_run_spawn "$home" "" "$FAKEBIN" "$id" "$home/projects/app" \
     --mode no-mistakes --yolo off
 }
@@ -245,7 +246,62 @@ test_teardown_returns_the_slot_to_the_pool_it_came_from() {
   pass "teardown returns a secondmate task's slot to that home's own pool"
 }
 
+# Leave <count> available slots in <root>'s pool, each a worktree of the
+# secondmate's clone, as a shared pool used before per-home pools would hold.
+seed_foreign_slots() {  # <root> <count>
+  local root=$1 count=$2 i slot
+  for i in $(seq 1 "$count"); do
+    slot=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$root" "$FAKEBIN/treehouse" get) || return 1
+  done
+  for i in $(seq 1 "$count"); do
+    rm -f "$(dirname "$(dirname "$slot")")/$i/.in-use"
+  done
+}
+
+test_primary_skips_a_leftover_foreign_slot() {
+  local out status root="$CASE/leftover-root" wt foreign polls
+  seed_foreign_slots "$root" 1 || fail "could not seed a foreign slot"
+  foreign=$(cd "$root"/.treehouse/app-*/1/app && pwd -P)
+  out=$(POOL_ROOT="$root" run_pool_spawn "$PRIMARY" pool-primary-z4)
+  status=$?
+  expect_code 0 "$status" "primary spawn should skip the leftover foreign slot"$'\n'"$out"
+  wt=$(meta_value "$PRIMARY/state/pool-primary-z4.meta" worktree)
+  [ "$(common_dir "$wt")" = "$(common_dir "$PRIMARY/projects/app")" ] ||
+    fail "primary landed in $wt, not a worktree of its own clone"
+  [ "$(cd "$wt" && pwd -P)" != "$foreign" ] || fail "primary adopted the foreign slot"
+  polls=$(grep -c '^1$' "$CASE/sleeps.pool-primary-z4")
+  [ "$polls" -lt 10 ] || fail "primary waited $polls polls before skipping the foreign slot"
+  [ "$(common_dir "$foreign")" = "$(common_dir "$MATE/projects/app")" ] ||
+    fail "the foreign slot was not left a worktree of its own clone"
+  [ -e "$(dirname "$foreign")/.in-use" ] || fail "the foreign slot was released instead of left held"
+  [ "$(sed -n 2p "$CASE/typed.pool-primary-z4")" = "cd -- '$PRIMARY/projects/app' && treehouse get" ] ||
+    fail "retry did not rerun the same get from the spawning project: $(cat "$CASE/typed.pool-primary-z4")"
+  pass "a primary spawn handed a leftover foreign slot skips it at once and lands in its own clone's slot"
+}
+
+test_only_foreign_slots_fail_naming_them() {
+  local out status root="$CASE/all-foreign-root" i slot
+  seed_foreign_slots "$root" 6 || fail "could not seed foreign slots"
+  out=$(POOL_ROOT="$root" run_pool_spawn "$PRIMARY" pool-primary-z5)
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn succeeded with only foreign slots available"$'\n'"$out"
+  assert_contains "$out" "kept handing out worktrees of another clone" "refusal does not explain the foreign slots"
+  assert_contains "$out" "$(common_dir "$MATE/projects/app")" "refusal does not name the owning clone"
+  for i in 1 2 3 4; do
+    slot=$(cd "$root"/.treehouse/app-*/"$i"/app && pwd -P)
+    assert_contains "$out" "$slot" "refusal does not name rejected slot $i"
+    [ "$(common_dir "$slot")" = "$(common_dir "$MATE/projects/app")" ] || fail "foreign slot $i was altered"
+  done
+  for i in 5 6; do
+    [ ! -e "$(dirname "$slot")/../$i/.in-use" ] || fail "spawn kept acquiring past its retry bound (slot $i)"
+  done
+  [ ! -e "$PRIMARY/state/pool-primary-z5.meta" ] || fail "refused spawn left a task record"
+  pass "a spawn that is only ever handed foreign slots fails naming each one and its owner"
+}
+
 test_each_home_gets_a_worktree_of_its_own_clone
+test_primary_skips_a_leftover_foreign_slot
+test_only_foreign_slots_fail_naming_them
 test_foreign_clone_worktree_is_refused_loudly
 test_unreadable_secondmate_marker_fails_loudly
 test_teardown_returns_the_slot_to_the_pool_it_came_from
