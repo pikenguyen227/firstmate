@@ -1,0 +1,34 @@
+=== Scenario 1: seed a NEW explicit home while the primary checkout sits on a feature branch ===
+primary refs/heads/main = 5034013cd56a0758041077e96f0376f9dcb5b58d
+primary HEAD (feature)  = 5f05e36902bc9ef1e3edd7245113a4348e685d7a
+$ FM_HOME=/tmp/fmseed-live.bRm8/h1 /tmp/fmseed-live.bRm8/p1/bin/fm-home-seed.sh newhome /tmp/fmseed-live.bRm8/sub1 alpha
+scaffolded: /tmp/fmseed-live.bRm8/h1/data/newhome/brief.md (secondmate charter)
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+home=/private/tmp/fmseed-live.bRm8/sub1
+exit=0
+new home HEAD           = 5034013cd56a0758041077e96f0376f9dcb5b58d
+RESULT: PASS new home is at primary main commit
+marker: newhome
+registry:
+- newhome - new home scope (home: /private/tmp/fmseed-live.bRm8/sub1; scope: new home scope; projects: alpha; added 2026-09-23)
+--- pre-launch sync (fm-ff-lib ff_target, the fm-spawn --secondmate sync) on the fresh home:
+secondmate newhome: already current
+sync exit=0
+
+=== Scenario 2: seed an EXISTING explicit home on an older build (must not be moved) ===
+existing home HEAD before = 1705131ccfcd4d36e13418cb63a9eae7e091c12b ; primary main = 4f28df16f7309d6755d65bf51cfdb2c0c889204e
+warning: secondmate home /private/tmp/fmseed-live.bRm8/sub2 is at 1705131ccfcd4d36e13418cb63a9eae7e091c12b, not the primary home's Firstmate commit 4f28df16f7309d6755d65bf51cfdb2c0c889204e; seed leaves an explicitly given home where it is, and the pre-launch sync reconciles it only when it safely can
+scaffolded: /tmp/fmseed-live.bRm8/h2/data/existing/brief.md (secondmate charter)
+warning: remote HEAD refers to nonexistent ref, unable to checkout
+home=/private/tmp/fmseed-live.bRm8/sub2
+exit=0
+existing home HEAD after  = 1705131ccfcd4d36e13418cb63a9eae7e091c12b
+RESULT: PASS existing home left in place (warning above)
+
+=== Scenario 3 (adversarial): new explicit home when the primary's Firstmate commit cannot be resolved ===
+primary has only branch 'trunk' and no origin -> no default branch
+error: cannot resolve the primary home's Firstmate commit; refusing to seed /private/tmp/fmseed-live.bRm8/sub3 on an unverified build
+exit=1
+new home dir rolled back (removed)
+no registry route left
+RESULT: PASS seed fails loudly and rolls back
