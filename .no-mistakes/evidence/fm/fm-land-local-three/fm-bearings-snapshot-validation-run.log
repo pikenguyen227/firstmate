@@ -1,0 +1,3 @@
+ok - current state and decision hints share one captured status observation
+ok - each task publishes its attributed validation run, or null without one
+ok - reused live state is discarded when task generation changes

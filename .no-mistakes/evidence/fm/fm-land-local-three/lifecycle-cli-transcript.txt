@@ -1,0 +1,43 @@
+$ # seed a live ship task t1 (meta + status log with a decision), feed does not exist yet
+$ fm-lifecycle.sh path
+/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl
+exit=0
+$ fm-lifecycle.sh backfill
+fm-lifecycle: backfill recorded 4 event(s) into /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl
+exit=0
+$ fm-lifecycle.sh backfill   # second run must be a no-op
+fm-lifecycle: backfill recorded 0 event(s) into /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl
+exit=0
+$ jq -c "{seq,type,key,at,at_source,backfill}" events.v1.jsonl
+{"seq":1,"type":"feed.started","key":"started","at":1790180946,"at_source":"firstmate","backfill":false}
+{"seq":2,"type":"task.spawned","key":"spawned/t1/s1790000000.3.4","at":1790000000,"at_source":"firstmate","backfill":true}
+{"seq":3,"type":"task.status","key":"status/t1/s1790000000.3.4/@0","at":1790000010,"at_source":"stamp","backfill":true}
+{"seq":4,"type":"task.status","key":"status/t1/s1790000000.3.4/@27","at":1790000020,"at_source":"stamp","backfill":true}
+{"seq":5,"type":"task.decision","key":"decision/t1/s1790000000.3.4/@27/default","at":1790000020,"at_source":"stamp","backfill":true}
+{"seq":6,"type":"feed.backfilled","key":"backfilled/1790180946","at":1790180946,"at_source":"firstmate","backfill":true}
+$ # append a status line and run the real wake drain
+drain exit=0
+{"seq":8,"type":"task.decision","key":"decision/t1/s1790000000.3.4/@68/default","backfill":false,"data":{"key":"default","change":"closed","verb":"needs-decision","closed_by":"terminal","note":null}}
+$ fm-fleet-snapshot.sh --json | jq "{lifecycle, last_event: .tasks[0].paths.status_log.last_event, validation_run: .tasks[0].validation_run}"
+{
+  "lifecycle": {
+    "schema": "fm-lifecycle.v1",
+    "id": "fmh_d373878b6db4",
+    "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl",
+    "present": true,
+    "head_seq": 8,
+    "homes": []
+  },
+  "last_event": {
+    "raw": "done [at=1790000030]: shipped",
+    "offset": 68,
+    "stream": "s1790000000.3.4",
+    "lifecycle_key": "status/t1/s1790000000.3.4/@68"
+  },
+  "validation_run": null
+}
+$ # adversarial: FM_LIFECYCLE=off
+error: the lifecycle feed is off or this home has no data directory
+exit=1
+$ # adversarial: read-only feed dir, drain must still succeed silently
+drain exit=0
