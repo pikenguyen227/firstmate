@@ -1,0 +1,29 @@
+bin/fm-home-seed.sh
+  s_88e3068216195b::t_5d14eb116a3501 412
+  s_88e3068216195b::t_b46cb23a010f05 10-13
+  s_88e3068216195b::t_0bc4d468fa16e3 462-465,467
+  s_88e3068216195b::t_31d44b98c6a60b 407-411,413-461,466,468-469
+  s_88e3068216195b::t_d8677bf07abd28 950-954
+tests/fm-secondmate-safety.test.sh
+  s_88e3068216195b::t_49358ad2af3bd5 301,308-309,317,331-362,364-431,3121-3123
+  s_88e3068216195b::t_d9cbee806634dc 50-73
+  s_88e3068216195b::t_9744efb77a2819 363
+.agents/skills/secondmate-provisioning/SKILL.md
+  s_88e3068216195b::t_0d17444c582eca 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4f2ece0b649550f88088cb025b8aae7f8dcb9af3",
+  "prompts": {},
+  "sessions": {
+    "s_88e3068216195b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2a58852-10ea-48d2-bd63-5eec4569b54e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
