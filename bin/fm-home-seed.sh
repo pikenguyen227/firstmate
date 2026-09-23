@@ -7,7 +7,11 @@
 #       a fresh firstmate worktree via "treehouse get --lease", which durably
 #       leases the worktree under the secondmate <id> so the home survives with
 #       no live process and is never recycled until the lease is released with
-#       "treehouse return". Projects are cloned
+#       "treehouse return". A leased home, or an explicit home seed clones
+#       because the path did not exist, is placed at the primary home's
+#       Firstmate commit (the same target the fm-spawn.sh --secondmate pre-launch
+#       sync follows) and the seed fails if it cannot be; an explicitly given
+#       home that already existed is never moved, and a mismatch is only warned. Projects are cloned
 #       from the active home into the secondmate home's projects/ directory.
 #       That project list is non-exclusive provisioning data. Pass --no-projects
 #       instead of a project list to seed a project-less home for a domain whose
@@ -399,6 +403,69 @@ acquire_treehouse_home() {
   }
   [ -n "$home" ] || { echo "error: treehouse get --lease did not report a firstmate home" >&2; return 1; }
   printf '%s\n' "$home"
+}
+
+# The primary home's Firstmate commit, read from the local-HEAD secondmate sync's
+# own owner (bin/fm-ff-lib.sh primary_head_commit) so seed and the fm-spawn.sh
+# pre-launch sync can never disagree about it. The child bash keeps the ff lib's
+# helpers and globals from shadowing this script's same-named ones.
+primary_firstmate_commit() {
+  FM_ROOT="$FM_ROOT" FM_HOME="$FM_HOME" bash -c '. "$1/fm-ff-lib.sh" && primary_head_commit "$FM_ROOT"' _ "$SCRIPT_DIR"
+}
+
+# Place a home seed just produced at the primary's commit. The pool hands back a
+# worktree wherever its last fetch landed, and a fresh clone checks out whatever
+# the primary has checked out; neither holds work yet, so moving it is safe and
+# makes the first launch's sync an ordinary no-op. Any failure fails the seed so
+# its rollback returns the lease or removes the clone.
+place_new_home_at_primary() {
+  local home=$1 target head dirty
+  target=$(primary_firstmate_commit) || {
+    echo "error: cannot resolve the primary home's Firstmate commit; refusing to seed $home on an unverified build" >&2
+    return 1
+  }
+  git -C "$home" rev-parse --verify --quiet "$target^{commit}" >/dev/null || {
+    echo "error: new secondmate home $home does not hold the primary home's Firstmate commit $target" >&2
+    return 1
+  }
+  head=$(git -C "$home" rev-parse --verify --quiet HEAD) || {
+    echo "error: cannot read the Firstmate commit of new secondmate home $home" >&2
+    return 1
+  }
+  [ "$head" != "$target" ] || return 0
+  dirty=$(git -C "$home" status --porcelain 2>/dev/null) || {
+    echo "error: cannot inspect new secondmate home $home before placing it at $target" >&2
+    return 1
+  }
+  [ -z "$dirty" ] || {
+    echo "error: new secondmate home $home has local changes; refusing to move it from $head to the primary home's Firstmate commit $target" >&2
+    return 1
+  }
+  git -C "$home" checkout --quiet --detach "$target" 2>/dev/null || {
+    echo "error: failed to place new secondmate home $home at the primary home's Firstmate commit $target" >&2
+    return 1
+  }
+  head=$(git -C "$home" rev-parse --verify --quiet HEAD) || head=
+  [ "$head" = "$target" ] || {
+    echo "error: new secondmate home $home is at ${head:-an unreadable commit}, not the primary home's Firstmate commit $target" >&2
+    return 1
+  }
+}
+
+# An explicitly given home that already existed may hold a checkout someone
+# chose, so seed never moves it; it only reports a build mismatch with the primary home.
+report_explicit_home_version() {
+  local home=$1 target head
+  target=$(primary_firstmate_commit) || {
+    echo "warning: cannot resolve the primary home's Firstmate commit to compare with $home" >&2
+    return 0
+  }
+  head=$(git -C "$home" rev-parse --verify --quiet HEAD 2>/dev/null) || {
+    echo "warning: cannot read the Firstmate commit of secondmate home $home to compare with the primary home's $target" >&2
+    return 0
+  }
+  [ "$head" != "$target" ] || return 0
+  echo "warning: secondmate home $home is at $head, not the primary home's Firstmate commit $target; seed leaves an explicitly given home where it is, and the pre-launch sync reconciles it only when it safely can" >&2
 }
 
 ensure_home() {
@@ -880,6 +947,11 @@ seed_home() {
     if [ -f "$SEED_PARENT_BRIEF" ]; then
       refuse_projectful_projectless_charter "$id" "$SEED_PARENT_BRIEF" || return 1
     fi
+  fi
+  if [ "$SEED_HOME_ACQUIRED" = 1 ] || [ "$SEED_HOME_CREATED" = 1 ]; then
+    place_new_home_at_primary "$home" || return 1
+  else
+    report_explicit_home_version "$home"
   fi
   mkdir -p "$DATA" "$home/data" "$home/state" "$home/config" "$home/projects"
   if [ -f "$home/data/projects.md" ]; then
