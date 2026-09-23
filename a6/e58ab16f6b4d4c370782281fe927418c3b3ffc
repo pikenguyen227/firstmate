@@ -1,0 +1,31 @@
+tests/fm-secondmate-safety.test.sh
+  s_b8d3cff4cb7d38::t_6491833964cf1f 14,134,143,148,182,210,460,491,516,527,555,581,603,623,633,655,787,798,831,864,897,931,962,994,1004,1021,1040,1069,1075,1082,1127,1149,1169,1174,1208,1215,1234,1256,1278,1285,1312,1344,1369,1397,1429,1443,1467,1479,1493
+  s_b8d3cff4cb7d38::t_d5e0a34e03eb29 383,416-442,3135
+tests/lib.sh
+  s_b8d3cff4cb7d38::t_28704c348f09dd 640
+  s_b8d3cff4cb7d38::t_6491833964cf1f 638-639,641-654
+tests/fm-secondmate-lifecycle-e2e.test.sh
+  s_b8d3cff4cb7d38::t_6491833964cf1f 31,75
+tests/fm-public-followup.test.sh
+  s_b8d3cff4cb7d38::t_6491833964cf1f 28,851,876,913,944,979,1012,1073,1506,1556
+.agents/skills/secondmate-provisioning/SKILL.md
+  s_b8d3cff4cb7d38::t_dca5b9f60b0386 85
+bin/fm-home-seed.sh
+  s_b8d3cff4cb7d38::t_dca5b9f60b0386 10-11,14,417-422,429,433,438,442,446,451,456-457,952-953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a6e58ab16f6b4d4c370782281fe927418c3b3ffc",
+  "prompts": {},
+  "sessions": {
+    "s_b8d3cff4cb7d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f083928-2624-4c69-8206-5e4a538b395a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
