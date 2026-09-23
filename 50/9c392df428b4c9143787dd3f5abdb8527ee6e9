@@ -1,0 +1,22 @@
+tests/fm-remote-transport-lanes.test.sh
+  s_d867164ea0f8db::t_92d395562ebcc1 59
+tests/fm-gotmp.test.sh
+  s_d867164ea0f8db::t_9441ae23634a6a 197
+  s_d867164ea0f8db::t_ff96187ec26fd0 96-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "509c392df428b4c9143787dd3f5abdb8527ee6e9",
+  "prompts": {},
+  "sessions": {
+    "s_d867164ea0f8db": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f35a55e4-37bf-41c4-a39b-2883246e2da2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
