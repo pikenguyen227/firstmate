@@ -1,0 +1,32 @@
+bin/fm-fleet-snapshot.sh
+  s_f31ef0d31522c6::t_be3523a1ca3f4f 71-73,351-352,360,386-399,723,748,946,976
+docs/configuration.md
+  s_f31ef0d31522c6::t_0417965331d302 1177
+  s_f31ef0d31522c6::t_07dd478e055a5d 1161-1176,1178-1180
+bin/fm-crew-state.sh
+  s_f31ef0d31522c6::t_be3523a1ca3f4f 145-153,972-1007
+  s_f31ef0d31522c6::t_f82ad9781a24b4 1008
+tests/fm-bearings-snapshot.test.sh
+  s_f31ef0d31522c6::t_4a5cd0d48a51f0 2986-3051
+  s_f31ef0d31522c6::t_689dae0abe0774 3385
+tests/fm-crew-state.test.sh
+  s_f31ef0d31522c6::t_ba9a287f57d720 4830
+  s_f31ef0d31522c6::t_222bb0ac82bdf6 4944-4945
+  s_f31ef0d31522c6::t_bff2a1105f9056 4815-4829,4831-4865
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b4f80e169aa122e519a1adba8a5bddd4dca7cc8e",
+  "prompts": {},
+  "sessions": {
+    "s_f31ef0d31522c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74db7ab9-5701-4f2c-86e2-37b5c510e1a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
