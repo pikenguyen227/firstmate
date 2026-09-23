@@ -1,0 +1,20 @@
+tests/fm-spawn-pool-per-home-live-e2e.test.sh
+  s_2c07bb8eb6af0c::t_5e2d830f50bb44 129
+  s_2c07bb8eb6af0c::t_d4a3aa9dbb51bf 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6874c933d408cd318e0dbd4ae64cdf1711f5270e",
+  "prompts": {},
+  "sessions": {
+    "s_2c07bb8eb6af0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f707410-9862-4493-9ea8-490c972adc82",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
