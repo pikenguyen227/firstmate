@@ -68,6 +68,9 @@
 #     fm-classify-lib.sh's authoritative status_open_decisions fold and reconciled
 #     against current_state; hints.pending_decision and hints.blocked_event are
 #     booleans derived from that set.
+#     validation_run is the no-mistakes run fm-crew-state.sh attributed to the
+#     task during the same current-state read, or null when none is attributed;
+#     docs/configuration.md "Attributed validation run" owns its fields.
 #     endpoint.exists is the cheap local backend endpoint-presence read.
 #     endpoint.agent_alive is populated for local secondmates only, where it is
 #     useful return-channel supervision data; remote secondmates use "unknown"
@@ -345,8 +348,8 @@ status_stream_sample() {  # <id> <captured-meta>
 # A local crew-state read is bounded so one slow child cannot extend this
 # snapshot without limit. Remote secondmate endpoint liveness is never read here.
 # A local read that hits the bound folds to state unknown.
-crew_state_json() {  # <id> [<captured-meta>] [<captured-status>]
-  local id=$1 captured_meta=${2:-} captured_status=${3:-} raw rest state source detail sep
+crew_state_json() {  # <id> [<captured-meta>] [<captured-status>] [<run-out>]
+  local id=$1 captured_meta=${2:-} captured_status=${3:-} run_out=${4:-} raw rest state source detail sep
   raw=$(
     fm_run_timed "$FM_SNAPSHOT_CREW_STATE_TIMEOUT" \
       env FM_ROOT_OVERRIDE="$FM_ROOT" \
@@ -354,6 +357,7 @@ crew_state_json() {  # <id> [<captured-meta>] [<captured-status>]
       FM_STATE_OVERRIDE="$STATE" \
       FM_CREW_STATE_META_OVERRIDE="$captured_meta" \
       FM_CREW_STATE_STATUS_OVERRIDE="$captured_status" \
+      FM_CREW_STATE_RUN_OUT="$run_out" \
       FM_DATA_OVERRIDE="$DATA" \
       FM_PROJECTS_OVERRIDE="$PROJECTS" \
       FM_CONFIG_OVERRIDE="$CONFIG" \
@@ -377,6 +381,20 @@ crew_state_json() {  # <id> [<captured-meta>] [<captured-status>]
   esac
   jq -n --arg raw "$raw" --arg state "$state" --arg source "$source" --arg detail "$detail" \
     '{state:$state,source:$source,detail:$detail,raw:$raw}'
+}
+
+# The validation run fm-crew-state.sh attributed to this task, from the
+# key=value file it publishes through FM_CREW_STATE_RUN_OUT, or null when it
+# attributed none, the file is absent or unreadable, or it names no run id.
+validation_run_json() {  # <run-out>
+  [ -s "$1" ] || { printf 'null'; return 0; }
+  jq -Rn '
+    ([inputs | capture("^(?<key>[a-z_]+)=(?<value>.*)$")?] | from_entries
+      | map_values(if . == "" then null else . end)) as $run
+    | if ($run.id // null) == null then null
+      else {id:$run.id,branch:$run.branch,status:$run.status,outcome:$run.outcome,
+            step:$run.step,step_status:$run.step_status,head:$run.head,pr:$run.pr} end
+  ' < "$1" 2>/dev/null || printf 'null'
 }
 
 status_event_json() {  # <observed-status-log> [<contract-path>] [<task> <stream-file>]
@@ -702,7 +720,7 @@ prefetch_task_observations() {  # <meta> <id>
       > "$current_file" || current_rc=1
     agent_alive=unknown
   elif [ "$generation_current" = 1 ]; then
-    crew_state_json "$id" "$meta" "$status_capture" > "$current_file" &
+    crew_state_json "$id" "$meta" "$status_capture" "$SNAPSHOT_TASK_DIR/$id.run" > "$current_file" &
     current_pid=$!
     kind=$(meta_value "$meta" kind)
     backend=$(fm_backend_of_meta "$meta")
@@ -727,7 +745,7 @@ prefetch_task_observations() {  # <meta> <id>
   # All mutable observations must belong to the metadata generation captured in
   # the manifest. If teardown/relaunch raced any read, discard the whole sample.
   if ! snapshot_task_generation_is_current "$meta" "$id"; then
-    rm -f -- "$status_capture" "$report_capture" "$SNAPSHOT_TASK_DIR/$id.status-stream"
+    rm -f -- "$status_capture" "$report_capture" "$SNAPSHOT_TASK_DIR/$id.status-stream" "$SNAPSHOT_TASK_DIR/$id.run"
     jq -n '{state:"unknown",source:"none",detail:"task generation changed during snapshot",raw:""}' \
       > "$current_file" || current_rc=1
     endpoint_exists=null
@@ -925,6 +943,7 @@ task_json_lines() {
       --arg observed_at "$SNAPSHOT_NOW" \
       --arg last_event_raw "$last_event_raw" \
       --argjson current_state "$current_json" \
+      --argjson validation_run "$(validation_run_json "$SNAPSHOT_TASK_DIR/$id.run")" \
       --argjson meta_path "$meta_json" \
       --argjson status_log "$status_json" \
       --argjson report "$report_json" \
@@ -954,6 +973,7 @@ task_json_lines() {
         },
         secondmate_projects:($projects | if . == "" then [] else split(",") | map(gsub("^[[:space:]]+|[[:space:]]+$"; "")) | map(select(. != "")) end),
         current_state:($current_state + {observed_at:$observed_at,freshness:"fresh"}),
+        validation_run:$validation_run,
         endpoint:{target:($target | if . == "" then null else . end),exists:$endpoint_exists,agent_alive:$agent_alive,
           status:(if $endpoint_exists == false then "absent"
                   elif $agent_alive == "alive" or $agent_alive == "dead" then $agent_alive

@@ -5066,6 +5066,57 @@ test_captured_axi_status_shapes() {
   done
 }
 
+# FM_CREW_STATE_RUN_OUT publishes the attributed run for the fleet snapshot.
+# The captured records carry the real steps[] and pr layouts, so the current
+# step is the first one neither completed nor skipped.
+test_attributed_run_is_published_to_run_out() {
+  local shape expected d out run_out
+  for shape in parked replacement failed completed; do
+    case "$shape" in
+      parked) expected='step=test step_status=awaiting_approval pr=https://github.com/kunchenguid/firstmate/pull/3998' ;;
+      replacement) expected='step=ci step_status=running pr=https://github.com/kunchenguid/firstmate/pull/4019' ;;
+      failed) expected='step=push step_status=failed pr= outcome=failed' ;;
+      completed) expected='step= step_status= pr=https://github.com/kunchenguid/firstmate/pull/4073 outcome=passed-with-override' ;;
+    esac
+    make_competing_runs_case "published-$shape" running cancelled
+    d=$TMP_ROOT/published-$shape
+    run_out=$d/run.out
+    FM_FAKE_AXI_HOME=$(printf '%s\n' "$FM_FAKE_AXI_HOME" | sed "s/,running,/,$(captured_axi_status "$shape" | sed -n 's/^  status: //p' | head -1),/")
+    FM_FAKE_AXI_STATUS=$(captured_axi_status superseded fm/competing 01OLD)
+    FM_FAKE_AXI_STATUS_RUN=$(captured_axi_status "$shape")
+    out=$(FM_CREW_STATE_RUN_OUT=$run_out run_crew_state "$d" competing)
+    assert_contains "$out" 'source: run-step' "the captured $shape run is attributed"
+    [ -f "$run_out" ] || fail "the attributed $shape run was not published"
+    grep -qx 'id=01NEW' "$run_out" || fail "published $shape run lacks its id: $(cat "$run_out")"
+    grep -qx 'branch=fm/competing' "$run_out" || fail "published $shape run lacks its branch"
+    grep -qx "head=$FM_FAKE_RUN_HEAD" "$run_out" || fail "published $shape run lacks its full head"
+    for field in $expected; do
+      grep -qx -- "$field" "$run_out" || fail "published $shape run lacks $field: $(cat "$run_out")"
+    done
+    pass "the attributed captured $shape run is published with its current step"
+  done
+}
+
+test_unattributed_run_leaves_run_out_untouched() {
+  make_competing_runs_case unpublished-competing running running
+  local d=$TMP_ROOT/unpublished-competing out
+  out=$(FM_CREW_STATE_RUN_OUT="$d/run.out" run_crew_state "$d" competing)
+  assert_contains "$out" 'state: unknown' 'competing live runs attribute no run'
+  [ ! -e "$d/run.out" ] || fail "an unattributed read published a run: $(cat "$d/run.out")"
+  reset_fakes
+  d=$(new_case unpublished-no-run)
+  make_repo_on_branch "$d/wt" fm/no-run
+  make_fakebin "$d" >/dev/null
+  fm_write_meta "$d/state/no-run.meta" "window=fm:fm-no-run" "worktree=$d/wt" "kind=ship"
+  FM_FAKE_AXI_STATUS='error: no runs found'
+  FM_FAKE_AXI_HOME='count: 0 of 0 total
+runs[0]{id,branch,status,head,pr}:'
+  out=$(FM_CREW_STATE_RUN_OUT="$d/run.out" run_crew_state "$d" no-run)
+  assert_not_contains "$out" 'source: run-step' 'a project with no runs attributes none'
+  [ ! -e "$d/run.out" ] || fail "a project with no runs published a run: $(cat "$d/run.out")"
+  pass 'no run file is written when no run is attributed'
+}
+
 test_captured_inventory_replay() {
   make_capped_runs_case captured-inventory running cancelled
   local d=$TMP_ROOT/captured-inventory out before after branch newer older toolbin
@@ -5144,6 +5195,8 @@ test_captured_completed_history() {
 
 test_captured_axi_status_shapes
 test_captured_inventory_replay
+test_attributed_run_is_published_to_run_out
+test_unattributed_run_leaves_run_out_untouched
 test_captured_authority_transition
 test_captured_completed_history
 test_active_run_is_authoritative

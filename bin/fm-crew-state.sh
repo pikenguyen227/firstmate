@@ -151,8 +151,15 @@
 #      classified by step 4. Backends with no classifier keep reading a failed
 #      capture as gone. The fallback's own comment owns the per-verdict rules.
 #
-# Read-only and side-effect free. Always exits 0 on a successful read regardless
-# of state; exit 2 only on a usage error (no id).
+# FM_CREW_STATE_RUN_OUT=<file> opts in to publishing the attributed validation
+# run for bin/fm-fleet-snapshot.sh: when step 2 attributes a run whose full
+# id-addressed record was read, the file is atomically replaced with that run's
+# key=value fields (id, branch, status, outcome, step, step_status, head, pr;
+# nm_publish_attributed_run owns them); otherwise it is left untouched. The
+# state line never depends on it.
+#
+# Read-only and side-effect free apart from that opt-in file. Always exits 0 on
+# a successful read regardless of state; exit 2 only on a usage error (no id).
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -989,6 +996,43 @@ if [ "$KIND" = ship ] && [ -n "$CREW_BRANCH" ] && command -v no-mistakes >/dev/n
     fi
   fi
 fi
+
+# The run step-2 attributed, as FM_CREW_STATE_RUN_OUT's key=value lines. Only a
+# full record naming this branch and an id is published; a coarse ledger word
+# carries no run id. step/step_status are the first steps[] row that is neither
+# completed nor skipped (the step running, parked, or failed), empty once every
+# step finished. head prefers the full head_sha. Best-effort: a write failure
+# never changes the state line.
+nm_publish_attributed_run() {
+  local out=${FM_CREW_STATE_RUN_OUT:-} run_id step_row step='' step_status='' head
+  [ -n "$out" ] && [ "$HAVE_RUN" = 1 ] && [ "$RUN_SOURCE" = full ] || return 0
+  run_id=$(strip_quotes "$(nm_field id)")
+  [ -n "$run_id" ] && [ "$(strip_quotes "$(nm_field branch)")" = "$CREW_BRANCH" ] || return 0
+  step_row=$(printf '%s\n' "$RUN_OUT" | awk '
+    /^[ \t]*steps\[[0-9]+\]\{step,status[,}]/ { match($0, /^[ \t]*/); indent = RLENGTH; inrows = 1; next }
+    inrows {
+      match($0, /^[ \t]*/)
+      if (RLENGTH <= indent) exit
+      n = split($0, f, ",")
+      for (i = 1; i <= 2; i++) { gsub(/^[ \t"]+|[ \t"]+$/, "", f[i]) }
+      if (n >= 2 && f[2] != "completed" && f[2] != "skipped") { print f[1] "," f[2]; exit }
+    }')
+  if [ -n "$step_row" ]; then
+    step=${step_row%%,*}
+    step_status=${step_row#*,}
+  fi
+  head=$(strip_quotes "$(nm_field head_sha)")
+  [ -n "$head" ] || head=$(strip_quotes "$(nm_field head)")
+  {
+    printf 'id=%s\nbranch=%s\n' "$run_id" "$CREW_BRANCH"
+    printf 'status=%s\noutcome=%s\n' "$(strip_quotes "$(nm_field status)")" "$(strip_quotes "$(nm_field outcome)")"
+    printf 'step=%s\nstep_status=%s\n' "$step" "$step_status"
+    printf 'head=%s\npr=%s\n' "$head" "$(strip_quotes "$(nm_field pr)")"
+  } > "$out.tmp.$$" 2>/dev/null && mv -f -- "$out.tmp.$$" "$out" 2>/dev/null
+  rm -f -- "$out.tmp.$$" 2>/dev/null
+  return 0
+}
+nm_publish_attributed_run
 
 # --- run-step authoritative path -------------------------------------------
 

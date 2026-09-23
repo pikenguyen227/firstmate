@@ -1183,6 +1183,26 @@ The identity is published before the wake drain transcribes the line, stays the 
 All three fields are `null` together when the snapshot could not establish the identity, such as an empty log or a log replaced while it was being read; a consumer then falls back to its own matching for that line.
 They are published whether or not the feed is on.
 
+## Attributed validation run (fleet snapshot)
+
+Each `bin/fm-fleet-snapshot.sh --json` task carries an additive `validation_run` field naming the no-mistakes run Firstmate attributed to that task, so a consumer never has to match runs by branch name.
+It is the run [`bin/fm-crew-state.sh`](../bin/fm-crew-state.sh) attributed during the same current-state read, under the attribution contract [`bin/fm-nm-run-lib.sh`](../bin/fm-nm-run-lib.sh) owns.
+
+| Field | Meaning |
+| --- | --- |
+| `id` | The no-mistakes run id. |
+| `branch` | The task branch the run validates. |
+| `status` | The run record's status word, such as `running`, `completed`, `failed`, or `cancelled`. |
+| `outcome` | The run's terminal outcome, or `null` while it has none. |
+| `step` | The first step that is neither completed nor skipped - the step running, parked at a gate, or failed - or `null` once every step finished. |
+| `step_status` | That step's status, such as `running`, `fixing`, `awaiting_approval`, or `failed`, or `null` with `step`. |
+| `head` | The run's head commit, full when the record carries it. |
+| `pr` | The run's pull request URL, or `null` when none is known. |
+
+`validation_run` is `null` when no run is attributed: a task that is not a ship, has no branch or no run, whose run identity could not be proven, whose only evidence is the coarse runs listing that carries no run id, a current-state read that timed out before attributing one, or a read discarded because the task generation changed.
+It is best-effort and never fails the snapshot, and it adds no no-mistakes read beyond the current-state read the snapshot already makes.
+`current_state` still owns the task's current state; `validation_run` only identifies the run.
+
 ## Environment variables
 
 Runtime tuning via environment variables (defaults shown):
