@@ -25,6 +25,7 @@ TEARDOWN="$ROOT/bin/fm-teardown.sh"
 PROMOTE="$ROOT/bin/fm-promote.sh"
 SESSION_START="$ROOT/bin/fm-session-start.sh"
 TMP_ROOT=$(fm_test_tmproot fm-public-followup)
+SEED_ROOT=$(make_seed_primary "$TMP_ROOT/seed-root")
 PF_TEST_NOW=1787539200
 PF_TEST_LOCK_HOLDER=
 
@@ -847,7 +848,7 @@ SH
     FM_SECONDMATE_CHARTER='Local publication-order regression charter.' \
     FM_TEST_REAL_MV="$real_mv" FM_TEST_PUBLISH_ENTERED="$entered" \
     FM_TEST_PUBLISH_RELEASE="$release" \
-    "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects > "$manifest_out" 2>&1 &
+    "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects > "$manifest_out" 2>&1 &
   seed_pid=$!
   wait_count=0
   while [ ! -f "$entered" ]; do
@@ -872,7 +873,7 @@ test_secondmate_teardown_resolves_parent_from_durable_record_when_env_lost() {
   parent=$(make_home teardown-durable-parent)
   child="$TMP_ROOT/teardown-durable-child"
   FM_SECONDMATE_CHARTER='Durable-record regression charter.' \
-    FM_HOME="$parent" "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
+    FM_HOME="$parent" "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
     || fail "real secondmate seeding failed"
   child=$(cd "$child" && pwd -P)
   parent_resolved=$(cd "$parent" && pwd -P)
@@ -909,7 +910,7 @@ test_secondmate_teardown_durable_record_missing_parent_registration_still_refuse
   parent=$(make_home teardown-durable-missing-parent relay-off)
   child="$TMP_ROOT/teardown-durable-missing-child"
   FM_SECONDMATE_CHARTER='Durable-record missing-registration regression charter.' \
-    FM_HOME="$parent" "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
+    FM_HOME="$parent" "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
     || fail "real secondmate seeding failed"
   child=$(cd "$child" && pwd -P)
   parent_resolved=$(cd "$parent" && pwd -P)
@@ -940,7 +941,7 @@ test_secondmate_teardown_durable_record_with_unknown_field_succeeds() {
   parent=$(make_home teardown-durable-clean-parent relay-off)
   child="$TMP_ROOT/teardown-durable-clean-child"
   FM_SECONDMATE_CHARTER='Durable-record clean-cleanup regression charter.' \
-    FM_HOME="$parent" "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
+    FM_HOME="$parent" "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
     || fail "real secondmate seeding failed"
   child=$(cd "$child" && pwd -P)
   parent_resolved=$(cd "$parent" && pwd -P)
@@ -975,7 +976,7 @@ test_secondmate_teardown_rejects_conflicting_live_and_durable_parent_bindings() 
   live_parent=$(make_home teardown-durable-conflict-live relay-off)
   child="$TMP_ROOT/teardown-durable-conflict-child"
   FM_SECONDMATE_CHARTER='Durable-record conflict regression charter.' \
-    FM_HOME="$durable_parent" "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
+    FM_HOME="$durable_parent" "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
     || fail "real secondmate seeding failed"
   child=$(cd "$child" && pwd -P)
   parent_resolved=$(cd "$durable_parent" && pwd -P)
@@ -1008,7 +1009,7 @@ test_secondmate_teardown_rejects_unsafe_durable_parent_records() {
     parent=$(make_home "teardown-durable-$case_name-parent" relay-off)
     child="$TMP_ROOT/teardown-durable-$case_name-child"
     FM_SECONDMATE_CHARTER='Unsafe durable-record regression charter.' \
-      FM_HOME="$parent" "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
+      FM_HOME="$parent" "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
       || fail "real secondmate seeding failed for $case_name"
     child=$(cd "$child" && pwd -P)
     make_fake_curl "$child" >/dev/null
@@ -1069,7 +1070,7 @@ test_secondmate_teardown_rejects_nul_bearing_durable_parent_record() {
   parent=$(make_home teardown-durable-nul-parent relay-off)
   child="$TMP_ROOT/teardown-durable-nul-child"
   FM_SECONDMATE_CHARTER='Durable-record NUL regression charter.' \
-    FM_HOME="$parent" "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
+    FM_HOME="$parent" "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null \
     || fail "real secondmate seeding failed"
   child=$(cd "$child" && pwd -P)
   parent_resolved=$(cd "$parent" && pwd -P)
@@ -1502,7 +1503,7 @@ test_dropped_baton_now_surfaces_open_loop() {
   parent=$(make_home baton-parent)
   child="$TMP_ROOT/baton-child"
   FM_SECONDMATE_CHARTER='Baton repro charter.' FM_HOME="$parent" \
-    "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null || fail "seed failed"
+    "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null || fail "seed failed"
   child=$(cd "$child" && pwd -P)
   make_fake_curl "$child" >/dev/null
   fm_fake_exit0 "$child/fakebin" tmux treehouse no-mistakes gh gh-axi
@@ -1552,7 +1553,7 @@ test_control_registered_followon_is_guarded() {
   parent=$(make_home baton-control-parent)
   child="$TMP_ROOT/baton-control-child"
   FM_SECONDMATE_CHARTER='Baton control charter.' FM_HOME="$parent" \
-    "$ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null || fail "seed failed"
+    "$SEED_ROOT/bin/fm-home-seed.sh" mate "$child" --no-projects >/dev/null || fail "seed failed"
   child=$(cd "$child" && pwd -P)
   make_fake_curl "$child" >/dev/null
   fm_fake_exit0 "$child/fakebin" tmux treehouse no-mistakes gh gh-axi

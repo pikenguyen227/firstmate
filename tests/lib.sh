@@ -635,3 +635,20 @@ fm_test_base_path_sans() {
   done
   printf '%s\n' "$dir"
 }
+
+# make_seed_primary <dir>: a primary Firstmate checkout on a local main branch,
+# carrying this tree's bin/ and instructions, so a seed that places a new home can
+# resolve the primary's Firstmate commit on any runner (a CI checkout has no
+# local default branch). Idempotent; echoes the fixture root.
+make_seed_primary() {
+  local dir=$1
+  if [ ! -d "$dir/.git" ]; then
+    mkdir -p "$dir"
+    cp -R "$ROOT/bin" "$dir/bin"
+    cp "$ROOT/AGENTS.md" "$ROOT/.gitignore" "$dir/"
+    git -C "$dir" init -q -b main
+    git -C "$dir" add -A
+    git -C "$dir" -c user.name='Firstmate Tests' -c user.email='tests@example.invalid' commit -qm primary
+  fi
+  printf '%s\n' "$dir"
+}

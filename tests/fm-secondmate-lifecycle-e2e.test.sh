@@ -28,6 +28,7 @@ set -u
 . "$(dirname "${BASH_SOURCE[0]}")/secondmate-helpers.sh"
 
 TMP_ROOT=$(fm_test_tmproot fm-secondmate-lifecycle)
+SEED_ROOT=$(make_seed_primary "$TMP_ROOT/seed-root")
 export FM_BACKEND=tmux
 
 HOME_DIR="$TMP_ROOT/main home"
@@ -71,7 +72,7 @@ EOF
 phase_seed() {
   local out
   out=$(PATH="$FAKEBIN:$PATH" FM_HOME="$HOME_DIR" \
-    "$ROOT/bin/fm-home-seed.sh" design "$SUB" alpha beta gamma) \
+    "$SEED_ROOT/bin/fm-home-seed.sh" design "$SUB" alpha beta gamma) \
     || fail "seed failed"
   SUB_ABS=$(cd "$SUB" && pwd -P)
 
