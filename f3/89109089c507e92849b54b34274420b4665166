@@ -1,0 +1,24 @@
+tests/fm-spawn-pool-per-home.test.sh
+  s_70a50b268d1d5a::t_072b84ccd08c73 295-297
+  s_70a50b268d1d5a::t_2499f7eda99fb8 64,120,153-155,249-294,298-301,303-304
+docs/configuration.md
+  s_70a50b268d1d5a::t_2499f7eda99fb8 300
+bin/fm-spawn.sh
+  s_70a50b268d1d5a::t_72673398343de9 2936,2947,3897,3928-3937,3944-3947,3953,3965-3989,3994
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f389109089c507e92849b54b34274420b4665166",
+  "prompts": {},
+  "sessions": {
+    "s_70a50b268d1d5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aff7ace3-b5df-4f07-98a9-cfb57c5cafae",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
