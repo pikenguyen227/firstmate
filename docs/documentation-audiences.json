@@ -493,6 +493,10 @@
       "audience": "maintainer-verification"
     },
     {
+      "path": "docs/verification/secondmate-pool-per-home.md",
+      "audience": "maintainer-verification"
+    },
+    {
       "path": "docs/verification/stow-memory.md",
       "audience": "maintainer-verification"
     },

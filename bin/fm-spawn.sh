@@ -2925,6 +2925,31 @@ spawn_worktree_isolated() { # <path>
   return 0
 }
 
+# A freshly acquired worktree must also belong to the spawning clone itself:
+# sharing its Git common directory is what makes it this home's copy. Treehouse
+# pools by repository, so a slot created by another home's clone of the same
+# repository is isolated yet not this home's, and bin/fm-claude-trust.sh rightly
+# refuses it later; naming the owning clone here is the concrete reason.
+spawn_worktree_of_project() { # <path>
+  local path=$1 wt_common proj_common
+  SPAWN_WT_REASON=
+  SPAWN_WT_FOREIGN_COMMON=
+  wt_common=$(git -C "$path" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) &&
+    wt_common=$(cd "$wt_common" 2>/dev/null && pwd -P) || wt_common=
+  proj_common=$(git -C "$PROJ_ABS" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) &&
+    proj_common=$(cd "$proj_common" 2>/dev/null && pwd -P) || proj_common=
+  if [ -z "$wt_common" ] || [ -z "$proj_common" ]; then
+    SPAWN_WT_REASON="its git common directory could not be resolved"
+    return 1
+  fi
+  if [ "$wt_common" != "$proj_common" ]; then
+    SPAWN_WT_REASON="it is a worktree of another clone (git common dir '$wt_common'), not of this home's project (git common dir '$proj_common')"
+    SPAWN_WT_FOREIGN_COMMON=$wt_common
+    return 1
+  fi
+  return 0
+}
+
 validate_spawn_worktree() { # <source> <inspect-target>
   local source=$1 inspect_target=$2
   if ! spawn_worktree_isolated "$WT"; then
@@ -3862,7 +3887,17 @@ if [ "$RELAUNCH" -eq 1 ]; then
   fi
   [ "$KIND" = secondmate ] || validate_spawn_worktree "relaunch" "$T"
 elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
-  spawn_send_text_line "$WT_TARGET" 'treehouse get'
+  # Allocate from this home's own pool (fm_treehouse_home_pool_root owns why),
+  # never from another home's clone of the same repository.
+  if ! SPAWN_TREEHOUSE_ROOT=$(fm_treehouse_home_pool_root "$FM_HOME" "$STATE"); then
+    echo "error: could not resolve this home's own Treehouse pool root: '$FM_HOME/.fm-secondmate-home' is not a readable secondmate marker or state dir '$STATE' is unusable; refusing to allocate a worktree from another home's pool; inspect window $T" >&2
+    exit 1
+  fi
+  SPAWN_TREEHOUSE_GET='treehouse get'
+  SPAWN_FOREIGN_SLOT_RETRIES=3
+  [ -z "$SPAWN_TREEHOUSE_ROOT" ] ||
+    SPAWN_TREEHOUSE_GET="treehouse --root $(shell_quote "$SPAWN_TREEHOUSE_ROOT") get"
+  spawn_send_text_line "$WT_TARGET" "$SPAWN_TREEHOUSE_GET"
 
   # Wait for the treehouse subshell: the pane's cwd moves from the project to the worktree.
   # Target the stable window id, not the name: if the name is ever lost (e.g. an
@@ -3889,20 +3924,34 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   # Every candidate is screened with the isolation guard's own predicate, so a
   # read of the project itself or of the repository primary checkout is treated
   # as the transient it is and the wait continues, instead of being adopted and
-  # then refused by the guard.
-  # A candidate the screen rejects is never adopted, so a host where the pane
+  # then refused by the guard. A worktree of another clone of the repository is
+  # screened too (spawn_worktree_of_project) and never adopted, but that is a
+  # verdict on the slot, not a transient: slots created by another clone before
+  # each secondmate home had its own pool can still sit in the shared default
+  # pool. Once two reads agree on such a slot it is recorded and the same get is
+  # typed again from this project, while the pane's subshell keeps holding the
+  # rejected slot, so Treehouse hands out a different one or creates one from
+  # this clone. A foreign slot is never returned, moved or deleted here; past
+  # SPAWN_FOREIGN_SLOT_RETRIES the spawn fails naming every rejected slot and its
+  # owning clone for the operator to clean deliberately.
+  # Any other candidate the screen rejects is never adopted, so a host where the pane
   # never reaches an isolated worktree spends the whole window before refusing.
   # That wait is deliberate - telling a transient apart from a terminal
   # misconfiguration would need machinery this path does not want - so the
   # refusal has to be self-explaining instead: carry the last path seen and the
   # reason it was rejected, and report both at the deadline.
   candidate=""
+  foreign_candidate=""
+  foreign_rejected=""
+  foreign_report=""
+  foreign_count=0
   last_seen=""
   last_reason="the pane reported no path"
   for _ in $(seq 1 60); do
     p=$(spawn_current_path "$WT_TARGET" || true)
     [ -z "$p" ] || last_seen="$p"
-    if [ -n "$p" ] && spawn_worktree_isolated "$p"; then
+    SPAWN_WT_FOREIGN_COMMON=
+    if [ -n "$p" ] && spawn_worktree_isolated "$p" && spawn_worktree_of_project "$p"; then
       p_real=$(real_path_or_raw "$p")
       last_reason="it is an isolated worktree, but no second read agreed with it"
       if [ -n "$candidate" ] && [ "$p_real" = "$candidate" ]; then
@@ -3913,11 +3962,36 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
     else
       candidate=""
       [ -z "$p" ] || last_reason=$SPAWN_WT_REASON
+      if [ -n "$SPAWN_WT_FOREIGN_COMMON" ]; then
+        p_real=$(real_path_or_raw "$p")
+        case "$foreign_rejected" in
+          *"|$p_real|"*) ;;
+          *)
+            if [ "$foreign_candidate" = "$p_real" ]; then
+              foreign_rejected="$foreign_rejected|$p_real|"
+              foreign_report="$foreign_report
+  $p_real (worktree of git common dir '$SPAWN_WT_FOREIGN_COMMON')"
+              foreign_count=$((foreign_count + 1))
+              foreign_candidate=""
+              if [ "$foreign_count" -gt "$SPAWN_FOREIGN_SLOT_RETRIES" ]; then
+                echo "error: treehouse get kept handing out worktrees of another clone instead of this home's project '$PROJ_ABS' (treehouse root '${SPAWN_TREEHOUSE_ROOT:-configured default}'); rejected slots:$foreign_report
+these slots were left untouched; clean them deliberately (for example with treehouse destroy) once they hold no live work; inspect window $T" >&2
+                exit 1
+              fi
+              spawn_send_text_line "$WT_TARGET" "cd -- $(shell_quote "$PROJ_ABS") && $SPAWN_TREEHOUSE_GET"
+            else
+              foreign_candidate="$p_real"
+            fi
+            ;;
+        esac
+      else
+        foreign_candidate=""
+      fi
     fi
     sleep 1
   done
   if [ -z "$WT" ]; then
-    echo "error: treehouse get did not enter an isolated worktree within 60s (last seen '${last_seen:-none}': $last_reason; spawning project '$PROJ_ABS'); inspect window $T" >&2
+    echo "error: treehouse get did not enter an isolated worktree of this home's project within 60s (last seen '${last_seen:-none}': $last_reason; spawning project '$PROJ_ABS'; treehouse root '${SPAWN_TREEHOUSE_ROOT:-configured default}')${foreign_report:+; rejected slots of another clone, left untouched for the operator to clean deliberately:$foreign_report}; inspect window $T" >&2
     exit 1
   fi
 
