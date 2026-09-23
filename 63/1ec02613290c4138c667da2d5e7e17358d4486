@@ -1,0 +1,22 @@
+bin/fm-nm-run-lib.sh
+  s_f31ef0d31522c6::t_be3523a1ca3f4f 132-141,164,239-241,250,260-263
+tests/fm-crew-state.test.sh
+  s_f31ef0d31522c6::t_58803c4890dd12 5005-5006
+  s_f31ef0d31522c6::t_f9bf2b3c6a4c62 3417-3420,3425-3428,3430,3433-3502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "631ec02613290c4138c667da2d5e7e17358d4486",
+  "prompts": {},
+  "sessions": {
+    "s_f31ef0d31522c6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74db7ab9-5701-4f2c-86e2-37b5c510e1a8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
