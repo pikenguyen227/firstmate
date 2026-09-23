@@ -1,0 +1,6 @@
+ok - a primary and a secondmate with clones of one repository each get a worktree of their own clone
+ok - a primary spawn handed a leftover foreign slot skips it at once and lands in its own clone's slot
+ok - a spawn that is only ever handed foreign slots fails naming each one and its owner
+ok - a worktree of another home's clone is refused with its owner named
+ok - a home that cannot resolve its own pool fails the spawn before touching any pool
+ok - teardown returns a secondmate task's slot to that home's own pool
