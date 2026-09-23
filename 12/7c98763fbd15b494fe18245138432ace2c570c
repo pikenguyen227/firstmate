@@ -1,0 +1,31 @@
+tests/fm-spawn-pool-per-home.test.sh
+  s_73da263a4e4afe::t_1602a9bad07bbe 243
+  s_73da263a4e4afe::t_d2776468c4c752 169-170
+  s_73da263a4e4afe::t_85b89653988739 16,192-194
+  s_73da263a4e4afe::t_787372f378bf08 154,239
+  s_73da263a4e4afe::t_b5d8067e591dcd 1-15,17-153,155-168,171-191,195-238,240-242,244-251
+bin/fm-spawn.sh
+  s_73da263a4e4afe::t_3b918861e6e00e 2928-2950,3888-3897,3924-3926,3939,3954
+bin/fm-test-run.sh
+  s_73da263a4e4afe::t_b8c5091d1771a5 375
+docs/configuration.md
+  s_73da263a4e4afe::t_95e684f7b64f69 299
+bin/fm-wake-lib.sh
+  s_73da263a4e4afe::t_3b918861e6e00e 1253-1284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "127c98763fbd15b494fe18245138432ace2c570c",
+  "prompts": {},
+  "sessions": {
+    "s_73da263a4e4afe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "844c5fa7-55c4-4044-ba36-45abf52f66cd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
