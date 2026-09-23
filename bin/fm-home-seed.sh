@@ -407,11 +407,10 @@ acquire_treehouse_home() {
 
 # The primary home's Firstmate commit, read from the local-HEAD secondmate sync's
 # own owner (bin/fm-ff-lib.sh primary_head_commit) so seed and the fm-spawn.sh
-# pre-launch sync can never disagree about it. The subshell keeps the ff lib's
-# helpers from shadowing this script's same-named ones.
+# pre-launch sync can never disagree about it. The child bash keeps the ff lib's
+# helpers and globals from shadowing this script's same-named ones.
 primary_firstmate_commit() {
-  # shellcheck source=bin/fm-ff-lib.sh
-  ( . "$SCRIPT_DIR/fm-ff-lib.sh" && primary_head_commit "$FM_ROOT" )
+  FM_ROOT="$FM_ROOT" FM_HOME="$FM_HOME" bash -c '. "$1/fm-ff-lib.sh" && primary_head_commit "$FM_ROOT"' _ "$SCRIPT_DIR"
 }
 
 # Place a home seed just produced at the primary's commit. The pool hands back a
