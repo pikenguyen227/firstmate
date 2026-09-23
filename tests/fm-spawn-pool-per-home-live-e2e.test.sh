@@ -125,8 +125,8 @@ MATE_POOL="$(real "$MATE/state")/treehouse-pool"
 # the shared default root for a worktree and gives it back, leaving a free slot
 # of its own clone in the pool the primary allocates from.
 seed_foreign_slots() { # <count>
-  local i path paths=()
-  for i in $(seq 1 "$1"); do
+  local path paths=()
+  for _ in $(seq 1 "$1"); do
     path=$(cd "$MATE/projects/app" && treehouse get --lease --no-fetch 2>/dev/null) ||
       fail "seeding: treehouse get --lease from the secondmate clone failed"
     paths+=("$path")
