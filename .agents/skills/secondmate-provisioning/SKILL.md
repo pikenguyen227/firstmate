@@ -82,6 +82,7 @@ It may only seed a home with no project clones or project-registry entries, and 
 The lease survives with no live process and is never recycled by later `treehouse get` or `prune`.
 The slot stays reserved across restarts until the lease is released.
 Release happens only on explicit retirement or seed rollback, never on routine restart or recovery.
+Seeding places a leased home at the primary's current default-branch commit, the same target the pre-launch sync below follows, so the first launch never meets a divergence; if it cannot, the seed fails and rolls back, while an explicitly given home is never moved and a mismatch is only warned ([`bin/fm-home-seed.sh`](../../../bin/fm-home-seed.sh)).
 
 `bin/fm-home-seed.sh` copies the charter into the secondmate home as `data/charter.md`.
 It also writes the gitignored `.fm-secondmate-parent` durable binding before the required `.fm-secondmate-home` identity marker; the parser header in [`bin/fm-secondmate-parent-lib.sh`](../../../bin/fm-secondmate-parent-lib.sh) owns the record contract, and both files must remain in place.

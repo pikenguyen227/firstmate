@@ -47,6 +47,30 @@ SH
   : > "$log"
 }
 
+# make_seed_primary <dir>: a primary Firstmate checkout on a local main branch,
+# carrying this tree's bin/ and instructions, so a treehouse-acquired seed can
+# resolve the primary's Firstmate commit on any runner (a CI checkout has no
+# local default branch). Idempotent; echoes the fixture root.
+make_seed_primary() {
+  local dir=$1
+  if [ ! -d "$dir/.git" ]; then
+    mkdir -p "$dir"
+    cp -R "$ROOT/bin" "$dir/bin"
+    cp "$ROOT/AGENTS.md" "$ROOT/.gitignore" "$dir/"
+    git -C "$dir" init -q -b main
+    git -C "$dir" add -A
+    git -C "$dir" -c user.name='Firstmate Tests' -c user.email='tests@example.invalid' commit -qm primary
+  fi
+  printf '%s\n' "$dir"
+}
+
+# commit_marker <repo> <text>: commit a tracked change so two checkouts diverge.
+commit_marker() {
+  printf '%s\n' "$2" > "$1/build-marker.txt"
+  git -C "$1" add build-marker.txt
+  git -C "$1" -c user.name='Firstmate Tests' -c user.email='tests@example.invalid' commit -qm "$2"
+}
+
 test_fm_home_parameterization() {
   local brief home_one home_two out
   home_one="$TMP_ROOT/home one"
@@ -274,14 +298,15 @@ EOF
 }
 
 test_home_seed_uses_treehouse_acquired_home() {
-  local home acquired acquired_abs fakebin log lease out
+  local home primary acquired acquired_abs fakebin log lease out
   home="$TMP_ROOT/dash-home"
   acquired="$TMP_ROOT/dash-acquired-home"
   mkdir -p "$home/projects" "$home/data" "$home/state"
   fm_git_init_commit "$home/projects/alpha"
   fm_git_add_origin "$home/projects/alpha" "$TMP_ROOT/remotes/dash-alpha.git"
   printf '%s\n' '- alpha [direct-PR] - alpha project (added 2026-06-22)' > "$home/data/projects.md"
-  git clone --quiet "$ROOT" "$acquired"
+  primary=$(make_seed_primary "$TMP_ROOT/seed-primary")
+  git clone --quiet "$primary" "$acquired"
   fakebin=$(make_fake_tmux "$TMP_ROOT/dash-fake")
   log="$TMP_ROOT/dash-fake/tmux.log"
   lease="$TMP_ROOT/dash-fake/lease"
@@ -289,7 +314,7 @@ test_home_seed_uses_treehouse_acquired_home() {
   out=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_FAKE_TREEHOUSE_HOME="$acquired" FM_FAKE_TMUX_LOG="$log" \
     FM_FAKE_TREEHOUSE_LEASE_FILE="$lease" \
     FM_SECONDMATE_CHARTER='dash acquired scope' FM_SECONDMATE_SCOPE='dash acquired scope' \
-    "$ROOT/bin/fm-home-seed.sh" dash - alpha) \
+    "$primary/bin/fm-home-seed.sh" dash - alpha) \
     || fail "seed failed for a treehouse-acquired home"
   acquired_abs=$(cd "$acquired" && pwd -P)
   printf '%s\n' "$out" | grep -F "home=$acquired_abs" >/dev/null || fail "seed did not report acquired home"
@@ -301,6 +326,107 @@ test_home_seed_uses_treehouse_acquired_home() {
   [ -d "$acquired/projects/alpha/.git" ] || fail "seed did not clone project into acquired home"
   grep -F "home: $acquired_abs" "$home/data/secondmates.md" >/dev/null || fail "registry did not record acquired home"
   pass "home seeding durably leases treehouse-acquired dash homes under the secondmate id"
+}
+
+test_home_seed_places_leased_home_at_primary_commit() {
+  # A pool worktree comes back wherever its last fetch landed. When the primary
+  # carries commits that fetch never saw, the two diverge; seed must still land
+  # the new home on the primary's commit so the first launch's sync is a no-op.
+  local home primary acquired acquired_abs fakebin log err pool_tip target out sync_out
+  home="$TMP_ROOT/place-home"
+  primary=$(make_seed_primary "$TMP_ROOT/place-primary")
+  acquired="$TMP_ROOT/place-acquired-home"
+  err="$TMP_ROOT/place.err"
+  mkdir -p "$home/projects" "$home/data" "$home/state"
+  fm_git_init_commit "$home/projects/alpha"
+  fm_git_add_origin "$home/projects/alpha" "$TMP_ROOT/remotes/place-alpha.git"
+  printf '%s\n' '- alpha [direct-PR] - alpha project (added 2026-06-22)' > "$home/data/projects.md"
+  git -C "$primary" worktree add --quiet --detach "$acquired" main
+  commit_marker "$acquired" "pool fetch tip"
+  pool_tip=$(git -C "$acquired" rev-parse HEAD)
+  commit_marker "$primary" "primary local commit"
+  target=$(git -C "$primary" rev-parse refs/heads/main)
+  if git -C "$primary" merge-base --is-ancestor "$pool_tip" "$target"; then
+    fail "placement fixture did not diverge the leased home from the primary"
+  fi
+  fakebin=$(make_fake_tmux "$TMP_ROOT/place-fake")
+  log="$TMP_ROOT/place-fake/tmux.log"
+
+  out=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_FAKE_TREEHOUSE_HOME="$acquired" FM_FAKE_TMUX_LOG="$log" \
+    FM_SECONDMATE_CHARTER='place scope' FM_SECONDMATE_SCOPE='place scope' \
+    "$primary/bin/fm-home-seed.sh" place - alpha 2>"$err") \
+    || fail "seed failed to place a diverged leased home: $(cat "$err")"
+  acquired_abs=$(cd "$acquired" && pwd -P)
+  printf '%s\n' "$out" | grep -F "home=$acquired_abs" >/dev/null || fail "placement seed did not report the leased home"
+  [ "$(git -C "$acquired" rev-parse HEAD)" = "$target" ] \
+    || fail "seeded leased home is not at the primary's Firstmate commit"
+  git -C "$acquired" symbolic-ref -q HEAD >/dev/null && fail "seeded leased home checked out a branch instead of a detached HEAD"
+
+  sync_out=$(cd "$primary" && FM_ROOT="$primary" FM_HOME="$home" bash -c '
+    set -eu
+    . bin/fm-ff-lib.sh
+    ff_target "$1" "secondmate place" "$(primary_head_commit "$FM_ROOT")" yes yes place "$2"
+  ' _ "$acquired_abs" "$home/state") || fail "pre-launch sync failed on a freshly seeded home"
+  printf '%s\n' "$sync_out" | grep -F 'secondmate place: already current' >/dev/null \
+    || fail "pre-launch sync disagreed with seed about the primary's commit: $sync_out"
+  [ ! -e "$home/state/.secondmate-update-reconcile/place.pending" ] \
+    || fail "freshly seeded home produced a reconcile record"
+  pass "home seeding places a leased home at the primary's Firstmate commit"
+}
+
+test_home_seed_fails_when_leased_home_cannot_be_placed() {
+  local home primary acquired acquired_abs fakebin log err
+  home="$TMP_ROOT/place-fail-home"
+  primary=$(make_seed_primary "$TMP_ROOT/place-fail-primary")
+  acquired="$TMP_ROOT/place-fail-acquired-home"
+  err="$TMP_ROOT/place-fail.err"
+  mkdir -p "$home/projects" "$home/data" "$home/state"
+  fm_git_init_commit "$home/projects/alpha"
+  fm_git_add_origin "$home/projects/alpha" "$TMP_ROOT/remotes/place-fail-alpha.git"
+  printf '%s\n' '- alpha [direct-PR] - alpha project (added 2026-06-22)' > "$home/data/projects.md"
+  git -C "$primary" worktree add --quiet --detach "$acquired" main
+  commit_marker "$primary" "primary local commit"
+  printf 'uncommitted\n' > "$acquired/AGENTS.md"
+  acquired_abs=$(cd "$acquired" && pwd -P)
+  fakebin=$(make_fake_tmux "$TMP_ROOT/place-fail-fake")
+  log="$TMP_ROOT/place-fail-fake/tmux.log"
+
+  if PATH="$fakebin:$PATH" FM_HOME="$home" FM_FAKE_TREEHOUSE_HOME="$acquired" FM_FAKE_TMUX_LOG="$log" \
+    FM_SECONDMATE_CHARTER='place scope' FM_SECONDMATE_SCOPE='place scope' \
+    "$primary/bin/fm-home-seed.sh" place - alpha >/dev/null 2>"$err"; then
+    fail "seed succeeded although the leased home could not be placed at the primary's commit"
+  fi
+  grep -F "leased home $acquired_abs has local changes" "$err" >/dev/null \
+    || fail "seed did not explain why the leased home could not be placed: $(cat "$err")"
+  grep -F "treehouse return --force $acquired_abs" "$log" >/dev/null \
+    || fail "failed placement did not return the leased home"
+  if [ -f "$home/data/secondmates.md" ] && grep -F -- '- place ' "$home/data/secondmates.md" >/dev/null; then
+    fail "failed placement left a registry route"
+  fi
+  pass "home seeding fails and returns the lease when a leased home cannot be placed"
+}
+
+test_home_seed_reports_explicit_home_version_mismatch() {
+  local home primary subhome old err
+  home="$TMP_ROOT/explicit-version-home"
+  primary=$(make_seed_primary "$TMP_ROOT/explicit-version-primary")
+  subhome="$TMP_ROOT/explicit-version-sub"
+  err="$TMP_ROOT/explicit-version.err"
+  mkdir -p "$home/projects" "$home/data" "$home/state"
+  fm_git_init_commit "$home/projects/alpha"
+  fm_git_add_origin "$home/projects/alpha" "$TMP_ROOT/remotes/explicit-version-alpha.git"
+  printf '%s\n' '- alpha [direct-PR] - alpha project (added 2026-06-22)' > "$home/data/projects.md"
+  git clone --quiet "$primary" "$subhome"
+  old=$(git -C "$subhome" rev-parse HEAD)
+  commit_marker "$primary" "primary local commit"
+
+  FM_HOME="$home" FM_SECONDMATE_CHARTER='explicit scope' FM_SECONDMATE_SCOPE='explicit scope' \
+    "$primary/bin/fm-home-seed.sh" explicit "$subhome" alpha >/dev/null 2>"$err" \
+    || fail "seed of an explicit home failed: $(cat "$err")"
+  [ "$(git -C "$subhome" rev-parse HEAD)" = "$old" ] || fail "seed moved an explicitly given home"
+  grep -F "not the primary home's Firstmate commit $(git -C "$primary" rev-parse refs/heads/main)" "$err" >/dev/null \
+    || fail "seed did not report the explicit home's build mismatch: $(cat "$err")"
+  pass "home seeding reports, and never moves, an explicit home on another build"
 }
 
 test_home_seed_returns_treehouse_acquired_home_on_assignment_failure() {
@@ -2992,6 +3118,9 @@ test_home_seed_refuses_missing_projects_without_signal
 test_home_seed_refuses_local_only_project
 test_home_seed_refuses_registry_delimiter_home
 test_home_seed_refuses_active_home_and_root
+test_home_seed_places_leased_home_at_primary_commit
+test_home_seed_fails_when_leased_home_cannot_be_placed
+test_home_seed_reports_explicit_home_version_mismatch
 test_home_seed_refuses_home_marked_for_another_id
 test_home_seed_refuses_home_registered_to_another_id
 test_home_seed_refuses_reassigning_existing_id_to_different_home
