@@ -1,0 +1,19 @@
+AGENTS.md
+  s_4deaa9337a7e60::t_72db6ec1ddef1c 102,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6f5c4d3a50d98220cae1935446e39a69a396cd38",
+  "prompts": {},
+  "sessions": {
+    "s_4deaa9337a7e60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "764f7ba4-6fad-4147-b182-ae347237f9e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
