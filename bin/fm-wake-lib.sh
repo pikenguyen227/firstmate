@@ -1282,6 +1282,7 @@ fm_treehouse_project_lock_path() {  # <project-dir>
 # clone (bin/fm-spawn.sh), because no root choice can prove that on its own.
 # Sets FM_TREEHOUSE_POOL_ROOT (empty for a primary home); on failure
 # FM_TREEHOUSE_POOL_ROOT_ERROR says why.
+# shellcheck disable=SC2034 # Result variables read by callers after it returns.
 fm_treehouse_home_pool_root() {  # <home>
   local contract
   fm_treehouse_home_pool_path "$1" || return 1
@@ -1296,6 +1297,7 @@ fm_treehouse_home_pool_root() {  # <home>
 # The path fm_treehouse_home_pool_root places a home's pool at, without its
 # ancestry check; teardown uses it to find a retiring home's pool wherever the
 # check would now place it. Sets the same result variables.
+# shellcheck disable=SC2034 # Result variables read by callers after it returns.
 fm_treehouse_home_pool_path() {  # <home>
   local home=$1 marker id key hash root
   FM_TREEHOUSE_POOL_ROOT=
