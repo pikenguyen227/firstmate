@@ -2983,6 +2983,72 @@ SH
   pass "current state and decision hints share one captured status observation"
 }
 
+# Each task publishes the validation run fm-crew-state.sh attributed to it, so a
+# consumer never matches runs by branch; a task with no attributed run is null.
+test_validation_run_is_published_per_task() {
+  local home fakebin id json
+  home=$(make_home validation-run)
+  fakebin=$(make_fakebin "$home")
+  printf '## In flight\n' > "$home/data/backlog.md"
+  for id in attributed no-runs scouting; do
+    fm_git_init_commit "$home/projects/$id-wt"
+    git -C "$home/projects/$id-wt" checkout -qb "fm/$id"
+    printf -- '- [ ] %s - Validation run fixture (repo: firstmate) (kind: ship)\n' "$id" >> "$home/data/backlog.md"
+    fm_write_meta "$home/state/$id.meta" \
+      "window=fixture:$id" "worktree=$home/projects/$id-wt" "project=firstmate" \
+      "harness=claude" "kind=$([ "$id" = scouting ] && echo scout || echo ship)" "mode=no-mistakes"
+  done
+  printf '\n## Queued\n\n## Done\n' >> "$home/data/backlog.md"
+  # Only the attributed worktree's repository has a run; no-runs has none.
+  cat > "$fakebin/no-mistakes" <<'SH'
+#!/usr/bin/env bash
+case "$PWD" in
+  */attributed-wt) ;;
+  *)
+    [ "$*" = axi ] && printf 'count: 0 of 0 total\nruns[0]{id,branch,status,head,pr}:\n'
+    exit 0 ;;
+esac
+head=$(git rev-parse HEAD)
+case "$*" in
+  axi) printf 'count: 1 of 1 total\nruns[1]{id,branch,status,head,pr}:\n  "01ATTRIBUTED",fm/attributed,running,%s,""\n' "$head" ;;
+  "axi status"|"axi status --run 01ATTRIBUTED")
+    cat <<EOF
+run:
+  id: "01ATTRIBUTED"
+  branch: fm/attributed
+  status: running
+  head: ${head:0:8}
+  head_sha: $head
+  pr: "https://github.com/acme/firstmate/pull/12"
+  findings: none
+  steps[3]{step,status,findings,duration_ms}:
+    intent,completed,0,10
+    review,skipped,0,0
+    test,running,0,20
+EOF
+    ;;
+  "daemon status") echo 'daemon running' ;;
+esac
+exit 0
+SH
+  chmod +x "$fakebin/no-mistakes"
+
+  json=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_SNAPSHOT_NOW=2026-07-11T18:00:00Z \
+    FM_SNAPSHOT_NOW_EPOCH=1783792800 NET_LOG="$home/net.log" \
+    "$ROOT/bin/fm-fleet-snapshot.sh" --json) \
+    || fail "fleet snapshot failed with a validation run"
+  printf '%s' "$json" | jq -e --arg head "$(git -C "$home/projects/attributed-wt" rev-parse HEAD)" '
+    (.tasks[] | select(.id == "attributed")
+      | .current_state.source == "run-step"
+        and .validation_run == {id:"01ATTRIBUTED",branch:"fm/attributed",status:"running",outcome:null,
+                                step:"test",step_status:"running",head:$head,
+                                pr:"https://github.com/acme/firstmate/pull/12"})
+    and (.tasks[] | select(.id == "no-runs") | .validation_run == null)
+    and (.tasks[] | select(.id == "scouting") | .validation_run == null)
+  ' >/dev/null || fail "validation runs were not published per task: $json"
+  pass "each task publishes its attributed validation run, or null without one"
+}
+
 test_relaunched_task_does_not_inherit_reused_endpoint_state() {
   local home fakebin worktree json
   home=$(make_home endpoint-generation-race)
@@ -3316,6 +3382,7 @@ test_a_remote_home_without_any_ledger_is_explicitly_unreadable_without_remote_co
 
 test_task_teardown_during_metadata_capture_does_not_abort_snapshot
 test_current_state_uses_captured_status_observation
+test_validation_run_is_published_per_task
 test_relaunched_task_does_not_inherit_reused_endpoint_state
 test_large_local_snapshot_overlaps_local_reads_without_projection_drift
 test_remote_ledgers_share_one_concurrent_budget_and_fall_back_to_cache

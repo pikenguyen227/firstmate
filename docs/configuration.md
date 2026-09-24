@@ -20,6 +20,7 @@ Untracked files and directories whose names begin with `scratchpad` are also git
 The producing PR and Relay helpers own the fields they append, [`bin/fm-classify-lib.sh`](../bin/fm-classify-lib.sh) owns status-event vocabulary, optional emission-time syntax, and legacy unknown-time handling, and `bin/fm-crew-state.sh` owns current-state reconciliation.
 The [`bin/fm-fleet-snapshot.sh` header](../bin/fm-fleet-snapshot.sh) owns the snapshot's event-time and age fields, including secondmate parent-event projections.
 Wake, watcher, away-mode, and Relay-specific state mechanics remain with their named scripts and reference sections rather than being duplicated into one exhaustive state tree here.
+`data/lifecycle/` holds the append-only lifecycle event feed described in [Lifecycle event feed](#lifecycle-event-feed-datalifecycle).
 
 `bin/fm-session-start.sh`'s header is the single owner of session-start ordering, composed commands, digest contents, and the digest's startup mechanism.
 `bin/fm-startup-network.sh`'s header owns the deferred startup stage that keeps every external-network call and the potentially slow inactive-outcome scan off that digest's blocking path, including its state files and the safety argument for running them later.
@@ -1098,6 +1099,110 @@ Each account, model and voice file above is read as its first line that is not b
 The two read files are parsed differently: `config/voice-read-scope` must hold the bare word and nothing but blank space around it, so a comment header there refuses instead of being skipped, while every line of `config/voice-read-deny` that is not blank and not a `#` comment is one more substring.
 `FM_VOICE_RELAY` and `FM_VOICE_PYTHON` belong to the laptop rather than to a home, so they have no config file: `bin/fm-voice-client.py` requires the relay path as a flag or that variable and carries no default path.
 
+## Lifecycle event feed (data/lifecycle)
+
+Firstmate appends one versioned JSON line per task lifecycle transition to `data/lifecycle/events.v1.jsonl`, so an external viewer can rebuild the fleet as it stood at any past instant.
+Teardown deletes a task's status log, metadata, and steering inbox, but it never touches this directory, so the feed is the only lifecycle history that outlives a task.
+Consumers tail the feed and must not parse `state/` or per-task `data/` files for the same facts.
+[`bin/fm-lifecycle-lib.sh`](../bin/fm-lifecycle-lib.sh) owns the writer mechanics and tunables; this section owns the consumer contract.
+
+Writing is best-effort: an emit never fails or prints into the spawn, teardown, promotion, steer, wake drain, or watcher that triggers it, and waits at most a couple of seconds for the feed's lock.
+An event that could not be written is simply absent, and the gap it leaves in `seq` is how a reader detects the loss; the writer notes the cause in `data/lifecycle/emit-errors.log`.
+`FM_LIFECYCLE=off` disables the feed.
+
+### Files
+
+- `events.v1.jsonl` is the active feed, one JSON object per line, strictly appended.
+- `events.v1.<first-seq>.jsonl` is a rotated feed, renamed once the active file passes 16 MiB; readers follow `seq` across files.
+- `home-id` holds this home's random identity, written once.
+- `head` holds the last written `seq` as an advisory hint for discovery; the feed itself is authoritative.
+- A final line without a newline is an interrupted write; readers skip it, and the writer terminates it before appending.
+
+### Envelope
+
+Every line carries these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `schema` | Always `fm-lifecycle.v1`. |
+| `home` | `{id, path, host}`: the stable home identity from `home-id`, the resolved home path, and `null` for a local home. |
+| `seq` | Per-home, strictly increasing, gap-free sequence assigned under the home lock. |
+| `key` | Idempotency key derived from the fact itself; re-recording the same fact produces the same key, and readers drop duplicates. |
+| `type` | One of the event types below. |
+| `at` | Unix seconds when the fact happened, or `null` when unknown. |
+| `at_source` | `stamp` (the status line's own `[at=]`), `firstmate` (Firstmate's clock at a transition it performs), `inbox` (the steering record's `at=`), `observed` (when Firstmate noticed it), or `unknown`. |
+| `recorded_at` | Firstmate's clock when the line was written. |
+| `task` | `{id, spawn_gen}` for task events, `spawn_gen` being `null` for a record without one; `null` for feed events. |
+| `backfill` | `true` only for events replayed by `bin/fm-lifecycle.sh backfill`. |
+| `data` | The type-specific payload below. |
+
+An unknown time is never inferred: consumers date an `at: null` event from its neighbours.
+New fields may appear in `data` or the envelope within `fm-lifecycle.v1`; a breaking change uses a new schema name and file name.
+
+### Event types
+
+| `type` | Recorded when | `data` | `key` |
+| --- | --- | --- | --- |
+| `feed.started` | The first event this feed ever holds. | `{firstmate_rev}` | `started` |
+| `task.spawned` | A spawn or relaunch reaches its commit point. | `{kind, harness, model, effort, mode, yolo, project, backend, endpoint: {target}, relaunch, previous_spawn_gen, secondmate: {home, projects} or null, remote: {host} or null}` | `spawned/<task>/<spawn_gen>` |
+| `task.reclassified` | A scout is promoted to a ship. | `{from: {kind}, to: {kind, mode, yolo}}` | `reclassified/<task>/<spawn_gen>/<from>-<to>` |
+| `task.status` | A status line is transcribed. | `{verb, key, until, note, offset, stream}` | `status/<task>/<stream>/@<offset>` |
+| `task.decision` | That line opens, replaces, or closes a keyed decision. | `{key, change: opened, replaced, or closed, verb, closed_by: resolved, captain-held, terminal, or null, note}` | `decision/<task>/<stream>/@<offset>/<decision-key>` |
+| `task.steered` | A steering-inbox record is written. | `{msg, delivery: ringing or fire-and-forget, bytes, sha256}` | `steered/<task>/<msg>/<record-at>` |
+| `task.steer_acked` | That record is first found acknowledged. | `{msg}` | `steer_acked/<task>/<msg>/<record-at>` |
+| `task.torn_down` | Teardown, after the final status flush and before the task's records are deleted. | `{transition: close, retain, or remove, outcome: reported, merged, landed, retired, or unknown, forced, kind, report, pr}` | `torn_down/<task>/<spawn_gen>` |
+| `feed.backfilled` | A backfill run recorded at least one event. | `{tasks, events}` | `backfilled/<epoch>` |
+
+A key whose task has no `spawn_gen` uses `@<recorded_at>` in its place.
+A backfilled `task.spawned` takes `at` from the `spawn_gen` epoch and carries `relaunch` and `previous_spawn_gen` as `null`.
+`task.status` carries every non-blank status line: `verb` is the recognized status verb or `null` for continuation prose, `key` is the decision key the line states (or `default` for a decision verb without one), `until` is a pause's declared clear time, `note` is the text after the first colon cut to 200 characters, and `offset` is the line's byte offset in the task's status log.
+`<stream>`, also carried as `data.stream`, is fixed when that status log is first transcribed: the `spawn_gen` of the task's last recorded `task.spawned`, or its current `spawn_gen` when none is recorded, so a log's keys stay stable across relaunches, and a status log that was replaced gets a stream suffixed with its file identity; the envelope's `task.spawn_gen` names the attempt the line is attributed to.
+`task.decision` records the transitions of the same keyed-decision fold the wake drain uses ([`bin/fm-classify-lib.sh`](../bin/fm-classify-lib.sh)), so a consumer never re-implements it: a `done` or `failed` line on a ship or scout closes every open decision with `closed_by: terminal`.
+Steering events never carry the message body, only its size and SHA-256.
+`outcome` follows the record's kind and delivery: a scout is `reported`, a secondmate `retired`, a local-only ship `landed`, a ship with a recorded PR `merged`, and a forced teardown or anything else `unknown`.
+
+### Timing and ordering
+
+Status lines are transcribed on the next wake drain, so `recorded_at` can trail `at`; a relaunch first records its predecessor's untranscribed lines under the previous `spawn_gen`, and teardown records every remaining line, including an unterminated last one, before `task.torn_down`.
+Acknowledgements are recorded by the watcher's next poll, or at teardown, with `at_source: observed`; a backfilled acknowledgement carries `at: null` and `at_source: unknown`, because the moment a record was moved is not kept.
+Within a home, `seq` gives the total order in which facts were recorded; order facts by `at` when rebuilding a past instant.
+
+### Discovery and backfill
+
+`bin/fm-fleet-snapshot.sh --json` carries a `lifecycle` object: `{schema, id, path, present, head_seq, homes}`, where `homes` lists each secondmate as `{id, task, path, head_seq, remote}`.
+A local secondmate's `path` is its own home's feed; a remote secondmate is listed with `remote: true` and `path: null` because its feed is not mirrored.
+The object is `null` when the feed is off.
+`bin/fm-lifecycle.sh backfill` replays the tasks that are live now, idempotently; history of tasks torn down before the feed existed is gone and is not reconstructed.
+
+### Matching a polled status line to its event
+
+Each snapshot task's `paths.status_log.last_event` carries additive `offset`, `stream`, and `lifecycle_key` fields naming that line's `task.status` event: `lifecycle_key` is exactly the event's `key`, and `offset` and `stream` equal its `data.offset` and `data.stream`.
+An event written before `data.stream` existed carries its stream only inside `key`, so matching on `lifecycle_key` covers every event.
+This is how a consumer matches a polled status line to a feed event, whether or not the line carries a readable `[at=]` stamp, and it tells apart two identical lines appended at different offsets.
+The identity is published before the wake drain transcribes the line, stays the same across repeated snapshots and after transcription, and follows the status log across relaunches and replacement the same way the feed's keys do.
+All three fields are `null` together when the snapshot could not establish the identity, such as an empty log or a log replaced while it was being read; a consumer then falls back to its own matching for that line.
+They are published whether or not the feed is on.
+
+## Attributed validation run (fleet snapshot)
+
+Each `bin/fm-fleet-snapshot.sh --json` task carries an additive `validation_run` field naming the no-mistakes run Firstmate attributed to that task, so a consumer never has to match runs by branch name.
+It is the run [`bin/fm-crew-state.sh`](../bin/fm-crew-state.sh) attributed during the same current-state read, under the attribution contract [`bin/fm-nm-run-lib.sh`](../bin/fm-nm-run-lib.sh) owns.
+
+| Field | Meaning |
+| --- | --- |
+| `id` | The no-mistakes run id. |
+| `branch` | The task branch the run validates. |
+| `status` | The run record's status word, such as `running`, `completed`, `failed`, or `cancelled`. |
+| `outcome` | The run's terminal outcome, or `null` while it has none. |
+| `step` | The first step that is neither completed nor skipped - the step running, parked at a gate, or failed - or `null` once every step finished. |
+| `step_status` | That step's status, such as `running`, `fixing`, `awaiting_approval`, or `failed`, or `null` with `step`. |
+| `head` | The run's head commit, full when the record carries it. |
+| `pr` | The run's pull request URL, or `null` when none is known. |
+
+`validation_run` is `null` when no run is attributed: a task that is not a ship, has no branch or no run, whose run identity could not be proven, whose only evidence is the coarse runs listing that carries no run id, a current-state read that timed out before attributing one, or a read discarded because the task generation changed.
+It is best-effort and never fails the snapshot, and it adds no no-mistakes read beyond the current-state read the snapshot already makes.
+`current_state` still owns the task's current state; `validation_run` only identifies the run.
+
 ## Environment variables
 
 Runtime tuning via environment variables (defaults shown):
@@ -1145,6 +1250,7 @@ FM_INACTIVE_RECONCILE_BUDGET_SECS=10  # 1..30-second scan deadline; wedged-scan 
 FM_CHECK_INTERVAL=300   # seconds between slow checks (authenticated merge polls, custom checks, or Relay dispatch)
 FM_TASK_INBOX_GRACE_SECS=90   # seconds an unhandled steering-inbox message may sit before the watcher attempts doorbell delivery on an idle pane; also the minimum spacing between attempts
 FM_TASK_INBOX_RING_MAX=3      # watcher delivery attempts without an acknowledgement before the task surfaces as a stale wake for recovery
+FM_LIFECYCLE=on               # "off" disables the lifecycle event feed; bin/fm-lifecycle-lib.sh owns its other tunables
 FM_CHECK_TIMEOUT=30     # seconds allowed per slow check script
 FM_MAIL_CHECK_BUDGET=15   # seconds allowed for one standing mail poll; valid 5..25, cut to fit FM_CHECK_TIMEOUT
 FM_MAIL_POLL_MAX_WAKES=20   # per-poll wake cap for a mail poll; valid 1..200, keeps a flood from flooding firstmate
