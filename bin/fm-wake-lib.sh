@@ -1347,37 +1347,64 @@ fm_supervisor_contract_ancestor() {  # <path>
 }
 
 # Remove every disposable slot (merged, clean, idle, unleased) from each pool
-# under a Treehouse root with Treehouse's own safe-by-default bulk destroy, then
-# remove the root once no slot is left. A slot that is leased, in use, or holds
-# dirty or unlanded work is never removed: each one left is printed on stdout
-# and the drain returns 1. Returns 2 when Treehouse itself fails. Treehouse's
-# own report goes to stderr.
-# Treehouse knows nothing of firstmate's slot-owner claim, and a claimed slot
-# whose worker has exited reads as disposable to it, so a pool holding any slot
-# claimed by a task still recorded in <state-dir> is not bulk-destroyed at all.
+# under a Treehouse root with Treehouse's own safe-by-default destroy, then
+# remove the root once no slot is left. Treehouse knows nothing of firstmate's
+# slot-owner claim, and a claimed slot whose worker has exited reads as
+# disposable to it, so a slot claimed by a task still recorded in <state-dir> is
+# never offered to it: a pool with no such slot gets the bulk destroy, and in a
+# pool with one each other slot is destroyed on its own. Each slot left is
+# printed on stdout with why it was kept, and the drain returns 1. Returns 2
+# when Treehouse's bulk destroy itself fails. Treehouse's own report goes to
+# stderr.
 fm_treehouse_pool_root_drain() {  # <root> <state-dir>
-  local root=$1 state=$2 pool slot owner claimed kept=0
+  local root=$1 state=$2 pool slot wt owner claimed kept=0
   [ -d "$root" ] || return 0
   for pool in "$root"/.treehouse/*/; do
     [ -d "$pool" ] || continue
     pool=${pool%/}
     claimed=0
     for slot in "$pool"/*/; do
-      [ -f "${slot}.fm-slot-owner" ] || continue
-      owner=$(sed -n 's/^task=//p' "${slot}.fm-slot-owner" 2>/dev/null | head -1)
-      [ -z "$owner" ] || [ ! -f "$state/$owner.meta" ] || claimed=1
+      [ -z "$(fm_treehouse_slot_live_claim "${slot%/}" "$state")" ] || claimed=1
     done
-    if [ "$claimed" -eq 0 ] && [ -f "$pool/treehouse-state.json" ]; then
-      (CDPATH='' cd -- "$root" && treehouse --root "$root" destroy "$pool" --all --yes) >&2 || return 2
+    if [ "$claimed" -eq 0 ]; then
+      if [ -f "$pool/treehouse-state.json" ]; then
+        (CDPATH='' cd -- "$root" && treehouse --root "$root" destroy "$pool" --all --yes) >&2 || return 2
+      fi
+    else
+      for slot in "$pool"/*/; do
+        slot=${slot%/}
+        [ -z "$(fm_treehouse_slot_live_claim "$slot" "$state")" ] || continue
+        for wt in "$slot"/*/; do
+          [ -d "$wt" ] || continue
+          (CDPATH='' cd -- "$root" && treehouse --root "$root" destroy "${wt%/}" --yes) >&2 || true
+          break
+        done
+      done
     fi
     for slot in "$pool"/*/; do
       [ -d "$slot" ] || continue
-      printf '%s\n' "${slot%/}"
+      slot=${slot%/}
+      owner=$(fm_treehouse_slot_live_claim "$slot" "$state")
+      if [ -n "$owner" ]; then
+        printf '%s (claimed by task %s)\n' "$slot" "$owner"
+      else
+        printf '%s (kept by Treehouse: leased, in use, or holding dirty or unlanded work)\n' "$slot"
+      fi
       kept=1
     done
   done
   [ "$kept" -eq 0 ] || return 1
   rm -rf -- "$root"
+}
+
+# Print the task a pool slot's firstmate claim names when that task is still
+# recorded in <state-dir>; print nothing otherwise.
+fm_treehouse_slot_live_claim() {  # <slot> <state-dir>
+  local owner
+  [ -f "$1/.fm-slot-owner" ] || return 0
+  owner=$(sed -n 's/^task=//p' "$1/.fm-slot-owner" 2>/dev/null | head -1)
+  [ -n "$owner" ] && [ -f "$2/$owner.meta" ] || return 0
+  printf '%s\n' "$owner"
 }
 
 # A Treehouse slot has the managed pool's fixed <pool>/<slot>/<repo> layout.

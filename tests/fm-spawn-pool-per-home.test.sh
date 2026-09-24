@@ -117,17 +117,26 @@ case "$cmd" in
     printf '%s\n' "$slot" >> "${FM_FAKE_RETURN_LOG:-/dev/null}"
     ;;
   destroy)
-    # Bulk destroy removes only disposable slots: idle, clean, and landed.
-    [ "$*" = "$1 --all --yes" ] || exit 2
-    for slot in "$1"/*/; do
+    # Destroy removes only disposable slots: idle, clean, and landed. A pool
+    # takes --all; a single slot is named by its worktree.
+    if [ "$*" = "$1 --all --yes" ]; then
+      single=0 slots=$(ls -d "$1"/*/ 2>/dev/null)
+    elif [ "$*" = "$1 --yes" ]; then
+      single=1 slots=$(dirname "$1")
+    else
+      exit 2
+    fi
+    status=0
+    for slot in $slots; do
       slot=${slot%/}
       wt=$(ls -d "$slot"/*/ 2>/dev/null | head -1)
       wt=${wt%/}
-      if [ -e "$slot/.in-use" ]; then echo "skip in-use $slot" >&2; continue; fi
-      if [ -z "$wt" ] || [ -n "$(git -C "$wt" status --porcelain)" ]; then echo "skip dirty $slot" >&2; continue; fi
-      if [ -n "$(git -C "$wt" rev-list HEAD --not --remotes)" ]; then echo "skip unlanded $slot" >&2; continue; fi
+      if [ -e "$slot/.in-use" ]; then echo "skip in-use $slot" >&2; status=1; continue; fi
+      if [ -z "$wt" ] || [ -n "$(git -C "$wt" status --porcelain)" ]; then echo "skip dirty $slot" >&2; status=1; continue; fi
+      if [ -n "$(git -C "$wt" rev-list HEAD --not --remotes)" ]; then echo "skip unlanded $slot" >&2; status=1; continue; fi
       git -C "$wt" worktree remove --force "$wt" && rm -rf "$slot"
     done
+    [ "$single" -eq 0 ] || exit "$status"
     ;;
 esac
 exit 0
@@ -409,18 +418,22 @@ test_legacy_in_home_pool_is_drained_without_losing_work() {
 
 # A legacy slot whose lease lapsed (say the tmux server restarted) but whose
 # firstmate claim names a task still recorded in the home is kept, not handed to
-# Treehouse's bulk destroy, until that task's record is gone.
+# Treehouse's destroy, until that task's record is gone; a disposable sibling in
+# the same pool is still removed.
 test_legacy_drain_keeps_a_slot_claimed_by_a_live_task() {
-  local out status legacy="$MATE/state/treehouse-pool" claimed
+  local out status legacy="$MATE/state/treehouse-pool" claimed sibling
   claimed=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
-  rm -f "$(dirname "$claimed")/.in-use"
+  sibling=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
+  rm -f "$(dirname "$claimed")/.in-use" "$(dirname "$sibling")/.in-use"
   printf 'task=legacy-live-z1\nhome=%s\n' "$MATE" > "$(dirname "$claimed")/.fm-slot-owner"
   printf 'worktree=%s\n' "$claimed" > "$MATE/state/legacy-live-z1.meta"
   out=$(run_pool_spawn "$MATE" pool-mate-z9)
   status=$?
   expect_code 0 "$status" "secondmate spawn should succeed beside a claimed legacy slot"$'\n'"$out"
   [ -d "$claimed" ] || fail "the drain destroyed a legacy slot claimed by a live task"
-  assert_contains "$out" "$(dirname "$claimed")" "the claimed legacy slot was not reported as kept"
+  assert_contains "$out" "$(dirname "$claimed") (claimed by task legacy-live-z1)" "the claimed legacy slot was not reported as kept by its claim"
+  [ ! -e "$sibling" ] || fail "a disposable sibling of a claimed legacy slot was left behind"
+  case "$out" in *"$(dirname "$sibling")"*) fail "the removed disposable sibling was reported as kept"$'\n'"$out" ;; esac
   rm -f "$MATE/state/legacy-live-z1.meta"
   out=$(run_pool_spawn "$MATE" pool-mate-z10)
   status=$?

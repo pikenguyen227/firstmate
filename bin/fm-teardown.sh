@@ -2560,9 +2560,9 @@ EOF
 # Clean the Treehouse pools a retiring secondmate home's workers drew from: its
 # own root outside every home and the pre-move root inside it
 # (fm_treehouse_home_pool_root and fm_treehouse_home_legacy_pool_root own
-# where they live). Only disposable slots are removed; a slot that is leased,
-# in use, or holds unlanded work refuses the retirement, naming each one, and
-# everything else stays intact.
+# where they live). Only disposable slots are removed; a slot claimed by a recorded
+# task, leased, in use, or holding unlanded work refuses the retirement, naming
+# each one and why, and everything else stays intact.
 retire_firstmate_home_pools() {
   local home=$1 label=$2 root kept all_kept='' rc
   if ! fm_treehouse_home_pool_path "$home"; then
@@ -2588,7 +2588,7 @@ $kept" ;;
     esac
   done
   [ -z "$all_kept" ] || {
-    echo "REFUSED: $label $home still owns Treehouse pool slots that are leased, in use, or hold unlanded work; left intact:$all_kept" >&2
+    echo "REFUSED: $label $home still owns Treehouse pool slots it could not clean; left intact:$all_kept" >&2
     return 1
   }
 }

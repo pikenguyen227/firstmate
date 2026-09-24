@@ -3906,16 +3906,16 @@ elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   fi
   SPAWN_TREEHOUSE_ROOT=$FM_TREEHOUSE_POOL_ROOT
   # Drain the pool this home used before pools moved outside every home: its
-  # disposable slots go, and a slot still leased, in use, or holding unlanded
-  # work is left exactly where it is and named here on every spawn until the
-  # operator resolves it.
+  # disposable slots go, and a slot still claimed by a recorded task, leased,
+  # in use, or holding unlanded work is left exactly where it is and named here,
+  # with why, on every spawn until the operator resolves it.
   spawn_legacy_pool=$(fm_treehouse_home_legacy_pool_root "$STATE")
   if [ -n "$SPAWN_TREEHOUSE_ROOT" ] && [ -d "$spawn_legacy_pool" ]; then
     spawn_legacy_rc=0
     spawn_legacy_kept=$(fm_treehouse_pool_root_drain "$spawn_legacy_pool" "$STATE" 2>/dev/null) || spawn_legacy_rc=$?
     case $spawn_legacy_rc in
       0) echo "note: removed this home's retired in-home Treehouse pool $spawn_legacy_pool; new worktrees come from $SPAWN_TREEHOUSE_ROOT" >&2 ;;
-      1) echo "warning: this home's retired in-home Treehouse pool $spawn_legacy_pool still holds slots that are leased, in use, or hold unlanded work; they were left untouched and are no longer handed out:
+      1) echo "warning: this home's retired in-home Treehouse pool $spawn_legacy_pool still holds slots it could not drain; they were left untouched and are no longer handed out:
 $spawn_legacy_kept" >&2 ;;
       *) echo "warning: could not drain this home's retired in-home Treehouse pool $spawn_legacy_pool; it was left untouched" >&2 ;;
     esac
