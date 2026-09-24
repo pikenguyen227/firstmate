@@ -1,0 +1,14 @@
+### case legacy-in-home: recorded worktree=legacy-in-home-1036/home/state/treehouse-pool/.treehouse/proj-abc123/1/proj
+$ fm-spawn.sh rlanc1 --relaunch
+warning: <tmp>/legacy-in-home-1036/home/data/rlanc1/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+error: task rlanc1's recorded worktree '<tmp>/legacy-in-home-1036/home/state/treehouse-pool/.treehouse/proj-abc123/1/proj' sits under firstmate home '<tmp>/legacy-in-home-1036/home', whose supervisor instructions a worker there would load; refusing to relaunch; land or save its work, tear the task down, and spawn it again; inspect window fmses:fm-rlanc1
+exit=1
+claude trust store mentions worktree: 
+
+### case outside-home: recorded worktree=outside-home-8866/user-state/firstmate/treehouse-pools/mate-deadbeef/.treehouse/proj-abc123/1/proj
+$ fm-spawn.sh rlanc0 --relaunch
+warning: <tmp>/outside-home-8866/home/data/rlanc0/launch-brief.md records no delivery contract line (scaffolded before ship briefs recorded one); launching on the explicit --mode no-mistakes - confirm its definition of done matches
+spawned rlanc0 harness=claude kind=ship mode=no-mistakes yolo=off window=fmses:fm-rlanc0 worktree=<tmp>/outside-home-8866/user-state/firstmate/treehouse-pools/mate-deadbeef/.treehouse/proj-abc123/1/proj
+exit=0
+claude trust store mentions worktree: 1
+

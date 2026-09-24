@@ -1,0 +1,12 @@
+ok - a primary and a secondmate with clones of one repository each get a worktree of their own clone
+ok - a secondmate's worker worktree has no ancestor holding that home's CLAUDE.md or AGENTS.md
+ok - two secondmate homes with clones of one repository keep separate pools outside both homes
+ok - a pool root under a firstmate home refuses the spawn before touching any pool
+ok - a legacy in-home pool loses only disposable slots and reports the ones it keeps
+ok - a legacy in-home pool keeps a slot claimed by a task the home still records
+ok - retiring a secondmate home cleans its outside pool and its legacy pool, refusing while any slot holds work
+ok - a primary spawn handed a leftover foreign slot skips it at once and lands in its own clone's slot
+ok - a spawn that is only ever handed foreign slots fails naming each one and its owner
+ok - a worktree of another home's clone is refused with its owner named
+ok - a home that cannot resolve its own pool fails the spawn before touching any pool
+ok - teardown returns a secondmate task's slot to that home's own pool

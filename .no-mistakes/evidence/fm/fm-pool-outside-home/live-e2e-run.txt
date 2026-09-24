@@ -1,0 +1,92 @@
+# treehouse binary: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/real-bin/treehouse (v2.3.0)
+# primary clone common dir: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app/.git
+# secondmate clone common dir: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app/.git
+# S5 leased /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s5-later-root/.treehouse/app-f0fc76/1/app
+ok - treehouse v2.3.0: S5 a later --root wins over a wrapper's leading --root
+# S6 destroy /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/2/app rc=1
+#   | 🌳 Destroyed 0 worktrees in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/2/app.
+#   | 🌳 Skipped 1 worktree:
+#   |   2     [dirty]  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/2/app  re-run with --include-unlanded to include
+#   | did not destroy 2 (dirty); re-run with --include-unlanded
+# S6 destroy /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/3/app rc=1
+#   | 🌳 Destroyed 0 worktrees in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/3/app.
+#   | 🌳 Skipped 1 worktree:
+#   |   3     [leased]  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/3/app  re-run with --include-leased to include
+#   | did not destroy 3 (leased); re-run with --include-leased
+# S6 destroy /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/1/app rc=0
+#   | 🌳 Destroyed 1 worktree in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/1/app and freed 360 B.
+#   |   1     [disposable]  360 B  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/s6-root/.treehouse/app-f0fc76/1/app
+ok - treehouse v2.3.0: S6 single-slot destroy removes a disposable slot and refuses a dirty or leased one
+# lab session: fm-lab-fm-pool-live-59645-19812
+# spawn livep1 home=primary-home rc=0 elapsed=7s
+#   out| spawned livep1 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-59645-19812:w1:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s12/.treehouse/app-f0fc76/1/app
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+ok - treehouse v2.3.0: S2 primary spawn lands in the default pool on its own clone (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s12/.treehouse/app-f0fc76/1/app)
+# spawn livem1 home=mate-home rc=0 elapsed=7s
+#   out| spawned livem1 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-59645-19812:w2:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1/app
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app	--root /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a get
+ok - treehouse v2.3.0: S1 secondmate spawn lands in its own pool on its own clone (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1/app)
+# S3 seeded free foreign slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s3/.treehouse/app-f0fc76/1/app
+# spawn livep2 home=primary-home rc=0 elapsed=9s
+#   out| spawned livep2 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-59645-19812:w3:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s3/.treehouse/app-f0fc76/2/app
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+ok - treehouse v2.3.0: S3 primary skips a foreign slot in 9s and a nested get lands in a new own-clone slot (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s3/.treehouse/app-f0fc76/2/app); foreign slot intact
+ok - treehouse v2.3.0: S5 a nested get inside a held slot's subshell hands out a different slot
+# S4 seeded free foreign slots:
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/1/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/2/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/3/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/4/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/5/app
+# spawn livep3 home=primary-home rc=1 elapsed=11s
+#   err| error: treehouse get kept handing out worktrees of another clone instead of this home's project '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app' (treehouse root 'configured default'); rejected slots:
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/1/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app/.git')
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/2/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app/.git')
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/3/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app/.git')
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/default-root-s4/.treehouse/app-f0fc76/4/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app/.git')
+#   err| these slots were left untouched; clean them deliberately (for example with treehouse destroy) once they hold no live work; inspect window fm-lab-fm-pool-live-59645-19812:w4:p2
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/primary-home/projects/app	get
+ok - treehouse v2.3.0: S4 primary fails after the retry bound naming 4 foreign slots and their owning clone; all 5 left intact
+# spawn livem7 home=mate-home rc=1 elapsed=1s
+#   err| error: could not resolve this home's own Treehouse pool root: pool root '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a' sits under firstmate home '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home', whose supervisor instructions its workers would load; refusing to allocate a worktree from another home's pool; inspect window fm-lab-fm-pool-live-59645-19812:w5:p2
+#   treehouse (cwd<TAB>argv)| 
+ok - treehouse v2.3.0: S7 a pool root under a firstmate home refuses the spawn before any treehouse call
+# S8 seeded legacy slots: claimed=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/1 free=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/2 dirty=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/3 leased=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/4
+# spawn livem8 home=mate-home rc=0 elapsed=7s
+#   out| spawned livem8 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-59645-19812:w5:p3 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1/app
+#   err| warning: this home's retired in-home Treehouse pool /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool still holds slots it could not drain; they were left untouched and are no longer handed out:
+#   err| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/1 (claimed by task livelegacy)
+#   err| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/3 (kept by Treehouse: leased, in use, or holding dirty or unlanded work)
+#   err| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/4 (kept by Treehouse: leased, in use, or holding dirty or unlanded work)
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/projects/app	--root /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a get
+ok - treehouse v2.3.0: S8 the next spawn drains the legacy in-home pool: the disposable slot is removed; the claimed, dirty and leased slots are kept and reported
+# relaunch livem8 home=mate-home rc=1
+#   err| error: task livem8's recorded worktree '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/1/app' sits under firstmate home '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home', whose supervisor instructions a worker there would load; refusing to relaunch; land or save its work, tear the task down, and spawn it again; inspect window fm-lab-fm-pool-live-59645-19812:w5:p4
+# relaunch livem8 home=mate-home rc=0
+#   out| spawned livem8 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-59645-19812:w5:p5 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1/app
+ok - treehouse v2.3.0: S9 relaunch refuses a recorded worktree inside the home, naming it, and relaunches one in the outside pool
+# retire livemate rc=1
+#   | 🌳 Destroyed 0 worktrees in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76.
+#   | 🌳 Skipped 1 worktree:
+#   |   1     [dirty]  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1/app  re-run with --include-unlanded to include
+#   | 🌳 Destroyed 1 worktree in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76 and freed 497 B.
+#   |   1     [disposable]  497 B  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/1/app
+#   | 🌳 Skipped 2 worktrees:
+#   |   3     [dirty]   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/3/app  re-run with --include-unlanded to include
+#   |   4     [leased]  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/4/app  leased: name the exact path with --include-leased (never removed by --all)
+#   | REFUSED: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home still owns Treehouse pool slots it could not clean; left intact:
+#   | /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1 (kept by Treehouse: leased, in use, or holding dirty or unlanded work)
+#   | /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/3 (kept by Treehouse: leased, in use, or holding dirty or unlanded work)
+#   | /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/4 (kept by Treehouse: leased, in use, or holding dirty or unlanded work)
+# retire livemate rc=0
+#   | 🌳 Destroyed 1 worktree in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76 and freed 356 B.
+#   |   1     [disposable]  356 B  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/user-state/firstmate/treehouse-pools/livemate-2877b7a6bd8a/.treehouse/app-f0fc76/1/app
+#   | 🌳 Destroyed 2 worktrees in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76 and freed 715 B.
+#   |   3     [disposable]  357 B  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/3/app
+#   |   4     [disposable]  358 B  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home/state/treehouse-pool/.treehouse/app-f0fc76/4/app
+#   | teardown livemate complete (window fm-lab-fm-pool-live-59645-19812:w9:p9, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.KzmY17/mate-home)
+ok - treehouse v2.3.0: S10 retiring a secondmate refuses while any slot of either pool holds work, then cleans its outside pool and its legacy pool
