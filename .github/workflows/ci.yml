@@ -53,8 +53,8 @@ jobs:
       # and the pre-push gate on this script so a self-broken ci.yml still
       # fails locally before merge.
       # One worker per runner: each ShellCheck process analyzes one root, so a
-      # runner's peak memory is its heaviest single root, and the heaviest
-      # roots need over half of a hosted runner's memory each. Four partitions
+      # runner's peak memory is its heaviest single root, which measures about
+      # 7.2 GB under ShellCheck 0.11.0 --norc --external-sources. Four partitions
       # recover the wall time one worker costs; they cannot lower a single
       # root's peak. The 14 GiB budget fails the job naming any root that
       # outgrows it, before one process can exhaust the 16 GiB runner.
