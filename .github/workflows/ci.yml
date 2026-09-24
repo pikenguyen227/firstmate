@@ -52,7 +52,14 @@ jobs:
       # and GitHub workflow lint). Do not re-spell the checks here; keep CI
       # and the pre-push gate on this script so a self-broken ci.yml still
       # fails locally before merge.
+      # One bounded worker per runner: full source-aware analysis of the
+      # heaviest roots needs over half of a hosted runner's memory each, so two
+      # workers side by side get the job killed. FM_LINT_JOBS changes only
+      # concurrency, never diagnostics or exit selection; the local default
+      # stays at two workers.
       - name: Lint canonical partition
+        env:
+          FM_LINT_JOBS: "1"
         run: |
           set -eu
           mkdir -p "$RUNNER_TEMP/fm-lint"
