@@ -1,0 +1,23 @@
+tests/fm-secondmate-slot-reuse-live-e2e.test.sh
+  s_f82763e9c62216::t_b91d7076666169 183,286,298,338,350
+bin/fm-teardown.sh
+  s_f82763e9c62216::t_8f92a4b9e45f97 2706
+  s_f82763e9c62216::t_b91d7076666169 2699,2703-2705,2707
+  s_f82763e9c62216::t_d553c8a4b15720 2708-2709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9ddd00c13e0fd36f9e30443e84549199f1783406",
+  "prompts": {},
+  "sessions": {
+    "s_f82763e9c62216": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e06e35cf-f263-412c-a560-3ad09bdf059f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
