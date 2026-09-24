@@ -1,0 +1,7 @@
+ok - lifecycle feed never records a closed-unmerged PR as merged
+ok - lifecycle feed records merged for a PR this home confirmed merged
+ok - lifecycle feed ignores a merge confirmation for a different PR
+ok - lifecycle feed records merged from teardown's own merged-PR proof
+ok - lifecycle feed never records merged for a forced teardown
+ok - lifecycle feed records unknown with no pr for a pushed ship without a PR
+ALL-LIFECYCLE-OUTCOME-TESTS-DONE

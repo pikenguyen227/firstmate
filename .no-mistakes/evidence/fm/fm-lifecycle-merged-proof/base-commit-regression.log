@@ -1,0 +1,1 @@
+not ok - lifecycle-closed-unmerged: a PR with no merge proof must not be recorded as merged (expected 'unknown https://github.com/example/repo/pull/7', got 'merged https://github.com/example/repo/pull/7')

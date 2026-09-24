@@ -1,0 +1,6 @@
+ok - lifecycle feed never records a closed-unmerged PR as merged
+ok - lifecycle feed records merged for a PR this home confirmed merged
+ok - lifecycle feed ignores a merge confirmation for a different PR
+ok - lifecycle feed records merged from teardown's own merged-PR proof
+ok - squash-merged PR accepts a local HEAD that is an ancestor of the final PR head
+/Users/pike/.no-mistakes/evidence/01M395BBC9YW25EHG9YDYSPTNN/run-selected-teardown-tests.sh: line 643: tasks-axi: command not found

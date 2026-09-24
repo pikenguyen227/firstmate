@@ -1,0 +1,8 @@
+--- A closed-unmerged PR (gh CLOSED): teardown rc=0; persisted task.torn_down record:
+{"transition":"remove","outcome":"unknown","forced":false,"kind":"ship","report":null,"pr":"https://github.com/example/repo/pull/7"}
+--- B forced teardown with marker: teardown rc=0; persisted task.torn_down record:
+{"transition":"remove","outcome":"unknown","forced":true,"kind":"ship","report":null,"pr":"https://github.com/example/repo/pull/7"}
+--- C merged PR discovered by branch (no pr= recorded): teardown rc=0; persisted task.torn_down record:
+{"transition":"remove","outcome":"merged","forced":false,"kind":"ship","report":null,"pr":"https://github.com/example/repo/pull/7"}
+--- D pushed ship, no PR: teardown rc=0; persisted task.torn_down record:
+{"transition":"remove","outcome":"unknown","forced":false,"kind":"ship","report":null,"pr":null}
