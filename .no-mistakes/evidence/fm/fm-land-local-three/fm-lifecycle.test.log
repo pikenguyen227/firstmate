@@ -1,0 +1,11 @@
+ok - writer: every line is a full envelope and seq stays gap-free across processes and concurrent writers
+ok - writer: a torn final line is fenced and never reused, and rotation keeps seq continuous across files
+ok - best effort: a disabled feed or a state directory that belongs to no home records nothing
+ok - best effort: an unwritable feed or a held lock never fails, delays unboundedly, or prints into the caller
+ok - drain: status lines and the drain's own decision fold are transcribed once, incomplete lines only once they end
+ok - drain: chunked passes lose nothing, and a replaced status log is keyed apart from its predecessor
+ok - drain: a task id reused after teardown starts a fresh stream
+ok - emit sites: spawn, promotion, steer, watcher acknowledgement, relaunch, and teardown's final flush are all recorded
+ok - discovery: the fleet snapshot points at this home's feed and each secondmate's
+ok - identity: the snapshot's last status line carries the exact feed key, stamped or not, repeated, relaunched, or replaced
+ok - backfill: live tasks are replayed once, a second run records nothing, and live transcription resumes cleanly

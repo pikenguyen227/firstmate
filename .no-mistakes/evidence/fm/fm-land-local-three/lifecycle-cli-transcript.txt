@@ -1,43 +1,57 @@
-$ # seed a live ship task t1 (meta + status log with a decision), feed does not exist yet
+### scratch home: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.QeDOFnTaGX/home
 $ fm-lifecycle.sh path
-/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl
+/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.QeDOFnTaGX/home/data/lifecycle/events.v1.jsonl
 exit=0
 $ fm-lifecycle.sh backfill
-fm-lifecycle: backfill recorded 4 event(s) into /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl
+fm-lifecycle: backfill recorded 4 event(s) into /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.QeDOFnTaGX/home/data/lifecycle/events.v1.jsonl
 exit=0
-$ fm-lifecycle.sh backfill   # second run must be a no-op
-fm-lifecycle: backfill recorded 0 event(s) into /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl
+$ fm-lifecycle.sh backfill   (second run)
+fm-lifecycle: backfill recorded 0 event(s) into /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.QeDOFnTaGX/home/data/lifecycle/events.v1.jsonl
 exit=0
-$ jq -c "{seq,type,key,at,at_source,backfill}" events.v1.jsonl
-{"seq":1,"type":"feed.started","key":"started","at":1790180946,"at_source":"firstmate","backfill":false}
-{"seq":2,"type":"task.spawned","key":"spawned/t1/s1790000000.3.4","at":1790000000,"at_source":"firstmate","backfill":true}
-{"seq":3,"type":"task.status","key":"status/t1/s1790000000.3.4/@0","at":1790000010,"at_source":"stamp","backfill":true}
-{"seq":4,"type":"task.status","key":"status/t1/s1790000000.3.4/@27","at":1790000020,"at_source":"stamp","backfill":true}
-{"seq":5,"type":"task.decision","key":"decision/t1/s1790000000.3.4/@27/default","at":1790000020,"at_source":"stamp","backfill":true}
-{"seq":6,"type":"feed.backfilled","key":"backfilled/1790180946","at":1790180946,"at_source":"firstmate","backfill":true}
-$ # append a status line and run the real wake drain
-drain exit=0
-{"seq":8,"type":"task.decision","key":"decision/t1/s1790000000.3.4/@68/default","backfill":false,"data":{"key":"default","change":"closed","verb":"needs-decision","closed_by":"terminal","note":null}}
-$ fm-fleet-snapshot.sh --json | jq "{lifecycle, last_event: .tasks[0].paths.status_log.last_event, validation_run: .tasks[0].validation_run}"
+$ fm-wake-drain.sh  (after appending a done line)
+exit=0
+$ fm-wake-drain.sh  (again, must add nothing)
+exit=0
+### feed (data/lifecycle/events.v1.jsonl) summarized:
+{"seq":1,"type":"feed.started","backfill":false,"at":1790216888,"at_source":"firstmate","key":"started","data":{"firstmate_rev":"bdfc52686b9b196c8ea1a0afd7115399782f59e4"}}
+{"seq":2,"type":"task.spawned","backfill":true,"at":1790000000,"at_source":"firstmate","key":"spawned/t1/s1790000000.1.1","data":{"kind":"ship","harness":"claude","model":null,"effort":null,"mode":"direct-PR","yolo":null,"project":"/p","backend":"tmux","endpoint":{"target":"fmses:fm-t1"},"relaunch":null,"previous_spawn_gen":null,"secondmate":null,"remote":null}}
+{"seq":3,"type":"task.status","backfill":true,"at":1790000010,"at_source":"stamp","key":"status/t1/s1790000000.1.1/@0","data":{"verb":"working","key":null,"until":null,"note":"investigating","offset":0,"stream":"s1790000000.1.1"}}
+{"seq":4,"type":"task.status","backfill":true,"at":1790000020,"at_source":"stamp","key":"status/t1/s1790000000.1.1/@39","data":{"verb":"needs-decision","key":"default","until":null,"note":"pick A or B","offset":39,"stream":"s1790000000.1.1"}}
+{"seq":5,"type":"task.decision","backfill":true,"at":1790000020,"at_source":"stamp","key":"decision/t1/s1790000000.1.1/@39/default","data":{"key":"default","change":"opened","verb":"needs-decision","closed_by":null,"note":"pick A or B"}}
+{"seq":6,"type":"feed.backfilled","backfill":true,"at":1790216888,"at_source":"firstmate","key":"backfilled/1790216888","data":{"tasks":["t1"],"events":4}}
+{"seq":7,"type":"task.status","backfill":false,"at":1790000030,"at_source":"stamp","key":"status/t1/s1790000000.1.1/@83","data":{"verb":"done","key":null,"until":null,"note":"decided A, ready","offset":83,"stream":"s1790000000.1.1"}}
+{"seq":8,"type":"task.decision","backfill":false,"at":1790000030,"at_source":"stamp","key":"decision/t1/s1790000000.1.1/@83/default","data":{"key":"default","change":"closed","verb":"needs-decision","closed_by":"terminal","note":null}}
+### seq gap-free / keys unique:
+true
+$ fm-fleet-snapshot.sh --json | .lifecycle, t1 last_event, t1 validation_run
 {
   "lifecycle": {
     "schema": "fm-lifecycle.v1",
-    "id": "fmh_d373878b6db4",
-    "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.GLqEfQsw5R/home/data/lifecycle/events.v1.jsonl",
+    "id": "fmh_bcfdbeadcdee",
+    "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.QeDOFnTaGX/home/data/lifecycle/events.v1.jsonl",
     "present": true,
     "head_seq": 8,
     "homes": []
   },
-  "last_event": {
-    "raw": "done [at=1790000030]: shipped",
-    "offset": 68,
-    "stream": "s1790000000.3.4",
-    "lifecycle_key": "status/t1/s1790000000.3.4/@68"
-  },
-  "validation_run": null
+  "t1": {
+    "last_event": {
+      "state": "done",
+      "note": "decided A, ready",
+      "raw": "done [at=1790000030]: decided A, ready",
+      "age_seconds": 216860,
+      "offset": 83,
+      "stream": "s1790000000.1.1",
+      "lifecycle_key": "status/t1/s1790000000.1.1/@83"
+    },
+    "validation_run": null
+  }
 }
-$ # adversarial: FM_LIFECYCLE=off
+### snapshot lifecycle_key matches exactly one feed event:
+{"seq":7,"type":"task.status","key":"status/t1/s1790000000.1.1/@83","note":"decided A, ready"}
+### FM_LIFECYCLE=off disables:
+drain exit=0
+ls: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.iWcHk0pJll/home/data/lifecycle: No such file or directory
 error: the lifecycle feed is off or this home has no data directory
-exit=1
-$ # adversarial: read-only feed dir, drain must still succeed silently
+path exit=1
+### unusable feed dir never breaks the drain:
 drain exit=0

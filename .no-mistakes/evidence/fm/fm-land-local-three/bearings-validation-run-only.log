@@ -1,0 +1,2 @@
+ok - each task publishes its attributed validation run, or null without one
+ok - kindless v1 summaries retain report artifacts from fresh and cached ledgers
