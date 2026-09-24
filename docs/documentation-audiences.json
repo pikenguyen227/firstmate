@@ -497,6 +497,10 @@
       "audience": "maintainer-verification"
     },
     {
+      "path": "docs/verification/secondmate-slot-reuse.md",
+      "audience": "maintainer-verification"
+    },
+    {
       "path": "docs/verification/stow-memory.md",
       "audience": "maintainer-verification"
     },
