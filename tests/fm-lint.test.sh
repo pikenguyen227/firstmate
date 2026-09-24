@@ -3,7 +3,7 @@
 #
 # bin/fm-lint.sh is the single owner invoked by CI
 # (.github/workflows/ci.yml) and by the pre-push gate (.no-mistakes.yaml
-# commands.lint). CI runs its two full-rigor canonical partitions; the local
+# commands.lint). CI runs its four full-rigor canonical partitions; the local
 # gate uses its context-selected default. Their selection differs deliberately,
 # while this owner keeps analysis flags, configuration, and tool versions from
 # drifting.
@@ -179,45 +179,191 @@ test_list_files_reports_the_shell_inventory() {
 }
 
 test_canonical_partitions_preserve_full_lint() {
-  local tmp fakebin all part selected log flags mode rc option
+  local tmp fakebin all total index part selected log flags mode rc option
   tmp=$(fm_test_tmproot fm-lint-partitions)
   fakebin="$tmp/bin"
   mkdir -p "$fakebin"
   all=$(CI=true "$LINT" --list-files | LC_ALL=C sort)
-  : > "$tmp/union"
-  for part in 1of2 2of2; do
-    selected=$(CI=false GITHUB_ACTIONS=false "$LINT" --partition "$part" --list-files) \
-      || fail "partition $part must select full canonical roots even on a local branch"
-    [ -n "$selected" ] || fail "empty lint partition $part"
-    printf '%s\n' "$selected" >> "$tmp/union"
-    [ "$selected" = "$("$LINT" --partition "$part" --list-files)" ] \
-      || fail "partition $part is nondeterministic"
-    log="$tmp/$part.roots"
-    flags="$tmp/$part.flags"
-    mode="$tmp/$part.mode"
-    fm_lint_stub_shellcheck "$fakebin" "$log"
-    PATH="$fakebin:$PATH" FM_TEST_FLAG_LOG="$flags" FM_TEST_MODE_LOG="$mode" \
-      "$LINT" --partition "$part" > "$tmp/$part.out" 2>&1 \
-      || fail "canonical partition $part failed: $(cat "$tmp/$part.out")"
-    [ "$(LC_ALL=C sort "$log")" = "$(printf '%s\n' "$selected" | LC_ALL=C sort)" ] \
-      || fail "partition $part executed a different root set than it listed"
-    [ "$(LC_ALL=C sort -u "$flags")" = "$(printf 'exclude=none\nexternal-sources=yes')" ] \
-      || fail "partition $part weakened source-aware analysis"
-    [ "$(LC_ALL=C sort -u "$mode")" = on ] || fail "partition $part disabled full analysis"
+  for total in 2 4; do
+    : > "$tmp/union"
+    index=1
+    while [ "$index" -le "$total" ]; do
+      part="${index}of$total"
+      selected=$(CI=false GITHUB_ACTIONS=false "$LINT" --partition "$part" --list-files) \
+        || fail "partition $part must select full canonical roots even on a local branch"
+      [ -n "$selected" ] || fail "empty lint partition $part"
+      printf '%s\n' "$selected" >> "$tmp/union"
+      [ "$selected" = "$("$LINT" --partition "$part" --list-files)" ] \
+        || fail "partition $part is nondeterministic"
+      log="$tmp/$part.roots"
+      flags="$tmp/$part.flags"
+      mode="$tmp/$part.mode"
+      fm_lint_stub_shellcheck "$fakebin" "$log"
+      PATH="$fakebin:$PATH" FM_TEST_FLAG_LOG="$flags" FM_TEST_MODE_LOG="$mode" \
+        "$LINT" --partition "$part" > "$tmp/$part.out" 2>&1 \
+        || fail "canonical partition $part failed: $(cat "$tmp/$part.out")"
+      [ "$(LC_ALL=C sort "$log")" = "$(printf '%s\n' "$selected" | LC_ALL=C sort)" ] \
+        || fail "partition $part executed a different root set than it listed"
+      [ "$(LC_ALL=C sort -u "$flags")" = "$(printf 'exclude=none\nexternal-sources=yes')" ] \
+        || fail "partition $part weakened source-aware analysis"
+      [ "$(LC_ALL=C sort -u "$mode")" = on ] || fail "partition $part disabled full analysis"
+      index=$((index + 1))
+    done
+    [ "$(LC_ALL=C sort "$tmp/union")" = "$all" ] \
+      || fail "$total-way lint partitions lose or duplicate canonical roots"
   done
-  [ "$(LC_ALL=C sort "$tmp/union")" = "$all" ] || fail "lint partitions lose or duplicate canonical roots"
-  for option in 0of2 3of2 1of3; do
+  for option in '' 0of2 3of2 5of4 1of0 01of2 1of2x 1ofof2 abc; do
     rc=0
     "$LINT" --partition "$option" --list-files > "$tmp/refused" 2>&1 || rc=$?
-    [ "$rc" = 2 ] || fail "invalid partition $option was not refused"
+    [ "$rc" = 2 ] || fail "invalid partition '$option' was not refused"
   done
   rc=0
-  "$LINT" --partition 1of2 --fast > "$tmp/refused" 2>&1 || rc=$?
+  "$LINT" --partition 1of4 --fast > "$tmp/refused" 2>&1 || rc=$?
   [ "$rc" = 2 ] || fail "partition accepted --fast"
   rc=0
-  "$LINT" --partition 1of2 bin/fm-lint.sh > "$tmp/refused" 2>&1 || rc=$?
+  "$LINT" --partition 1of4 bin/fm-lint.sh > "$tmp/refused" 2>&1 || rc=$?
   [ "$rc" = 2 ] || fail "partition accepted an explicit subset"
-  pass "two canonical lint partitions preserve complete source-aware coverage and reject weakened modes"
+  pass "two- and four-way canonical lint partitions preserve complete source-aware coverage and reject weakened modes"
+}
+
+# fm_lint_stub_findings_shellcheck <fakebin-dir>: a pinned ShellCheck stub that
+# prints one finding line per root and exits 1 for roots named bad-*.sh.
+fm_lint_stub_findings_shellcheck() {
+  local fakebin=$1
+  cat > "$fakebin/shellcheck" <<'SH'
+#!/usr/bin/env bash
+if [ "${1:-}" = --version ]; then
+  printf 'ShellCheck - shell script analysis tool\nversion: 0.11.0\n'
+  exit 0
+fi
+while [ "$#" -gt 0 ] && [ "$1" != -- ]; do shift; done
+[ "$#" -eq 0 ] || shift
+rc=0
+for root in "$@"; do
+  case "${root##*/}" in
+    bad-*) printf 'finding in %s\n' "$root"; rc=1 ;;
+  esac
+done
+exit "$rc"
+SH
+  chmod +x "$fakebin/shellcheck"
+}
+
+test_memory_budget_names_each_root_after_diagnostics() {
+  if [ ! -x /usr/bin/time ]; then
+    pass "SKIP (/usr/bin/time unavailable): per-root memory budget check"
+    return
+  fi
+  local tmp fakebin bad_a good bad_b jobs root out_off out_on out_over rc_off rc_on rc_over telemetry rc
+  tmp=$(fm_test_tmproot fm-lint-rss-budget)
+  fakebin=$(fm_fakebin "$tmp")
+  fm_lint_stub_findings_shellcheck "$fakebin"
+  bad_a="$tmp/bad-a.sh"
+  good="$tmp/good.sh"
+  bad_b="$tmp/bad-b.sh"
+  printf '#!/usr/bin/env bash\n' > "$bad_a"
+  printf '#!/usr/bin/env bash\n' > "$good"
+  printf '#!/usr/bin/env bash\n' > "$bad_b"
+  for jobs in 1 2; do
+    rc_off=0
+    out_off=$(PATH="$fakebin:$PATH" FM_LINT_JOBS=$jobs "$LINT" "$bad_a" "$good" "$bad_b" 2>&1) || rc_off=$?
+    rc_on=0
+    out_on=$(PATH="$fakebin:$PATH" FM_LINT_JOBS=$jobs FM_LINT_RSS_BUDGET_KIB=999999999 \
+      "$LINT" "$bad_a" "$good" "$bad_b" 2>&1) || rc_on=$?
+    [ "$rc_off" -eq 1 ] && [ "$rc_on" -eq "$rc_off" ] \
+      || fail "jobs=$jobs: an unexceeded budget changed exit selection: $rc_off/$rc_on"
+    [ "$out_on" = "$out_off" ] || fail "jobs=$jobs: an unexceeded budget changed diagnostics"
+
+    rc_over=0
+    out_over=$(PATH="$fakebin:$PATH" FM_LINT_JOBS=$jobs FM_LINT_RSS_BUDGET_KIB=1 \
+      "$LINT" "$bad_a" "$good" "$bad_b" 2>&1) || rc_over=$?
+    [ "$rc_over" -ne 0 ] || fail "jobs=$jobs: an exceeded memory budget passed"
+    [ "$(printf '%s\n' "$out_over" | grep -v '^fm-lint.sh: memory budget exceeded: ')" = "$out_off" ] \
+      || fail "jobs=$jobs: the memory budget changed or dropped diagnostics"$'\n'"$out_over"
+    for root in "$bad_a" "$good" "$bad_b"; do
+      printf '%s\n' "$out_over" | grep -E "^fm-lint.sh: memory budget exceeded: $root used [0-9]+ KiB \(budget 1 KiB\); see docs/fm-test-portable-shards.md \"Lint partitions and end-to-end latency\"\$" >/dev/null \
+        || fail "jobs=$jobs: the budget did not name $root"$'\n'"$out_over"
+    done
+    printf '%s\n' "$out_over" | awk -v last="finding in $bad_b" '
+      $0 == last { seen=1; next }
+      /^fm-lint.sh: memory budget exceeded: / && !seen { exit 1 }
+    ' || fail "jobs=$jobs: budget failures were reported before every diagnostic replayed"
+  done
+
+  telemetry="$tmp/telemetry.tsv"
+  PATH="$fakebin:$PATH" FM_LINT_RSS_BUDGET_KIB=999999999 "$LINT" --telemetry "$telemetry" "$good" >/dev/null 2>&1 \
+    || fail "a clean root failed under an unexceeded budget"
+  grep -E $'^max_root_rss_kib\t[0-9]+$' "$telemetry" >/dev/null \
+    || fail "telemetry did not record the heaviest root's peak RSS"
+  assert_grep $'max_root\t'"$good" "$telemetry" "telemetry did not name the heaviest root"
+  assert_grep $'rss_budget_kib\t999999999' "$telemetry" "telemetry did not record the memory budget"
+
+  for option in abc 0 -5 012; do
+    rc=0
+    PATH="$fakebin:$PATH" FM_LINT_RSS_BUDGET_KIB="$option" "$LINT" "$good" >/dev/null 2>&1 || rc=$?
+    [ "$rc" -eq 2 ] || fail "invalid memory budget '$option' was not refused"
+  done
+  pass "the memory budget keeps diagnostics and exit selection, then names every root over budget"
+}
+
+test_per_root_diagnostics_match_one_combined_shellcheck() {
+  if ! pinned_ready; then
+    pass "SKIP (ShellCheck $REQUIRED not resolved): per-root versus combined diagnostics parity"
+    return
+  fi
+  local tmp lib first second out_off out_on rc_off rc_on rc_combined combined
+  tmp=$(fm_test_tmproot fm-lint-per-root)
+  mkdir -p "$tmp"
+  lib="$tmp/lib.sh"
+  first="$tmp/first.sh"
+  second="$tmp/second.sh"
+  cat > "$lib" <<'SH'
+#!/usr/bin/env bash
+shared_value=ok
+SH
+  cat > "$first" <<SH
+#!/usr/bin/env bash
+# shellcheck source=$lib
+. "$lib"
+first_bad() {
+  local a= b=
+  printf '%s\n' "\$a\$b\$shared_value"
+}
+SH
+  cat > "$second" <<SH
+#!/usr/bin/env bash
+# shellcheck source=$lib
+. "$lib"
+second_bad() {
+  printf '%s\n' \$1 "\$shared_value"
+}
+SH
+  rc_off=0
+  out_off=$(FM_LINT_JOBS=1 "$LINT" "$first" "$second" 2>&1) || rc_off=$?
+  rc_on=0
+  out_on=$(FM_LINT_JOBS=1 FM_LINT_RSS_BUDGET_KIB=999999999 "$LINT" "$first" "$second" 2>&1) || rc_on=$?
+  [ "$rc_on" -eq "$rc_off" ] || fail "the memory budget changed exit selection: $rc_off/$rc_on"
+  [ "$out_on" = "$out_off" ] || fail "the memory budget changed diagnostics"
+  rc_combined=0
+  combined=$(cd "$ROOT" && shellcheck --norc --external-sources -- "$first" "$second" 2>&1) || rc_combined=$?
+  [ "$rc_off" -eq "$rc_combined" ] || fail "per-root exit $rc_off differs from combined exit $rc_combined"
+  assert_contains "$out_off" "SC1007" "the first root's diagnostic was lost"
+  assert_contains "$out_off" "SC2086" "the second root's diagnostic was lost"
+  assert_not_contains "$out_off" "SC2154" "per-root analysis lost the sourced library context"
+  [ "$(fm_lint_findings_only "$out_off")" = "$(fm_lint_findings_only "$combined")" ] \
+    || fail "per-root findings differ from one combined ShellCheck invocation"
+  pass "per-root diagnostics and exit selection match one combined ShellCheck invocation"
+}
+
+# fm_lint_findings_only <output>: drop fm-lint.sh status lines and ShellCheck's
+# per-invocation wiki footer, leaving each root's findings.
+fm_lint_findings_only() {
+  printf '%s\n' "$1" | awk '
+    /^fm-lint\.sh: / { next }
+    /^For more information:$/ { footer=1; next }
+    footer && /^  https:\/\/www\.shellcheck\.net\/wiki\// { next }
+    { footer=0; print }
+  '
 }
 
 # fm_lint_stub_git <fakebin-dir>: install a git stub for the changed-file mode
@@ -1407,6 +1553,8 @@ SH
 test_help_reports_the_complete_interface
 test_list_files_reports_the_shell_inventory
 test_canonical_partitions_preserve_full_lint
+test_memory_budget_names_each_root_after_diagnostics
+test_per_root_diagnostics_match_one_combined_shellcheck
 test_fast_mode_disables_extended_analysis
 test_ci_defaults_to_full_analysis
 test_ci_rejects_explicit_fast_mode
