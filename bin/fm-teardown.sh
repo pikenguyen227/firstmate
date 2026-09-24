@@ -2728,22 +2728,12 @@ restore_leased_home_owned_entries() {  # <home> <label> <stage>
   return "$rc"
 }
 
-# Reaps every process still running inside a home whose endpoint is closed,
-# so none keeps writing into the slot after its files are gone. The backend
-# process-group fallback belongs to the task this teardown retires, so a child
-# home reached through forced nested cleanup never uses it.
+# Reaps every process still running inside a home whose endpoint is already
+# closed, so none keeps writing into the slot after its files are gone. The
+# retired task's globals are shadowed so the reap reports the home's own id and
+# a missing lsof only warns: the backend process-group fallback would resolve
+# the closed endpoint's name to whatever live window now matches it.
 reap_firstmate_home_processes() {  # <home> <label> <expected-id>
-  local home=$1 label=$2 expected_id=$3
-  if [ "$expected_id" = "$ID" ] && [ "$home" -ef "${HOME_PATH:-}" ]; then
-    reap_task_worktree_processes "$label" "$home"
-  else
-    reap_child_home_processes "$home" "$label" "$expected_id"
-  fi
-}
-
-# Shadows the retired task's globals so a child home's reap reports its own id
-# and never reaches the backend process-group fallback.
-reap_child_home_processes() {  # <home> <label> <expected-id>
   local ID=$3 BACKEND=none T='' TASK_PIDS='' TASK_PIDS_FAILED_DIR=''
   reap_task_worktree_processes "$2" "$1"
 }

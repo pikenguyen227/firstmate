@@ -2050,6 +2050,57 @@ test_secondmate_teardown_reaps_process_left_in_pooled_home() {
   pass "retiring a pooled secondmate reaps a process left inside its home and frees the slot"
 }
 
+# Builds a PATH with every command of <path> except lsof, mirroring each
+# directory that holds an lsof so nothing else drops out.
+path_without_lsof() {  # <path> <mirror-root>
+  local path=$1 root=$2 dir entry mirror out='' i=0
+  local -a dirs
+  IFS=: read -r -a dirs <<< "$path"
+  for dir in "${dirs[@]}"; do
+    [ -n "$dir" ] || continue
+    if [ -e "$dir/lsof" ]; then
+      i=$((i + 1))
+      mirror="$root/$i"
+      mkdir -p "$mirror"
+      for entry in "$dir"/*; do
+        [ "${entry##*/}" = lsof ] || ln -s "$entry" "$mirror/${entry##*/}" 2>/dev/null || true
+      done
+      dir=$mirror
+    fi
+    out="${out:+$out:}$dir"
+  done
+  printf '%s\n' "$out"
+}
+
+test_secondmate_teardown_without_lsof_signals_no_other_window() {
+  local err sentinel nolsof rc leftover
+  make_pooled_secondmate_fixture pooled-nolsof
+  err="$TMP_ROOT/pooled-nolsof.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" zoe "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seed onto the pooled slot failed: $(cat "$err")"
+  sentinel=$(set -m; sleep 300 >/dev/null 2>&1 & echo $!)
+  nolsof=$(path_without_lsof "$POOL_FAKEBIN:$PATH" "$TMP_ROOT/pooled-nolsof-path")
+  PATH=$nolsof command -v lsof >/dev/null 2>&1 && { kill -KILL "$sentinel" 2>/dev/null || true; fail "lsof is still on the no-lsof PATH"; }
+
+  set +e
+  PATH=$nolsof FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_WINDOW="$(printf 'fm-zoe\nfm-zoe-api')" FM_FAKE_TMUX_PANE_PID="$sentinel" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-nolsof-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" zoe >/dev/null 2>"$err"
+  rc=$?
+  set -e
+  if ! kill -0 "$sentinel" 2>/dev/null; then
+    fail "retirement without lsof signalled the process group of live window fm-zoe-api (rc=$rc): $(cat "$err")"
+  fi
+  kill -KILL "$sentinel" 2>/dev/null || true
+  [ "$rc" -eq 0 ] || fail "retiring a pooled secondmate without lsof failed: $(cat "$err")"
+  grep -F 'lsof is unavailable' "$err" >/dev/null || fail "retirement without lsof did not warn: $(cat "$err")"
+  for leftover in .fm-secondmate-home .fm-secondmate-parent data state config projects; do
+    [ ! -e "$POOL_SLOT/$leftover" ] || fail "retired secondmate left $leftover in the returned slot"
+  done
+  pass "retiring a pooled secondmate without lsof warns and signals no other window's process group"
+}
+
 test_secondmate_teardown_ignores_stray_file_in_pooled_projects() {
   local err
   make_pooled_secondmate_fixture pooled-stray
@@ -3323,6 +3374,7 @@ test_secondmate_teardown_refuses_failed_leased_home_return
 test_secondmate_teardown_frees_pooled_slot_for_next_seed
 test_secondmate_teardown_refuses_pooled_clone_with_unlanded_work
 test_secondmate_teardown_reaps_process_left_in_pooled_home
+test_secondmate_teardown_without_lsof_signals_no_other_window
 test_secondmate_teardown_ignores_stray_file_in_pooled_projects
 test_secondmate_teardown_removes_plain_clone_home_without_treehouse_return
 test_secondmate_force_teardown_discards_child_work

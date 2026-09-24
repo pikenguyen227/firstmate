@@ -96,7 +96,7 @@ What each scenario establishes:
 
 - L1: a retired secondmate's slot is `available` with no `.fm-secondmate-home`, `.fm-secondmate-parent`, `data`, `state`, `config`, or `projects` left, its meta and registry route are gone, and the next seed gets the same slot from the real pool with a marker naming the new secondmate.
 - L2: a detached `sleep` whose working directory is inside the home's project clone is reaped by a retirement without `--force`, and the slot is freed and reused.
-- L3: with `lsof` off `PATH`, retirement warns and completes, and the slot is freed.
+- L3: with `lsof` off `PATH`, retirement warns and completes, and the slot is freed. Home reaping no longer falls back to the backend process group once the endpoint is closed, so the warning in the transcript above, recorded before that change, now names no tmux pane; `tests/fm-secondmate-safety.test.sh` covers that no other live window's process group is signalled.
 - L4: an unpushed commit in a project clone, and then a non-git directory under `projects/`, each refuse retirement naming the path; the marker, the work, the meta, and the real lease stay, and the endpoint is not closed.
 - L5: a stray `.DS_Store` under `projects/` does not block retirement.
 - L6: a forced retirement of a secondmate with a nested secondmate on its own leased slot frees and clears both real slots; a failed return puts the home's files and its real `fm-procevent.sh` source registration back and keeps the lease, meta, and registry route, and a retry then frees the slot.
