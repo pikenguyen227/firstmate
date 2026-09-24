@@ -116,7 +116,7 @@ No fast mode, path skips, reduced checks, or paid runner provisioning is part of
 
 CI sets a per-root memory budget, `FM_LINT_RSS_BUDGET_KIB=14680064` (14 GiB).
 With a budget set, the lint script measures each root's ShellCheck peak RSS with `/usr/bin/time`, replays every diagnostic, and then fails with one `memory budget exceeded` line per root over the budget; it refuses to run without `/usr/bin/time`.
-The heaviest root measured about 12.7 GiB on CI, and a standard hosted Linux runner has 16 GiB, so a root that crosses 14 GiB still completes and fails by name before a single process can exhaust the runner and be killed with exit 143.
+The heaviest canonical root measures about 7.2 GB under ShellCheck 0.11.0 `--norc --external-sources`, and a standard hosted Linux runner has 16 GiB, so a root that crosses 14 GiB still completes and fails by name before a single process can exhaust the runner and be killed with exit 143.
 When the guard fires, the named root's source graph has grown too heavy: reduce the analysis cost of that root or the libraries it sources, for example by splitting the file.
 Adding partitions does not help, and do not raise the budget toward the runner's physical memory.
 

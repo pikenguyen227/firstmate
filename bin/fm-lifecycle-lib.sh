@@ -122,15 +122,19 @@ fm_lifecycle_feed_dir() {  # <state> <outvar>
   printf -v "$2" '%s' "$__dir"
 }
 
+# The lazily loaded wake and classifier libraries are canonical lint roots in
+# their own right. Keep them as analysis boundaries here so every lifecycle
+# consumer does not analyze another copy of each; consumers that also source
+# them directly, such as fm-teardown.sh, still analyze the combined graph.
 _fm_lifecycle_require_locks() {
   command -v fm_lock_try_acquire >/dev/null 2>&1 && return 0
-  # shellcheck source=bin/fm-wake-lib.sh
+  # shellcheck source=/dev/null
   . "$_FM_LIFECYCLE_LIB_DIR/fm-wake-lib.sh"
 }
 
 _fm_lifecycle_require_classify() {
   command -v _fm_decision_fold_line >/dev/null 2>&1 && return 0
-  # shellcheck source=bin/fm-classify-lib.sh
+  # shellcheck source=/dev/null
   . "$_FM_LIFECYCLE_LIB_DIR/fm-classify-lib.sh"
 }
 

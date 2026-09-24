@@ -3168,7 +3168,9 @@ teardown_herdr_require_prerequisites() {  # <task-id>
     fi
   done
   if ! declare -F fm_lock_try_acquire >/dev/null 2>&1; then
-    # shellcheck source=bin/fm-wake-lib.sh
+    # ShellCheck already follows fm-wake-lib.sh at top level; this repeat is
+    # an analysis boundary so it does not analyze a second copy of the library.
+    # shellcheck source=/dev/null
     . "$SCRIPT_DIR/fm-wake-lib.sh"
   fi
   if ! declare -F fm_lock_try_acquire >/dev/null 2>&1 \
