@@ -1259,27 +1259,154 @@ fm_treehouse_project_lock_path() {  # <project-dir>
 # slots are linked worktrees of whichever clone created them. A secondmate home
 # holds its own clone of a project the primary may also hold, so on the shared
 # default root it is handed the primary's slots - worktrees of a clone that is
-# not its own. Each secondmate home therefore gets a root inside its own
-# gitignored state directory, while a primary home keeps the configured default
-# so its existing pool and in-use slots stay exactly where they are.
+# not its own. Each secondmate home therefore gets a root of its own, while a
+# primary home keeps the configured default so its existing pool and in-use
+# slots stay exactly where they are.
+#
+# That root must sit OUTSIDE every firstmate home. Claude loads CLAUDE.md from
+# every ancestor of its working directory, so a worker worktree nested inside a
+# home reaches that home's CLAUDE.md, which imports the supervisor AGENTS.md;
+# the worker is then asked to allow that external import, declining is the only
+# correct answer, and bin/fm-claude-trust.sh deliberately refuses trust over a
+# standing decline, so every later Claude spawn from that home is refused. The
+# root is therefore <user state dir>/firstmate/treehouse-pools/<id>-<hash of the
+# physical home path>, beside the procevent claim root, so two homes never share
+# a root, and it is refused when any ancestor holds a firstmate supervisor
+# contract (fm_supervisor_contract_ancestor). The pre-fix root inside the home
+# is fm_treehouse_home_legacy_pool_root.
 # `--root` is the lever because it outranks both TREEHOUSE_ROOT and Treehouse
 # config, and a wrapper that injects its own leading `--root` is still
 # overridden by the later one. A secondmate marker that exists but cannot be
 # read as one fails, so an unclassifiable home never falls back to the shared
 # pool. The worktree actually entered is still checked against the spawning
 # clone (bin/fm-spawn.sh), because no root choice can prove that on its own.
-fm_treehouse_home_pool_root() {  # <home> <state-dir>
-  local home=$1 state=$2 marker id
+# Sets FM_TREEHOUSE_POOL_ROOT (empty for a primary home); on failure
+# FM_TREEHOUSE_POOL_ROOT_ERROR says why.
+# shellcheck disable=SC2034 # Result variables read by callers after it returns.
+fm_treehouse_home_pool_root() {  # <home>
+  local contract
+  fm_treehouse_home_pool_path "$1" || return 1
+  [ -n "$FM_TREEHOUSE_POOL_ROOT" ] || return 0
+  if contract=$(fm_supervisor_contract_ancestor "$FM_TREEHOUSE_POOL_ROOT"); then
+    FM_TREEHOUSE_POOL_ROOT_ERROR="pool root '$FM_TREEHOUSE_POOL_ROOT' sits under firstmate home '$contract', whose supervisor instructions its workers would load"
+    FM_TREEHOUSE_POOL_ROOT=
+    return 1
+  fi
+}
+
+# The path fm_treehouse_home_pool_root places a home's pool at, without its
+# ancestry check; teardown uses it to find a retiring home's pool wherever the
+# check would now place it. Sets the same result variables.
+# shellcheck disable=SC2034 # Result variables read by callers after it returns.
+fm_treehouse_home_pool_path() {  # <home>
+  local home=$1 marker id key hash root
+  FM_TREEHOUSE_POOL_ROOT=
+  FM_TREEHOUSE_POOL_ROOT_ERROR=
   marker="$home/.fm-secondmate-home"
   if [ ! -e "$marker" ] && [ ! -L "$marker" ]; then
     return 0
   fi
+  FM_TREEHOUSE_POOL_ROOT_ERROR="'$marker' is not a readable secondmate marker"
   [ -f "$marker" ] && [ ! -L "$marker" ] || return 1
   IFS= read -r id < "$marker" 2>/dev/null || return 1
   [ -n "$id" ] || return 1
-  [ -n "$state" ] && [ -d "$state" ] || return 1
-  state=$(CDPATH='' cd -- "$state" 2>/dev/null && pwd -P) || return 1
-  printf '%s/treehouse-pool\n' "$state"
+  home=$(CDPATH='' cd -- "$home" 2>/dev/null && pwd -P) || return 1
+  hash=$(printf '%s' "$home" | git hash-object --stdin 2>/dev/null) || return 1
+  key=$(printf '%s' "$id" | LC_ALL=C tr -c 'A-Za-z0-9._-' '_')
+  key="$key-$(printf '%s' "$hash" | cut -c1-12)"
+  root="${XDG_STATE_HOME:-${HOME:?}/.local/state}/firstmate/treehouse-pools/$key"
+  case "$root" in
+    /*) ;;
+    *) FM_TREEHOUSE_POOL_ROOT_ERROR="pool root '$root' is not absolute"; return 1 ;;
+  esac
+  FM_TREEHOUSE_POOL_ROOT_ERROR=
+  FM_TREEHOUSE_POOL_ROOT=$root
+}
+
+# Where a secondmate home's pool lived before it moved outside the home. Spawn
+# drains it (fm_treehouse_pool_root_drain) and teardown drains it on retirement,
+# so its disposable slots go and anything else stays put and is reported.
+fm_treehouse_home_legacy_pool_root() {  # <state-dir>
+  printf '%s/treehouse-pool\n' "$1"
+}
+
+# Print the nearest directory at or above <path> holding a firstmate supervisor
+# contract - a CLAUDE.md or AGENTS.md beside a secondmate marker or firstmate's
+# own bin/fm-session-start.sh - and succeed; fail when there is none. Missing
+# components of <path> are skipped, so a root not yet created can be checked.
+fm_supervisor_contract_ancestor() {  # <path>
+  local dir=$1
+  case "$dir" in /*) ;; *) dir="$PWD/$dir" ;; esac
+  while :; do
+    if [ -d "$dir" ] && { [ -e "$dir/CLAUDE.md" ] || [ -e "$dir/AGENTS.md" ]; } &&
+      { [ -e "$dir/.fm-secondmate-home" ] || [ -f "$dir/bin/fm-session-start.sh" ]; }; then
+      (CDPATH='' cd -- "$dir" 2>/dev/null && pwd -P) || printf '%s\n' "$dir"
+      return 0
+    fi
+    [ "$dir" != / ] && [ -n "$dir" ] || return 1
+    dir=$(dirname "$dir")
+  done
+}
+
+# Remove every disposable slot (merged, clean, idle, unleased) from each pool
+# under a Treehouse root with Treehouse's own safe-by-default destroy, then
+# remove the root once no slot is left. Treehouse knows nothing of firstmate's
+# slot-owner claim, and a claimed slot whose worker has exited reads as
+# disposable to it, so a slot claimed by a task still recorded in <state-dir> is
+# never offered to it: a pool with no such slot gets the bulk destroy, and in a
+# pool with one each other slot is destroyed on its own. Each slot left is
+# printed on stdout with why it was kept, and the drain returns 1. Returns 2
+# when Treehouse's bulk destroy itself fails. Treehouse's own report goes to
+# stderr.
+fm_treehouse_pool_root_drain() {  # <root> <state-dir>
+  local root=$1 state=$2 pool slot wt owner claimed kept=0
+  [ -d "$root" ] || return 0
+  for pool in "$root"/.treehouse/*/; do
+    [ -d "$pool" ] || continue
+    pool=${pool%/}
+    claimed=0
+    for slot in "$pool"/*/; do
+      [ -z "$(fm_treehouse_slot_live_claim "${slot%/}" "$state")" ] || claimed=1
+    done
+    if [ "$claimed" -eq 0 ]; then
+      if [ -f "$pool/treehouse-state.json" ]; then
+        (CDPATH='' cd -- "$root" && treehouse --root "$root" destroy "$pool" --all --yes) >&2 || return 2
+      fi
+    else
+      for slot in "$pool"/*/; do
+        slot=${slot%/}
+        [ -z "$(fm_treehouse_slot_live_claim "$slot" "$state")" ] || continue
+        for wt in "$slot"/*/; do
+          [ -d "$wt" ] || continue
+          (CDPATH='' cd -- "$root" && treehouse --root "$root" destroy "${wt%/}" --yes) >&2 || true
+          break
+        done
+      done
+    fi
+    for slot in "$pool"/*/; do
+      [ -d "$slot" ] || continue
+      slot=${slot%/}
+      owner=$(fm_treehouse_slot_live_claim "$slot" "$state")
+      if [ -n "$owner" ]; then
+        printf '%s (claimed by task %s)\n' "$slot" "$owner"
+      else
+        printf '%s (kept by Treehouse: leased, in use, or holding dirty or unlanded work)\n' "$slot"
+      fi
+      kept=1
+    done
+  done
+  [ "$kept" -eq 0 ] || return 1
+  rm -rf -- "$root"
+}
+
+# Print the task a pool slot's firstmate claim names when that task is still
+# recorded in <state-dir>; print nothing otherwise.
+fm_treehouse_slot_live_claim() {  # <slot> <state-dir>
+  local owner
+  [ -f "$1/.fm-slot-owner" ] || return 0
+  owner=$(sed -n 's/^task=//p' "$1/.fm-slot-owner" 2>/dev/null | head -1)
+  [ -n "$owner" ] && [ -f "$2/$owner.meta" ] || return 0
+  printf '%s\n' "$owner"
 }
 
 # A Treehouse slot has the managed pool's fixed <pool>/<slot>/<repo> layout.
