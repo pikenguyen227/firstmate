@@ -1,0 +1,21 @@
+bin/fm-wake-lib.sh
+  s_1299c640037535::t_ca4ea59d5788b3 1285,1300
+tests/fm-trace-context-spawn.test.sh
+  s_1299c640037535::t_d07bd3f1f02d85 251-253,255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fb44da0ec60aa4aa85daa63fe4cf46df6ca8df44",
+  "prompts": {},
+  "sessions": {
+    "s_1299c640037535": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a234bace-b12a-4bae-aa40-c7b745b8eda5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
