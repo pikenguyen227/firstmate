@@ -407,6 +407,28 @@ test_legacy_in_home_pool_is_drained_without_losing_work() {
   pass "a legacy in-home pool loses only disposable slots and reports the ones it keeps"
 }
 
+# A legacy slot whose lease lapsed (say the tmux server restarted) but whose
+# firstmate claim names a task still recorded in the home is kept, not handed to
+# Treehouse's bulk destroy, until that task's record is gone.
+test_legacy_drain_keeps_a_slot_claimed_by_a_live_task() {
+  local out status legacy="$MATE/state/treehouse-pool" claimed
+  claimed=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
+  rm -f "$(dirname "$claimed")/.in-use"
+  printf 'task=legacy-live-z1\nhome=%s\n' "$MATE" > "$(dirname "$claimed")/.fm-slot-owner"
+  printf 'worktree=%s\n' "$claimed" > "$MATE/state/legacy-live-z1.meta"
+  out=$(run_pool_spawn "$MATE" pool-mate-z9)
+  status=$?
+  expect_code 0 "$status" "secondmate spawn should succeed beside a claimed legacy slot"$'\n'"$out"
+  [ -d "$claimed" ] || fail "the drain destroyed a legacy slot claimed by a live task"
+  assert_contains "$out" "$(dirname "$claimed")" "the claimed legacy slot was not reported as kept"
+  rm -f "$MATE/state/legacy-live-z1.meta"
+  out=$(run_pool_spawn "$MATE" pool-mate-z10)
+  status=$?
+  expect_code 0 "$status" "secondmate spawn should succeed once the claiming task is gone"$'\n'"$out"
+  [ ! -e "$legacy" ] || fail "a legacy slot whose claiming task is gone was not drained"
+  pass "a legacy in-home pool keeps a slot claimed by a task the home still records"
+}
+
 retire_home() {  # <secondmate-id>
   FM_ROOT_OVERRIDE='' FM_HOME="$PRIMARY" HOME="$PRIMARY/user-home" CLAUDE_CONFIG_DIR='' \
     FM_STATE_OVERRIDE="$PRIMARY/state" FM_DATA_OVERRIDE="$PRIMARY/data" \
@@ -465,6 +487,7 @@ test_secondmate_worker_cannot_reach_its_home_contract
 test_two_secondmate_homes_keep_separate_pools
 test_pool_root_under_a_home_is_refused
 test_legacy_in_home_pool_is_drained_without_losing_work
+test_legacy_drain_keeps_a_slot_claimed_by_a_live_task
 test_retirement_cleans_the_home_pool
 test_primary_skips_a_leftover_foreign_slot
 test_only_foreign_slots_fail_naming_them

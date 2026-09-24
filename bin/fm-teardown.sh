@@ -2565,18 +2565,18 @@ EOF
 # everything else stays intact.
 retire_firstmate_home_pools() {
   local home=$1 label=$2 root kept all_kept='' rc
-  if ! root=$(fm_treehouse_home_pool_path "$home"); then
-    echo "REFUSED: cannot resolve the Treehouse pool root of $label $home" >&2
+  if ! fm_treehouse_home_pool_path "$home"; then
+    echo "REFUSED: cannot resolve the Treehouse pool root of $label $home: $FM_TREEHOUSE_POOL_ROOT_ERROR" >&2
     return 1
   fi
-  for root in "$root" "$(fm_treehouse_home_legacy_pool_root "$home/state")"; do
+  for root in "$FM_TREEHOUSE_POOL_ROOT" "$(fm_treehouse_home_legacy_pool_root "$home/state")"; do
     [ -n "$root" ] && [ -d "$root" ] || continue
     command -v treehouse >/dev/null 2>&1 || {
       echo "error: treehouse command not found; cannot clean $label pool $root" >&2
       return 1
     }
     rc=0
-    kept=$(fm_treehouse_pool_root_drain "$root") || rc=$?
+    kept=$(fm_treehouse_pool_root_drain "$root" "$home/state") || rc=$?
     case $rc in
       0) ;;
       1) all_kept="$all_kept
