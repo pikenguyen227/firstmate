@@ -1,0 +1,26 @@
+bin/fm-teardown.sh
+  s_2473c08418b21c::t_7da5b1aaa50d5f 2696
+  s_2473c08418b21c::t_f045cd6b0c87af 168,2196,2635,2655,2657,2690-2695,2697-2702,2723
+  s_2473c08418b21c::t_2024fc45075980 2724-2726
+.agents/skills/secondmate-provisioning/SKILL.md
+  s_2473c08418b21c::t_f045cd6b0c87af 255
+tests/fm-secondmate-safety.test.sh
+  s_2473c08418b21c::t_cd8f5435885444 2022
+  s_2473c08418b21c::t_7da5b1aaa50d5f 2021,2023-2067,3325-3326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b866479735c9ee3033ac2b352123a1578a8b8721",
+  "prompts": {},
+  "sessions": {
+    "s_2473c08418b21c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2080696-1d9d-45d7-ac25-93dc4b33a883",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
