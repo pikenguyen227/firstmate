@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        partition: [1, 2]
+        partition: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6
       - name: Install pinned ShellCheck
@@ -52,14 +52,18 @@ jobs:
       # and GitHub workflow lint). Do not re-spell the checks here; keep CI
       # and the pre-push gate on this script so a self-broken ci.yml still
       # fails locally before merge.
-      # One bounded worker per runner: full source-aware analysis of the
-      # heaviest roots needs over half of a hosted runner's memory each, so two
-      # workers side by side get the job killed. FM_LINT_JOBS changes only
-      # concurrency, never diagnostics or exit selection; the local default
-      # stays at two workers.
+      # One worker per runner: each ShellCheck process analyzes one root, so a
+      # runner's peak memory is its heaviest single root, and the heaviest
+      # roots need over half of a hosted runner's memory each. Four partitions
+      # recover the wall time one worker costs; they cannot lower a single
+      # root's peak. The 14 GiB budget fails the job naming any root that
+      # outgrows it, before one process can exhaust the 16 GiB runner.
+      # FM_LINT_JOBS changes only concurrency, never diagnostics or exit
+      # selection; the local default stays at two workers.
       - name: Lint canonical partition
         env:
           FM_LINT_JOBS: "1"
+          FM_LINT_RSS_BUDGET_KIB: "14680064"
         run: |
           set -eu
           mkdir -p "$RUNNER_TEMP/fm-lint"

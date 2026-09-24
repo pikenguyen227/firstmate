@@ -41,15 +41,24 @@
 # invocations in the core bin/ and bin/backends/ scripts so every configured
 # backlog backend follows the same tasks-axi lifecycle path.
 #
-# Lint defaults to two bounded workers over two stable logical shards.
-# Diagnostics replay in stable shard/root order. FM_LINT_JOBS=1 changes
-# concurrency, not diagnostics or exit selection.
-# --partition 1of2/2of2 splits the entire canonical inventory across
-# two CI runners, each with those same bounded workers. Partitions are complete,
-# disjoint, and byte-weight balanced; --list-files exposes their actual roots.
+# Lint defaults to two bounded workers over two stable logical shards. Each
+# worker runs one ShellCheck process per root, so a process's peak memory is its
+# own root's source graph. Diagnostics replay in stable shard/root order, and
+# each shard's status is the most severe ShellCheck status among its roots.
+# FM_LINT_JOBS=1 changes concurrency, not diagnostics or exit selection.
+# --partition <i>of<n> splits the entire canonical inventory into n parts and
+# lints part i. Partitions are complete, disjoint, and byte-weight balanced;
+# --list-files exposes their actual roots. CI chooses the partition count and
+# the worker count per runner; local runs keep the two-worker default.
 # Partition mode is always full source-aware analysis, never changed-only or
 # --fast, and does not accept explicit paths. Each partition also runs workflow
 # lint and backend-purity checks, keeping either invocation independently useful.
+#
+# FM_LINT_RSS_BUDGET_KIB=<KiB> measures each root's ShellCheck peak RSS with
+# /usr/bin/time and, after replaying every diagnostic, fails naming each root
+# whose peak exceeded the budget. It refuses to run when /usr/bin/time is
+# missing. See docs/fm-test-portable-shards.md "Lint partitions and end-to-end
+# latency" for the CI budget and what to do when it fires.
 #
 # Optional quiet telemetry writes one bounded TSV snapshot of content and source
 # graph identity, wall/CPU/RSS, shard load, and competing ShellCheck processes.
@@ -59,7 +68,7 @@
 #   fm-lint.sh --fast [path]...       local lint with extended analysis disabled
 #   fm-lint.sh <path>...               lint explicit roots with the same config
 #   fm-lint.sh --jobs <1|2> [path]...  override bounded worker count
-#   fm-lint.sh --partition <1of2|2of2> lint one full-rigor canonical CI partition
+#   fm-lint.sh --partition <i>of<n>   lint one full-rigor canonical CI partition
 #   fm-lint.sh --telemetry <path> ...  write a quiet metrics snapshot
 #   fm-lint.sh --required-version      print the ShellCheck pin
 #   fm-lint.sh --list-files            print the file set that would be linted
@@ -84,8 +93,19 @@ fm_lint_worker_stop() {
   FM_LINT_WORKER_SHELLCHECK_PID=
 }
 
+fm_lint_status_rank() {  # <exit-status>
+  case "$1" in
+    0) printf '0' ;;
+    1) printf '1' ;;
+    4) printf '2' ;;
+    3) printf '3' ;;
+    2) printf '4' ;;
+    *) printf '5' ;;
+  esac
+}
+
 fm_lint_worker() {  # <manifest> <output-dir> <shard-index>
-  local manifest=$1 output_dir=$2 shard_index=$3 tab index path output invocation_rc rc=0
+  local manifest=$1 output_dir=$2 shard_index=$3 tab index path output invocation_rc root_rss rc=0
   local -a roots shellcheck_args
   roots=()
   tab=$(printf '\t')
@@ -109,23 +129,39 @@ fm_lint_worker() {  # <manifest> <output-dir> <shard-index>
       shellcheck_args+=(--extended-analysis=false)
     fi
     : > "$output.out"
-    if [ "${FM_LINT_INTERNAL_FOLLOW_SOURCES:-1}" -eq 1 ]; then
-      "$FM_LINT_SHELLCHECK" "${shellcheck_args[@]}" -- "${roots[@]}" >> "$output.out" 2>&1 &
+    [ -z "${FM_LINT_INTERNAL_RSS:-}" ] || : > "$output.rss"
+    for path in "${roots[@]}"; do
+      invocation_rc=0
+      rm -f "$output.time"
+      case "${FM_LINT_INTERNAL_RSS:-}" in
+        gnu)
+          /usr/bin/time -f 'max_rss_kib=%M' -o "$output.time" \
+            "$FM_LINT_SHELLCHECK" "${shellcheck_args[@]}" -- "$path" >> "$output.out" 2>&1 &
+          ;;
+        bsd)
+          /usr/bin/time -l -o "$output.time" \
+            "$FM_LINT_SHELLCHECK" "${shellcheck_args[@]}" -- "$path" >> "$output.out" 2>&1 &
+          ;;
+        *)
+          "$FM_LINT_SHELLCHECK" "${shellcheck_args[@]}" -- "$path" >> "$output.out" 2>&1 &
+          ;;
+      esac
       FM_LINT_WORKER_SHELLCHECK_PID=$!
-      wait "$FM_LINT_WORKER_SHELLCHECK_PID" || rc=$?
+      wait "$FM_LINT_WORKER_SHELLCHECK_PID" || invocation_rc=$?
       FM_LINT_WORKER_SHELLCHECK_PID=
-    else
-      for path in "${roots[@]}"; do
-        invocation_rc=0
-        "$FM_LINT_SHELLCHECK" "${shellcheck_args[@]}" -- "$path" >> "$output.out" 2>&1 &
-        FM_LINT_WORKER_SHELLCHECK_PID=$!
-        wait "$FM_LINT_WORKER_SHELLCHECK_PID" || invocation_rc=$?
-        FM_LINT_WORKER_SHELLCHECK_PID=
-        if [ "$rc" -eq 0 ] && [ "$invocation_rc" -ne 0 ]; then
-          rc=$invocation_rc
-        fi
-      done
-    fi
+      if [ -n "${FM_LINT_INTERNAL_RSS:-}" ]; then
+        root_rss=$(awk '
+          sub(/^max_rss_kib=/, "") { value=$0 }
+          /maximum resident set size/ { value=int($1 / 1024) }
+          END { print value }
+        ' "$output.time" 2>/dev/null)
+        printf '%s\t%s\n' "$root_rss" "$path" >> "$output.rss"
+      fi
+      # ShellCheck combines file statuses by severity: 2 > 3 > 4 > 1 > 0.
+      if [ "$(fm_lint_status_rank "$invocation_rc")" -gt "$(fm_lint_status_rank "$rc")" ]; then
+        rc=$invocation_rc
+      fi
+    done
     trap - HUP INT TERM
   else
     : > "$output.out"
@@ -426,7 +462,7 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --partition)
-      [ "$#" -ge 2 ] || { printf 'fm-lint.sh: --partition requires 1of2 or 2of2.\n' >&2; exit 2; }
+      [ "$#" -ge 2 ] || { printf 'fm-lint.sh: --partition requires <i>of<n>.\n' >&2; exit 2; }
       PARTITION=$2
       PARTITION_REQUESTED=1
       shift 2
@@ -462,20 +498,32 @@ case "$JOBS" in
   *) printf 'fm-lint.sh: jobs must be 1 or 2, got %s.\n' "$JOBS" >&2; exit 2 ;;
 esac
 
-case "$PARTITION" in
-  '')
-    if [ "$PARTITION_REQUESTED" -eq 1 ]; then
-      printf 'fm-lint.sh: --partition requires 1of2 or 2of2.\n' >&2
-      exit 2
-    fi
+if [ "$PARTITION_REQUESTED" -eq 1 ]; then
+  PARTITION_INDEX=0
+  PARTITION_TOTAL=0
+  case "$PARTITION" in
+    [1-9]of[1-9]|[1-9]of[1-9][0-9]|[1-9][0-9]of[1-9][0-9])
+      PARTITION_INDEX=${PARTITION%%of*}
+      PARTITION_TOTAL=${PARTITION#*of}
+      ;;
+  esac
+  if [ "$PARTITION_INDEX" -lt 1 ] || [ "$PARTITION_INDEX" -gt "$PARTITION_TOTAL" ]; then
+    printf 'fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got %s.\n' "$PARTITION" >&2
+    exit 2
+  fi
+  if [ "$FAST" -eq 1 ] || [ "$#" -gt 0 ]; then
+    printf 'fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.\n' >&2
+    exit 2
+  fi
+fi
+
+RSS_BUDGET=${FM_LINT_RSS_BUDGET_KIB:-}
+case "$RSS_BUDGET" in
+  '') ;;
+  *[!0-9]*|0*)
+    printf 'fm-lint.sh: FM_LINT_RSS_BUDGET_KIB must be a positive whole number of KiB, got %s.\n' "$RSS_BUDGET" >&2
+    exit 2
     ;;
-  1of2|2of2)
-    if [ "$FAST" -eq 1 ] || [ "$#" -gt 0 ]; then
-      printf 'fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.\n' >&2
-      exit 2
-    fi
-    ;;
-  *) printf 'fm-lint.sh: --partition must be 1of2 or 2of2, got %s.\n' "$PARTITION" >&2; exit 2 ;;
 esac
 
 if [ "$FAST" -eq 1 ] && { [ "${GITHUB_ACTIONS:-}" = true ] || [ "${CI:-}" = true ]; }; then
@@ -581,8 +629,14 @@ if [ -n "$PARTITION" ]; then
   partition_weights=$(fm_lint_root_weights) || exit $?
   while IFS="$TAB" read -r index path; do
     PARTITION_ROOTS+=("$path")
-  done < <(printf '%s\n' "$partition_weights" | LC_ALL=C sort -t "$TAB" -k1,1nr -k2,2n | awk -F '\t' -v want="${PARTITION%%of*}" '
-    { shard=(load[2] < load[1]) ? 2 : 1; load[shard]+=$1; if (shard == want) print $2 "\t" $3 }
+  done < <(printf '%s\n' "$partition_weights" | LC_ALL=C sort -t "$TAB" -k1,1nr -k2,2n \
+    | awk -F '\t' -v want="$PARTITION_INDEX" -v total="$PARTITION_TOTAL" '
+    {
+      shard=1
+      for (i=2; i <= total; i++) if (load[i] + 0 < load[shard] + 0) shard=i
+      load[shard]+=$1
+      if (shard == want) print $2 "\t" $3
+    }
   ' | LC_ALL=C sort -t "$TAB" -k1,1n)
   ROOTS=("${PARTITION_ROOTS[@]}")
 fi
@@ -637,6 +691,20 @@ if [ -n "$TELEMETRY" ]; then
     printf 'fm-lint.sh: telemetry directory does not exist: %s\n' "$telemetry_parent" >&2
     exit 2
   }
+fi
+
+ROOT_RSS=
+if [ -n "$RSS_BUDGET" ] || [ -n "$TELEMETRY" ]; then
+  if [ -x /usr/bin/time ]; then
+    if [ "$(uname)" = Darwin ]; then
+      ROOT_RSS=bsd
+    else
+      ROOT_RSS=gnu
+    fi
+  elif [ -n "$RSS_BUDGET" ]; then
+    printf 'fm-lint.sh: FM_LINT_RSS_BUDGET_KIB needs /usr/bin/time to measure each root; install GNU time or unset the budget.\n' >&2
+    exit 2
+  fi
 fi
 
 TMP_ROOT=$(mktemp -d "${TMPDIR:-/tmp}/fm-lint.XXXXXX") || exit 1
@@ -739,14 +807,14 @@ fm_lint_run_worker() {  # <worker-index>
         /usr/bin/time -lp -o "$timing" \
         env FM_LINT_INTERNAL=1 FM_LINT_INTERNAL_FAST="$FAST" \
         FM_LINT_INTERNAL_FOLLOW_SOURCES="$FOLLOW_SOURCES" FM_LINT_INTERNAL_EXCLUDE="$EXCLUDE_CODES" \
-        FM_LINT_SHELLCHECK="$SHELLCHECK_BIN" \
+        FM_LINT_SHELLCHECK="$SHELLCHECK_BIN" FM_LINT_INTERNAL_RSS="$ROOT_RSS" \
         "${BASH:-bash}" "$SELF" --internal-worker "$manifest" "$OUTPUT_DIR" "$worker_index"
     else
       exec "$PERL_BIN" -e 'setpgrp(0, 0) or die "setpgrp: $!"; exec @ARGV or die "exec: $!"' \
         /usr/bin/time -f 'wall_seconds=%e\nuser_seconds=%U\nsystem_seconds=%S\nmax_rss_kib=%M' -o "$timing" \
         env FM_LINT_INTERNAL=1 FM_LINT_INTERNAL_FAST="$FAST" \
         FM_LINT_INTERNAL_FOLLOW_SOURCES="$FOLLOW_SOURCES" FM_LINT_INTERNAL_EXCLUDE="$EXCLUDE_CODES" \
-        FM_LINT_SHELLCHECK="$SHELLCHECK_BIN" \
+        FM_LINT_SHELLCHECK="$SHELLCHECK_BIN" FM_LINT_INTERNAL_RSS="$ROOT_RSS" \
         "${BASH:-bash}" "$SELF" --internal-worker "$manifest" "$OUTPUT_DIR" "$worker_index"
     fi
   else
@@ -754,7 +822,7 @@ fm_lint_run_worker() {  # <worker-index>
     exec "$PERL_BIN" -e 'setpgrp(0, 0) or die "setpgrp: $!"; exec @ARGV or die "exec: $!"' \
       env FM_LINT_INTERNAL=1 FM_LINT_INTERNAL_FAST="$FAST" \
       FM_LINT_INTERNAL_FOLLOW_SOURCES="$FOLLOW_SOURCES" FM_LINT_INTERNAL_EXCLUDE="$EXCLUDE_CODES" \
-      FM_LINT_SHELLCHECK="$SHELLCHECK_BIN" \
+      FM_LINT_SHELLCHECK="$SHELLCHECK_BIN" FM_LINT_INTERNAL_RSS="$ROOT_RSS" \
       "${BASH:-bash}" "$SELF" --internal-worker "$manifest" "$OUTPUT_DIR" "$worker_index"
   fi
 }
@@ -808,6 +876,37 @@ while [ "$worker" -lt "$SHARD_COUNT" ]; do
   fi
   worker=$((worker + 1))
 done
+
+MAX_ROOT_RSS=unavailable
+MAX_ROOT=unavailable
+if [ -n "$ROOT_RSS" ]; then
+  cat "$OUTPUT_DIR"/shard.*.rss > "$TMP_ROOT/root-rss" 2>/dev/null || true
+  read -r MAX_ROOT_RSS MAX_ROOT < <(awk -F '\t' '
+    $1 ~ /^[0-9]+$/ && (max == "" || $1 + 0 > max + 0) { max=$1; root=$2 }
+    END { if (max == "") print "unavailable unavailable"; else print max, root }
+  ' "$TMP_ROOT/root-rss")
+fi
+if [ -n "$RSS_BUDGET" ]; then
+  budget_rc=0
+  while IFS="$TAB" read -r root_rss path; do
+    case "$root_rss" in
+      ''|*[!0-9]*)
+        printf 'fm-lint.sh: could not measure memory for %s; the memory budget needs GNU time.\n' "$path" >&2
+        budget_rc=2
+        ;;
+      *)
+        if [ "$root_rss" -gt "$RSS_BUDGET" ]; then
+          printf 'fm-lint.sh: memory budget exceeded: %s used %s KiB (budget %s KiB); see docs/fm-test-portable-shards.md "Lint partitions and end-to-end latency"\n' \
+            "$path" "$root_rss" "$RSS_BUDGET" >&2
+          [ "$budget_rc" -ne 0 ] || budget_rc=1
+        fi
+        ;;
+    esac
+  done < "$TMP_ROOT/root-rss"
+  if [ "$overall_rc" -eq 0 ] && [ "$budget_rc" -ne 0 ]; then
+    overall_rc=$budget_rc
+  fi
+fi
 
 if [ -n "$TELEMETRY" ]; then
   TELEMETRY_END_EPOCH=$(date +%s)
@@ -908,6 +1007,9 @@ EOF
     printf 'system_seconds\t%s\n' "$timing_system"
     printf 'max_worker_rss_kib\t%s\n' "$max_worker_rss"
     printf 'worker_rss_sum_kib\t%s\n' "$worker_rss_sum"
+    printf 'max_root_rss_kib\t%s\n' "$MAX_ROOT_RSS"
+    printf 'max_root\t%s\n' "$MAX_ROOT"
+    printf 'rss_budget_kib\t%s\n' "${RSS_BUDGET:-none}"
     printf 'shellcheck_processes_start\t%s\n' "$TELEMETRY_SHELLCHECK_START"
     printf 'shellcheck_processes_end\t%s\n' "$TELEMETRY_SHELLCHECK_END"
     printf 'load_average_start\t%s\n' "$TELEMETRY_LOAD_START"

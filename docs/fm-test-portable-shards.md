@@ -106,15 +106,22 @@ Portable shards, each portable serial shard, and the Herdr lane upload runner-ge
 
 ## Lint partitions and end-to-end latency
 
-`bin/fm-lint.sh` owns two canonical CI partitions, each running the same full source-aware ShellCheck analysis, pinned versions, workflow validation, and backend-purity checks.
+`bin/fm-lint.sh` owns the canonical CI partitions (`--partition <i>of<n>`), each running the same full source-aware ShellCheck analysis, pinned versions, workflow validation, and backend-purity checks.
 The lint script's `--list-files` interface exposes partition membership; `tests/fm-lint.test.sh` verifies complete/disjoint executed roots and unchanged analysis flags.
-`.github/workflows/ci.yml` runs each partition with one bounded worker (`FM_LINT_JOBS=1`) so a runner's peak memory is its heaviest single root rather than two roots summed, which exceeded a hosted runner's memory; the local default stays at two workers, and the worker count never changes diagnostics or exit selection.
-The workflow uploads each partition's quiet telemetry to distinguish analysis cost, memory use, and host contention.
+Each lint worker runs one ShellCheck process per root, so a process's peak memory is that root's own source graph.
+`.github/workflows/ci.yml` runs four partitions with one worker per runner (`FM_LINT_JOBS=1`), so a runner's peak memory is its heaviest single root rather than two roots summed, which exceeded a hosted runner's memory; the local default stays at two workers, and the worker count never changes diagnostics or exit selection.
+Four partitions recover the wall time that one worker per runner costs; adding partitions does not lower a single root's peak.
+The workflow uploads each partition's quiet telemetry, including the heaviest root and its peak RSS, to distinguish analysis cost, memory use, and host contention.
 No fast mode, path skips, reduced checks, or paid runner provisioning is part of this layout.
 
+CI sets a per-root memory budget, `FM_LINT_RSS_BUDGET_KIB=14680064` (14 GiB).
+With a budget set, the lint script measures each root's ShellCheck peak RSS with `/usr/bin/time`, replays every diagnostic, and then fails with one `memory budget exceeded` line per root over the budget; it refuses to run without `/usr/bin/time`.
+The heaviest root measured about 12.7 GiB on CI, and a standard hosted Linux runner has 16 GiB, so a root that crosses 14 GiB still completes and fails by name before a single process can exhaust the runner and be killed with exit 143.
+When the guard fires, the named root's source graph has grown too heavy: reduce the analysis cost of that root or the libraries it sources, for example by splitting the file.
+Adding partitions does not help, and do not raise the budget toward the runner's physical memory.
+
 The performance objective is a complete green run under fifteen minutes including start delay: roughly twelve minutes of longest-path execution, at most two minutes of runner delay, and less than one minute of other overhead.
-One bounded lint worker per partition roughly doubles lint wall time, so the lint partitions currently sit above that twelve-minute path while staying inside the Normal timeout tier; memory safety takes precedence over the latency objective there.
-The candidate uses fourteen long-lived Linux jobs (nine serial, two parallel, Herdr, two lint), plus short checks and macOS; insufficient shared account capacity can erase the packing gain.
+The candidate uses sixteen long-lived Linux jobs (nine serial, two parallel, Herdr, four lint), plus short checks and macOS; insufficient shared account capacity can erase the packing gain.
 Compare complete before/after runs, preserve cancelled and partial-run evidence, and measure a representative normal-run sample before claiming a P95 improvement.
 The workflow retains per-PR supersession without cancelling main pushes or changing the compliance workflow's event semantics.
 
