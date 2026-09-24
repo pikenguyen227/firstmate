@@ -91,7 +91,7 @@ python3 -m venv ~/.fm-voice-venv
 ```
 
 Then tell this home which account and model to use.
-The relay carries no default for any of these, because a region, a model id and an AWS profile name somebody's account and somebody's choices, and inheriting those from whoever wrote the code is not a sensible way to start talking to a paid API.
+The relay carries no default for any of these, because a region, a model id and an AWS profile name are somebody's account and somebody's choices, and inheriting those from whoever wrote the code is not a sensible way to start talking to a paid API.
 Each value is one line in your gitignored `config/` directory, and each has an environment variable that overrides it for a single run.
 
 | File | Environment | Holds |
