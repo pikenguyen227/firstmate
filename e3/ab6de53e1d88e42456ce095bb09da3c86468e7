@@ -1,0 +1,20 @@
+tests/fm-teardown.test.sh
+  s_f08887bc4e15b6::t_6c180c3198479a 4056-4057
+  s_f08887bc4e15b6::t_dd9317c45d849a 966-1009
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e3ab6de53e1d88e42456ce095bb09da3c86468e7",
+  "prompts": {},
+  "sessions": {
+    "s_f08887bc4e15b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "def0e9d2-3e66-45d0-90e9-a4f6c6f1b1a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
