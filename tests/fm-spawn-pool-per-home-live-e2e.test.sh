@@ -26,7 +26,16 @@
 #   S6  a single-slot `treehouse --root <root> destroy <worktree> --yes`, the
 #       call the legacy-pool drain (fm_treehouse_pool_root_drain) makes beside a
 #       claimed slot, removes a disposable slot and refuses, with a non-zero
-#       exit, a dirty one and a leased one, leaving both worktrees in place.
+#       exit, a dirty one and a leased one, leaving both worktrees in place;
+#   S7  a secondmate spawn whose pool root would sit under its home refuses,
+#       naming the home, before any Treehouse call;
+#   S8  the next secondmate spawn drains the pre-move in-home pool: a
+#       disposable slot is removed, while a slot claimed by a task the home
+#       still records, a dirty slot and a leased slot are kept and reported;
+#   S9  relaunching a task whose recorded worktree is an in-home slot refuses,
+#       naming the home, and the same relaunch in the outside pool succeeds;
+#   S10 retiring the secondmate refuses while a slot of either pool holds work,
+#       naming each, then removes both pools and the home once they are clean.
 #
 # It submits no prompt, so the shared live gate runs it wherever herdr, jq, git,
 # and treehouse are installed. FM_TREEHOUSE_LIVE_BIN names the real treehouse
@@ -304,3 +313,140 @@ done <<EOF
 $FOREIGN_ALL
 EOF
 pass "S4 primary fails after the retry bound naming $REJECTED foreign slots and their owning clone; all 5 left intact"
+
+# --- S7: a pool root under a home refuses before any pool is touched --------
+use_default_root "$TMP_ROOT/default-root-s7"
+S7_BEFORE=$(wc -l < "$CALLS")
+XDG_STATE_HOME="$MATE/user-state" spawn "$MATE" livem7
+[ "$RC" != 0 ] || fail "S7: spawn allocated from a pool root under the home"
+grep -qF "sits under firstmate home '$(real "$MATE")'" "$TMP_ROOT/livem7.err" ||
+  fail "S7: the refusal does not name the home"
+[ "$(wc -l < "$CALLS")" = "$S7_BEFORE" ] || fail "S7: treehouse was called despite the refusal"
+[ ! -e "$MATE/state/livem7.meta" ] || fail "S7: the refused spawn left a task record"
+pass "S7 a pool root under a firstmate home refuses the spawn before any treehouse call"
+
+# --- S8: the pre-move in-home pool is drained at the next spawn -------------
+# Slots are made in <home>/state/treehouse-pool the way the earlier spawns made
+# them: a claimed one whose lease lapsed but whose task the home still records,
+# a disposable one, a dirty one, and a leased one.
+LEGACY="$MATE/state/treehouse-pool"
+legacy_get() {
+  (cd "$MATE/projects/app" && treehouse --root "$LEGACY" get --lease --no-fetch 2>/dev/null) ||
+    fail "S8: seeding a legacy slot failed"
+}
+legacy_return() {
+  (cd "$MATE/projects/app" && treehouse --root "$LEGACY" return --force "$1" >/dev/null 2>&1) ||
+    fail "S8: returning legacy slot $1 failed"
+}
+L_CLAIMED=$(real "$(legacy_get)") || exit 1
+L_FREE=$(real "$(legacy_get)") || exit 1
+L_DIRTY=$(real "$(legacy_get)") || exit 1
+L_LEASED=$(real "$(legacy_get)") || exit 1
+legacy_return "$L_CLAIMED"
+legacy_return "$L_FREE"
+legacy_return "$L_DIRTY"
+printf 'untracked\n' > "$L_DIRTY/untracked.txt"
+printf 'task=livelegacy\nhome=%s\n' "$MATE" > "$(dirname "$L_CLAIMED")/.fm-slot-owner"
+printf 'worktree=%s\n' "$L_CLAIMED" > "$MATE/state/livelegacy.meta"
+printf '# S8 seeded legacy slots: claimed=%s free=%s dirty=%s leased=%s\n' \
+  "$(dirname "$L_CLAIMED")" "$(dirname "$L_FREE")" "$(dirname "$L_DIRTY")" "$(dirname "$L_LEASED")"
+use_default_root "$TMP_ROOT/default-root-s8"
+spawn "$MATE" livem8
+[ "$RC" = 0 ] || fail "S8: secondmate spawn failed beside a legacy in-home pool"
+WT8=$(real "$(meta "$MATE/state/livem8.meta" worktree)")
+case "$WT8" in "$MATE_POOLS"/livemate-*) ;; *) fail "S8: the spawn did not land in the home's own outside pool ($WT8)" ;; esac
+[ ! -e "$L_FREE" ] || fail "S8: the disposable legacy slot was left behind"
+[ -d "$L_CLAIMED" ] || fail "S8: the drain destroyed the slot claimed by a recorded task"
+[ -f "$L_DIRTY/untracked.txt" ] || fail "S8: the drain lost the dirty slot's work"
+[ -d "$L_LEASED" ] || fail "S8: the drain destroyed the leased slot"
+grep -qF "$(dirname "$L_CLAIMED") (claimed by task livelegacy)" "$TMP_ROOT/livem8.err" ||
+  fail "S8: the claimed slot was not reported as kept by its claim"
+grep -qF "$(dirname "$L_DIRTY") (kept by Treehouse" "$TMP_ROOT/livem8.err" ||
+  fail "S8: the dirty slot was not reported as kept"
+grep -qF "$(dirname "$L_LEASED") (kept by Treehouse" "$TMP_ROOT/livem8.err" ||
+  fail "S8: the leased slot was not reported as kept"
+! grep -qF "$(dirname "$L_FREE")" "$TMP_ROOT/livem8.err" || fail "S8: the removed disposable slot was reported as kept"
+pass "S8 the next spawn drains the legacy in-home pool: the disposable slot is removed; the claimed, dirty and leased slots are kept and reported"
+
+# --- S9: relaunch refuses a recorded worktree inside the home ---------------
+# The task's pane is closed so the relaunch can prove its agent gone, and its
+# record is pointed at the claimed legacy slot, as a task spawned before the
+# move records.
+relaunch() { # <home> <id>
+  env -u HERDR_ENV -u HERDR_PANE_ID -u HERDR_SOCKET_PATH HERDR_SESSION="$LAB_SESSION" \
+    FM_SPAWN_NO_GUARD=1 FM_HOME="$1" FM_ROOT_OVERRIDE="$ROOT" \
+    "$ROOT/bin/fm-spawn.sh" "$2" --relaunch --harness "sh -c 'echo pool-live-ok; exec sleep 600'" \
+    >"$TMP_ROOT/$2.relaunch.out" 2>"$TMP_ROOT/$2.relaunch.err"
+  RC=$?
+  printf '# relaunch %s home=%s rc=%s\n' "$2" "$(basename "$1")" "$RC"
+  sed 's/^/#   out| /' "$TMP_ROOT/$2.relaunch.out"
+  grep -v 'records no delivery contract line' "$TMP_ROOT/$2.relaunch.err" | sed 's/^/#   err| /'
+}
+set_worktree() { # <meta> <worktree>
+  awk -v wt="$2" '/^worktree=/ { print "worktree=" wt; next } { print }' "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+}
+"$LAB_HELPER" run "$LAB_SESSION" pane close "$(meta "$MATE/state/livem8.meta" herdr_pane_id)" >/dev/null ||
+  fail "S9: could not close livem8's lab pane"
+set_worktree "$MATE/state/livem8.meta" "$L_CLAIMED"
+relaunch "$MATE" livem8
+[ "$RC" != 0 ] || fail "S9: relaunch launched into a worktree inside the home"
+grep -qF "sits under firstmate home '$(real "$MATE")'" "$TMP_ROOT/livem8.relaunch.err" ||
+  fail "S9: the relaunch refusal does not name the home"
+set_worktree "$MATE/state/livem8.meta" "$WT8"
+relaunch "$MATE" livem8
+[ "$RC" = 0 ] || fail "S9: relaunch into the home's outside pool failed"
+[ "$(real "$(meta "$MATE/state/livem8.meta" worktree)")" = "$WT8" ] || fail "S9: relaunch changed the recorded worktree"
+teardown_task "$MATE" livem8
+pass "S9 relaunch refuses a recorded worktree inside the home, naming it, and relaunches one in the outside pool"
+
+# --- S10: retiring the secondmate cleans both of its pools ------------------
+# The home is registered as the primary's secondmate on a lab pane that has
+# already closed. Retirement first refuses while the home records any task, so
+# the claiming task's record goes; the legacy pool still holds S8's dirty and
+# leased slots, and the outside slot S9 returned is given uncommitted work.
+rm -f "$MATE/state/livelegacy.meta"
+printf 'unsaved\n' > "$WT8/work.txt"
+cat > "$PRIMARY/state/livemate.meta" <<META
+window=$LAB_SESSION:w9:p9
+endpoint_task_id=livemate
+spawn_gen=s1.1.1
+worktree=$MATE
+project=$MATE
+harness=sh
+kind=secondmate
+mode=secondmate
+yolo=off
+home=$MATE
+projects=app
+backend=herdr
+herdr_session=$LAB_SESSION
+herdr_workspace_id=w9
+herdr_tab_id=w9:t9
+herdr_pane_id=w9:p9
+META
+printf '%s\n' "- livemate - live pool guard (home: $MATE; scope: live pool guard; projects: app; added 2026-09-24)" \
+  > "$PRIMARY/data/secondmates.md"
+retire() {
+  env -u HERDR_ENV -u HERDR_PANE_ID -u HERDR_SOCKET_PATH HERDR_SESSION="$LAB_SESSION" \
+    FM_HOME="$PRIMARY" FM_ROOT_OVERRIDE="$ROOT" \
+    "$ROOT/bin/fm-teardown.sh" livemate >"$TMP_ROOT/retire.out" 2>&1
+  RC=$?
+  printf '# retire livemate rc=%s\n' "$RC"
+  sed 's/^/#   | /' "$TMP_ROOT/retire.out"
+}
+retire
+[ "$RC" != 0 ] || fail "S10: retirement discarded pool slots holding work"
+for slot in "$(dirname "$L_DIRTY")" "$(dirname "$L_LEASED")" "$(dirname "$WT8")"; do
+  grep -qF "$slot" "$TMP_ROOT/retire.out" || fail "S10: the refusal does not name $slot"
+done
+[ -f "$WT8/work.txt" ] && [ -f "$L_DIRTY/untracked.txt" ] && [ -d "$L_LEASED" ] ||
+  fail "S10: the refused retirement lost a slot's work"
+[ -d "$MATE" ] && [ -e "$PRIMARY/state/livemate.meta" ] || fail "S10: the refused retirement removed the home or its record"
+rm -f "$WT8/work.txt" "$L_DIRTY/untracked.txt"
+(cd "$MATE/projects/app" && treehouse --root "$LEGACY" return --force "$L_LEASED" >/dev/null 2>&1) ||
+  fail "S10: returning the leased legacy slot failed"
+retire
+[ "$RC" = 0 ] || fail "S10: retirement failed once every slot was disposable"
+[ ! -e "$(dirname "$(dirname "$(dirname "$WT8")")")" ] || fail "S10: retirement left the home's outside pool root"
+[ ! -e "$MATE" ] || fail "S10: retirement did not remove the home"
+pass "S10 retiring a secondmate refuses while any slot of either pool holds work, then cleans its outside pool and its legacy pool"
