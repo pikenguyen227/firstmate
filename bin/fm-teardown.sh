@@ -159,8 +159,15 @@
 # while any of those records is still unresolved. Teardown then discards child
 # work, kills child runtime endpoints, and removes the retired home. Removing a
 # leased home releases its durable treehouse lease so the pool slot is freed,
-# never left leased forever. If the treehouse return fails, teardown leaves the
-# leased home and state in place instead of hiding a still-held lease.
+# never left leased forever. Treehouse keeps ignored files across a return, so
+# while the slot is still leased teardown first removes everything the home
+# created there (its markers and its data/, state/, config/, and projects/),
+# or the next mate seeded onto that slot is refused as already marked. Before
+# that removal a non-forced retirement refuses, naming the clone, while any
+# clone under projects/ holds uncommitted, stashed, or unpushed work, and any
+# retirement refuses while a process still runs inside the home. If the
+# treehouse return fails, teardown puts those files back and leaves the leased
+# home and state in place instead of hiding a still-held lease.
 # Usage: fm-teardown.sh <task-id> [--force] [--legacy-record]
 #   --force skips ordinary-task dirty and landed-work checks, skips scout report
 #   checks, and discards secondmate child work for kind=secondmate. Only use it
@@ -2557,12 +2564,161 @@ EOF
   printf '%s\n' "$abs_home_path"
 }
 
+# Everything a seeded secondmate home creates in its slot. All of it is
+# git-ignored, and `treehouse return --force` deliberately keeps ignored files,
+# so a leased home must remove exactly these itself or the next lease of the
+# same slot inherits the retired mate's marker, records, and clones.
+HOME_OWNED_ENTRIES=("$SUB_HOME_MARKER" "$SUB_HOME_PARENT_MARKER" data state config projects)
+
+# Prints one reason per unlanded-work finding in one git clone and returns 1
+# when there is any, or when the clone cannot be inspected at all.
+# Unlanded means an uncommitted change or stash in the clone or any of its
+# linked worktrees, or a local branch or checked-out commit that no
+# remote-tracking ref contains.
+home_project_clone_unlanded_reasons() {  # <clone>
+  local clone=$1 top porcelain wt dirty heads found=0
+  local -a tips=()
+  top=$(git -C "$clone" rev-parse --show-toplevel 2>/dev/null) || {
+    echo "is not an inspectable git clone"
+    return 1
+  }
+  if [ "$(cd "$top" && pwd -P)" != "$(cd "$clone" && pwd -P)" ]; then
+    echo "is not the top of its own git clone"
+    return 1
+  fi
+  porcelain=$(git -C "$clone" worktree list --porcelain 2>/dev/null) || {
+    echo "cannot list its worktrees"
+    return 1
+  }
+  while IFS= read -r wt; do
+    case "$wt" in worktree\ *) wt=${wt#worktree } ;; *) continue ;; esac
+    [ -d "$wt" ] || continue
+    if ! dirty=$(git -C "$wt" status --porcelain --untracked-files=all 2>/dev/null); then
+      echo "cannot inspect worktree $wt for uncommitted changes"
+      found=1
+      continue
+    fi
+    if [ -n "$dirty" ]; then
+      echo "has uncommitted changes in $wt"
+      found=1
+    fi
+    if heads=$(git -C "$wt" rev-parse -q --verify HEAD 2>/dev/null); then
+      tips+=("$heads")
+    fi
+  done <<EOF
+$porcelain
+EOF
+  if [ -n "$(git -C "$clone" stash list 2>/dev/null)" ]; then
+    echo "has stashed changes"
+    found=1
+  fi
+  if ! heads=$(git -C "$clone" rev-list --max-count=1 --branches ${tips[@]+"${tips[@]}"} --not --remotes 2>/dev/null); then
+    echo "cannot compare its local commits with its remotes"
+    return 1
+  fi
+  if [ -n "$heads" ]; then
+    echo "has local commit $heads that no remote contains"
+    found=1
+  fi
+  [ "$found" = 0 ]
+}
+
+# A leased home's clones are deleted with it, so a non-forced retirement
+# refuses while any clone holds unlanded work, naming each clone. --force is
+# the captain's explicit discard authority and skips this check, as it does for
+# every other secondmate child.
+refuse_home_project_clones_unlanded() {  # <home> <label>
+  local home=$1 label=$2 clone reasons line refused=0
+  [ "$FORCE" != "--force" ] || return 0
+  [ -d "$home/projects" ] && [ ! -L "$home/projects" ] || return 0
+  for clone in "$home/projects"/* "$home/projects"/.[!.]* "$home/projects"/..?*; do
+    [ -e "$clone" ] || [ -L "$clone" ] || continue
+    [ ! -L "$clone" ] || continue
+    if reasons=$(home_project_clone_unlanded_reasons "$clone"); then
+      continue
+    fi
+    refused=1
+    while IFS= read -r line; do
+      [ -n "$line" ] && echo "REFUSED: $label project clone $clone $line" >&2
+    done <<EOF
+$reasons
+EOF
+  done
+  if [ "$refused" = 1 ]; then
+    echo "Retiring $label $home would delete that unlanded work, so the home is left intact." >&2
+    echo "Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force." >&2
+    return 1
+  fi
+}
+
+# Moves the home-owned entries of a leased home aside, into one staging
+# directory beside the slot, so a failed Treehouse return can put them back.
+# Refuses while any process still runs inside the home. Prints the staging
+# directory, or an empty line when there was nothing to move.
+stage_leased_home_owned_entries() {  # <home> <label>
+  local home=$1 label=$2 name stage pids waited=0 wait_secs
+  if ! command -v lsof >/dev/null 2>&1; then
+    echo "REFUSED: lsof is unavailable, so no running process inside $label $home can be ruled out; leaving the home intact" >&2
+    return 1
+  fi
+  # The home's endpoint was closed just before this, so give its processes a
+  # short bounded window to exit before treating them as still running.
+  wait_secs=${FM_TEARDOWN_HOME_PROCESS_WAIT_SECS:-5}
+  case "$wait_secs" in ''|*[!0-9]*) wait_secs=5 ;; esac
+  while :; do
+    if ! pids=$(pids_with_cwd_under "$home"); then
+      echo "REFUSED: cannot determine processes running inside $label $home (lsof failed); leaving the home intact" >&2
+      return 1
+    fi
+    [ -n "$pids" ] && [ "$waited" -lt "$wait_secs" ] || break
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if [ -n "$pids" ]; then
+    echo "REFUSED: processes are still running inside $label $home ($(printf '%s' "$pids" | tr '\n' ' ')); leaving the home intact" >&2
+    return 1
+  fi
+  stage=
+  for name in "${HOME_OWNED_ENTRIES[@]}"; do
+    [ -e "$home/$name" ] || [ -L "$home/$name" ] || continue
+    if [ -z "$stage" ]; then
+      stage=$(umask 077; mktemp -d "${home%/*}/.fm-retired-home.XXXXXX") || {
+        echo "REFUSED: cannot stage the home-owned files of $label $home for removal" >&2
+        return 1
+      }
+    fi
+    if ! mv -- "$home/$name" "$stage/$name"; then
+      echo "error: cannot move $home/$name aside for removal" >&2
+      restore_leased_home_owned_entries "$home" "$label" "$stage" || true
+      return 1
+    fi
+  done
+  printf '%s\n' "$stage"
+}
+
+restore_leased_home_owned_entries() {  # <home> <label> <stage>
+  local home=$1 label=$2 stage=$3 name rc=0
+  [ -n "$stage" ] || return 0
+  for name in "${HOME_OWNED_ENTRIES[@]}"; do
+    [ -e "$stage/$name" ] || [ -L "$stage/$name" ] || continue
+    if [ -e "$home/$name" ] || [ -L "$home/$name" ] || ! mv -- "$stage/$name" "$home/$name"; then
+      echo "error: could not restore $home/$name for $label; its content remains at $stage/$name" >&2
+      rc=1
+    fi
+  done
+  [ "$rc" = 0 ] && rmdir -- "$stage" 2>/dev/null
+  return "$rc"
+}
+
 remove_firstmate_home() {
-  local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup
+  local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup owned_stage
   [ -n "$home" ] || return 0
   [ -e "$home" ] || return 0
   abs_home_path=$(validate_firstmate_home_for_removal "$home" "$label" "$expected_id") || return 1
   [ -n "$abs_home_path" ] || return 0
+  if firstmate_home_has_treehouse_slot "$abs_home_path"; then
+    refuse_home_project_clones_unlanded "$abs_home_path" "$label" || return 1
+  fi
   process_event_backup=$(snapshot_firstmate_home_process_events "$abs_home_path" "$label") || return 1
   if ! cleanup_firstmate_home_process_events "$abs_home_path" "$label"; then
     restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
@@ -2574,11 +2730,19 @@ remove_firstmate_home() {
       restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
       return 1
     }
-    teardown_treehouse_return "$abs_home_path" "$FM_ROOT" "$label" || {
-      echo "error: treehouse return failed for $label $abs_home_path; lease may still be held" >&2
+    owned_stage=$(stage_leased_home_owned_entries "$abs_home_path" "$label") || {
       restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
       return 1
     }
+    teardown_treehouse_return "$abs_home_path" "$FM_ROOT" "$label" || {
+      echo "error: treehouse return failed for $label $abs_home_path; lease may still be held" >&2
+      restore_leased_home_owned_entries "$abs_home_path" "$label" "$owned_stage" || return 1
+      restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
+      return 1
+    }
+    if [ -n "$owned_stage" ] && ! rm -rf -- "$owned_stage"; then
+      echo "warning: $label $abs_home_path was returned, but its retired files could not all be deleted from $owned_stage" >&2
+    fi
     [ -z "$process_event_backup" ] || rm -rf -- "$process_event_backup"
     return 0
   fi
@@ -3273,6 +3437,12 @@ if [ "$KIND" = secondmate ] && [ "$FORCE" != "--force" ]; then
     done
   fi
   secondmate_unresolved_pending_replies_refuse || exit 1
+  # Checked here too, before the mate's endpoint is closed, so a refusal leaves
+  # the mate running as well as its home intact; remove_firstmate_home re-checks
+  # right before removal.
+  if [ -d "$HOME_PATH" ] && firstmate_home_has_treehouse_slot "$HOME_PATH"; then
+    refuse_home_project_clones_unlanded "$HOME_PATH" "secondmate home" || exit 1
+  fi
 fi
 
 if [ "$KIND" = secondmate ]; then

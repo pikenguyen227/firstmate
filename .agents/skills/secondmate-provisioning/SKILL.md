@@ -251,6 +251,8 @@ When retirement proceeds, teardown kills the direct endpoint, removes every pare
 An endpoint close that could not be made stops the retirement before any record naming that endpoint is removed, so a cleanup never reports success for an agent that may still be live with nothing left on disk naming it.
 `--force` overrides that stop only for the retiring secondmate's own endpoint, never for a child endpoint inside forced cleanup, and a forced continue still names the endpoint you must then reconcile yourself; [`docs/verification/runtime-backends.md`](../../../docs/verification/runtime-backends.md) "Endpoint close" owns what each backend can prove about its own close.
 Removing a leased home releases its durable treehouse lease via `treehouse return`, so the pool slot is freed for reuse rather than left leased forever.
+Because Treehouse keeps ignored files across a return, teardown first removes everything the home created in that slot while it is still leased, so the next mate seeded there starts clean.
+A non-forced retirement of a leased home refuses, naming the clone and leaving the home intact, while any project clone in it holds uncommitted, stashed, or unpushed work, and any retirement refuses while a process still runs inside the home.
 A plain-clone home with no pool slot is simply removed.
 If `treehouse return` fails for a leased home, teardown stops with state intact rather than raw-removing the directory and hiding a held lease.
 Before either return or direct removal, teardown asks the target home's process-event runner to retire its registrations and physically owned machine-wide claims through the safe generation-bound path.
