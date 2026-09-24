@@ -2557,12 +2557,49 @@ EOF
   printf '%s\n' "$abs_home_path"
 }
 
+# Clean the Treehouse pools a retiring secondmate home's workers drew from: its
+# own root outside every home and the pre-move root inside it
+# (fm_treehouse_home_pool_root and fm_treehouse_home_legacy_pool_root own
+# where they live). Only disposable slots are removed; a slot that is leased,
+# in use, or holds unlanded work refuses the retirement, naming each one, and
+# everything else stays intact.
+retire_firstmate_home_pools() {
+  local home=$1 label=$2 root kept all_kept='' rc
+  if ! root=$(fm_treehouse_home_pool_path "$home"); then
+    echo "REFUSED: cannot resolve the Treehouse pool root of $label $home" >&2
+    return 1
+  fi
+  for root in "$root" "$(fm_treehouse_home_legacy_pool_root "$home/state")"; do
+    [ -n "$root" ] && [ -d "$root" ] || continue
+    command -v treehouse >/dev/null 2>&1 || {
+      echo "error: treehouse command not found; cannot clean $label pool $root" >&2
+      return 1
+    }
+    rc=0
+    kept=$(fm_treehouse_pool_root_drain "$root") || rc=$?
+    case $rc in
+      0) ;;
+      1) all_kept="$all_kept
+$kept" ;;
+      *)
+        echo "error: treehouse could not clean $label pool $root; left intact" >&2
+        return 1
+        ;;
+    esac
+  done
+  [ -z "$all_kept" ] || {
+    echo "REFUSED: $label $home still owns Treehouse pool slots that are leased, in use, or hold unlanded work; left intact:$all_kept" >&2
+    return 1
+  }
+}
+
 remove_firstmate_home() {
   local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup
   [ -n "$home" ] || return 0
   [ -e "$home" ] || return 0
   abs_home_path=$(validate_firstmate_home_for_removal "$home" "$label" "$expected_id") || return 1
   [ -n "$abs_home_path" ] || return 0
+  retire_firstmate_home_pools "$abs_home_path" "$label" || return 1
   process_event_backup=$(snapshot_firstmate_home_process_events "$abs_home_path" "$label") || return 1
   if ! cleanup_firstmate_home_process_events "$abs_home_path" "$label"; then
     restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?

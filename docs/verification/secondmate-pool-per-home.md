@@ -17,6 +17,7 @@ Every Treehouse call goes through a throwaway wrapper that injects a leading `--
 Leftover foreign slots are seeded the way they really arose: the secondmate clone leases slots from the shared default root and returns them.
 
 The guard is the command that refreshes this record.
+The output below predates moving secondmate pools outside the home: its S1 paths show the earlier `<mate>/state/treehouse-pool` root, while the guard's S1 now expects the home's own root under `<user state>/firstmate/treehouse-pools/` and asserts that no ancestor of the worktree holds the home's `CLAUDE.md` or `AGENTS.md`; its next run replaces this output.
 `FM_TREEHOUSE_LIVE_BIN` names the real binary when the `treehouse` on `PATH` is a wrapper that pins its own root:
 
 ```sh

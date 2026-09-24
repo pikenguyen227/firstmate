@@ -8,7 +8,9 @@
 # binary's side of the contract, which this guard measures:
 #   S1  a secondmate spawn on a repository the primary also holds, while the
 #       shared default pool has a free slot of the primary's clone, lands in
-#       <mate>/state/treehouse-pool on a worktree of the secondmate's own clone;
+#       that home's own pool under <user state>/firstmate/treehouse-pools/,
+#       outside the home, on a worktree of the secondmate's own clone, with no
+#       ancestor holding the home's CLAUDE.md or AGENTS.md;
 #   S2  a primary spawn types plain `treehouse get` and lands in the default
 #       pool on its own clone;
 #   S3  a primary handed a leftover free slot that a secondmate clone made in
@@ -109,6 +111,10 @@ MATE="$TMP_ROOT/mate-home"
 mkhome "$PRIMARY"
 mkhome "$MATE"
 printf 'livemate\n' > "$MATE/.fm-secondmate-home"
+printf '@AGENTS.md\n' > "$MATE/CLAUDE.md"
+printf '# supervisor contract\n' > "$MATE/AGENTS.md"
+export XDG_STATE_HOME="$TMP_ROOT/user-state"
+mkdir -p "$XDG_STATE_HOME"
 mkdir -p "$TMP_ROOT/seed/app"
 git -C "$TMP_ROOT/seed/app" init -q
 echo live > "$TMP_ROOT/seed/app/README.md"
@@ -119,7 +125,7 @@ git clone -q "file://$TMP_ROOT/app.git" "$PRIMARY/projects/app"
 git clone -q "file://$TMP_ROOT/app.git" "$MATE/projects/app"
 P_COMMON=$(common "$PRIMARY/projects/app")
 M_COMMON=$(common "$MATE/projects/app")
-MATE_POOL="$(real "$MATE/state")/treehouse-pool"
+MATE_POOLS="$(real "$XDG_STATE_HOME")/firstmate/treehouse-pools"
 
 # Leftover slots are made the way they really arose: the secondmate clone asks
 # the shared default root for a worktree and gives it back, leaving a free slot
@@ -210,10 +216,18 @@ pass "S2 primary spawn lands in the default pool on its own clone ($WT)"
 
 spawn "$MATE" livem1
 [ "$RC" = 0 ] || fail "S1: secondmate spawn failed while the default pool held a free primary-clone slot ($PRIMARY_SLOT)"
+WT=$(meta "$MATE/state/livem1.meta" worktree)
+MATE_POOL=$(dirname "$(dirname "$(dirname "$(dirname "$(real "$WT")")")")")
+case "$MATE_POOL" in "$MATE_POOLS"/livemate-*) ;; *) fail "S1: secondmate worktree $WT is not in its own pool under $MATE_POOLS" ;; esac
 [ "$SPAWN_CALLS" = "$(real "$MATE/projects/app")"$'\t'"--root $MATE_POOL get" ] ||
   fail "S1: secondmate did not type 'treehouse --root $MATE_POOL get' from its project (saw: $SPAWN_CALLS)"
-WT=$(meta "$MATE/state/livem1.meta" worktree)
-case "$(real "$WT")" in "$MATE_POOL"/*) ;; *) fail "S1: secondmate worktree $WT is not under $MATE_POOL" ;; esac
+case "$(real "$WT")" in "$(real "$MATE")"/*) fail "S1: secondmate worktree $WT sits inside its home" ;; esac
+S1_DIR=$(dirname "$(real "$WT")")
+while [ "$S1_DIR" != "$(real "$TMP_ROOT")" ] && [ "$S1_DIR" != / ]; do
+  [ ! -e "$S1_DIR/CLAUDE.md" ] && [ ! -e "$S1_DIR/AGENTS.md" ] ||
+    fail "S1: secondmate worktree $WT has ancestor $S1_DIR holding supervisor instructions"
+  S1_DIR=$(dirname "$S1_DIR")
+done
 [ "$(common "$WT")" = "$M_COMMON" ] || fail "S1: secondmate worktree $WT is not of the secondmate clone"
 [ "$(common "$PRIMARY_SLOT")" = "$P_COMMON" ] || fail "S1: the primary's free slot $PRIMARY_SLOT changed owner"
 teardown_task "$MATE" livem1

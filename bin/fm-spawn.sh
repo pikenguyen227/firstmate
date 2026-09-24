@@ -3892,9 +3892,26 @@ if [ "$RELAUNCH" -eq 1 ]; then
 elif [ "$KIND" != secondmate ] && [ "$BACKEND" != orca ]; then
   # Allocate from this home's own pool (fm_treehouse_home_pool_root owns why),
   # never from another home's clone of the same repository.
-  if ! SPAWN_TREEHOUSE_ROOT=$(fm_treehouse_home_pool_root "$FM_HOME" "$STATE"); then
-    echo "error: could not resolve this home's own Treehouse pool root: '$FM_HOME/.fm-secondmate-home' is not a readable secondmate marker or state dir '$STATE' is unusable; refusing to allocate a worktree from another home's pool; inspect window $T" >&2
+  # Resolved once in this shell for the reason on failure, then captured.
+  if ! fm_treehouse_home_pool_root "$FM_HOME" >/dev/null ||
+    ! SPAWN_TREEHOUSE_ROOT=$(fm_treehouse_home_pool_root "$FM_HOME"); then
+    echo "error: could not resolve this home's own Treehouse pool root: ${FM_TREEHOUSE_POOL_ROOT_ERROR:-unknown reason}; refusing to allocate a worktree from another home's pool; inspect window $T" >&2
     exit 1
+  fi
+  # Drain the pool this home used before pools moved outside every home: its
+  # disposable slots go, and a slot still leased, in use, or holding unlanded
+  # work is left exactly where it is and named here on every spawn until the
+  # operator resolves it.
+  spawn_legacy_pool=$(fm_treehouse_home_legacy_pool_root "$STATE")
+  if [ -n "$SPAWN_TREEHOUSE_ROOT" ] && [ -d "$spawn_legacy_pool" ]; then
+    spawn_legacy_rc=0
+    spawn_legacy_kept=$(fm_treehouse_pool_root_drain "$spawn_legacy_pool" 2>/dev/null) || spawn_legacy_rc=$?
+    case $spawn_legacy_rc in
+      0) echo "note: removed this home's retired in-home Treehouse pool $spawn_legacy_pool; new worktrees come from $SPAWN_TREEHOUSE_ROOT" >&2 ;;
+      1) echo "warning: this home's retired in-home Treehouse pool $spawn_legacy_pool still holds slots that are leased, in use, or hold unlanded work; they were left untouched and are no longer handed out:
+$spawn_legacy_kept" >&2 ;;
+      *) echo "warning: could not drain this home's retired in-home Treehouse pool $spawn_legacy_pool; it was left untouched" >&2 ;;
+    esac
   fi
   SPAWN_TREEHOUSE_GET='treehouse get'
   SPAWN_FOREIGN_SLOT_RETRIES=3
@@ -3999,6 +4016,14 @@ these slots were left untouched; clean them deliberately (for example with treeh
   fi
 
   validate_spawn_worktree "treehouse get" "$T"
+
+  # A worker must never sit where its directory ancestry reaches a firstmate
+  # supervisor contract (fm_treehouse_home_pool_root owns why); the root choice
+  # is meant to guarantee that, and this proves it for the slot actually entered.
+  if spawn_contract=$(fm_supervisor_contract_ancestor "$(dirname "$(real_path_or_raw "$WT")")"); then
+    echo "error: worktree '$WT' sits under firstmate home '$spawn_contract', whose supervisor instructions a worker there would load; refusing to launch (treehouse root '${SPAWN_TREEHOUSE_ROOT:-configured default}'); inspect window $T" >&2
+    exit 1
+  fi
 
   # Claim the pool slot for this task. The interactive `treehouse get` sent to
   # the pane above records only a process lease (Treehouse's durable
