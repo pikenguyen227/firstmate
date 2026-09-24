@@ -1,0 +1,5 @@
+$ FM_LINT_JOBS=1 FM_LINT_RSS_BUDGET_KIB=4194304 bin/fm-lint.sh bin/fm-teardown.sh tests/fm-pending-reply.test.sh
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: full ShellCheck extended analysis enabled
+fm-lint.sh: memory budget exceeded: bin/fm-teardown.sh used 7012496 KiB (budget 4194304 KiB); see docs/fm-test-portable-shards.md "Lint partitions and end-to-end latency"
+exit=1

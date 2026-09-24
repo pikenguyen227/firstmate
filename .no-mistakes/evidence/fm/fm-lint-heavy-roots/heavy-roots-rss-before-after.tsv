@@ -1,0 +1,5 @@
+# ShellCheck 0.11.0 --norc --external-sources, /usr/bin/time -l, Darwin arm64, base d89a716 vs target ef0169c
+before	tests/fm-pending-reply.test.sh	rc=0	max_rss=14.75 GB	wall=110.98s	diag_lines=0
+after	tests/fm-pending-reply.test.sh	rc=0	max_rss=3.14 GB	wall=16.33s	diag_lines=0
+before	bin/fm-teardown.sh	rc=0	max_rss=11.78 GB	wall=94.24s	diag_lines=0
+after	bin/fm-teardown.sh	rc=0	max_rss=7.19 GB	wall=35.64s	diag_lines=0

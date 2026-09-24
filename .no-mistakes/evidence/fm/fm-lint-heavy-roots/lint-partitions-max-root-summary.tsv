@@ -1,0 +1,4 @@
+1of4	max_root=tests/fm-launch-prompt-signals-live-e2e.test.sh	max_root_rss=7.13 GB	wall=573s
+2of4	max_root=bin/fm-teardown.sh	max_root_rss=7.26 GB	wall=667s
+3of4	max_root=bin/fm-send.sh	max_root_rss=4.47 GB	wall=513s
+4of4	max_root=bin/fm-spawn.sh	max_root_rss=6.76 GB	wall=528s
