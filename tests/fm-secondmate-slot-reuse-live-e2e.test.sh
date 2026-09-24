@@ -180,7 +180,7 @@ seed "$PARENT" first || fail "L1: first seed failed"
 SLOT=$HOME_OUT
 case "$(real "$SLOT")" in "$(real "$TH_ROOT")"/*) ;; *) fail "L1: slot $SLOT is outside this run's pool root" ;; esac
 printf '# L1 slot %s is %s\n' "$SLOT" "$(slot_state "$SLOT")"
-printf '# L1 home-owned entries before retirement: %s\n' "$(cd "$SLOT" && ls -A | grep -E '^(\.fm-secondmate|data|state|config|projects)' | tr '\n' ' ')"
+printf '# L1 home-owned entries before retirement: %s\n' "$(for e in "$SLOT"/.fm-secondmate* "$SLOT"/data* "$SLOT"/state* "$SLOT"/config* "$SLOT"/projects*; do [ -e "$e" ] || [ -L "$e" ] || continue; printf '%s ' "${e##*/}"; done)"
 retire "$PARENT" first
 [ "$RC" -eq 0 ] || fail "L1: retiring first failed"
 assert_slot_cleared "$SLOT" L1
@@ -283,7 +283,7 @@ seed "$PARENT" sixth || fail "L6: seeding sixth failed"
 SIX=$HOME_OUT
 FM_HOME="$SIX" "$SIX/bin/fm-procevent.sh" register lavish live-src -- /bin/sleep 600 >/dev/null 2>"$TMP_ROOT/register.err" ||
   { sed 's/^/#   register| /' "$TMP_ROOT/register.err"; fail "L6: registering a process-event source in sixth failed"; }
-printf '# L6 sixth sources before: %s\n' "$(ls "$SIX/state/procevent" | tr '\n' ' ')"
+printf '# L6 sixth sources before: %s\n' "$(find "$SIX/state/procevent" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | tr '\n' ' ')"
 : > "$FAIL_RETURN"
 retire "$PARENT" sixth
 rm -f "$FAIL_RETURN"
@@ -295,7 +295,7 @@ ls "$SIX/state/procevent/"*.source >/dev/null 2>&1 || fail "L6: failed return di
 [ -e "$PARENT/state/sixth.meta" ] || fail "L6: failed return removed sixth.meta"
 grep -F -- '- sixth ' "$PARENT/data/secondmates.md" >/dev/null || fail "L6: failed return removed the registry route"
 case "$(slot_state "$SIX")" in leased*) ;; *) fail "L6: failed return left the slot '$(slot_state "$SIX")'" ;; esac
-printf '# L6 after failed return: slot %s, marker=%s, sources: %s\n' "$(slot_state "$SIX")" "$(cat "$SIX/.fm-secondmate-home")" "$(ls "$SIX/state/procevent" | tr '\n' ' ')"
+printf '# L6 after failed return: slot %s, marker=%s, sources: %s\n' "$(slot_state "$SIX")" "$(cat "$SIX/.fm-secondmate-home")" "$(find "$SIX/state/procevent" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort | tr '\n' ' ')"
 retire "$PARENT" sixth
 [ "$RC" -eq 0 ] || fail "L6: retrying the retirement after the failed return failed"
 assert_slot_cleared "$SIX" "L6 retry"
@@ -335,7 +335,7 @@ rm -f "$PARENT/state/labfirst.meta"
 lab_spawn labfirst "$LAB_SLOT"
 [ "$RC" -eq 0 ] || fail "L7: spawning labfirst in the lab failed"
 P1=$(sed -n 's/^herdr_pane_id=//p' "$PARENT/state/labfirst.meta")
-[ -n "$P1" ] && pane_alive "$P1" || fail "L7: labfirst pane is not live"
+if [ -z "$P1" ] || ! pane_alive "$P1"; then fail "L7: labfirst pane is not live"; fi
 HERDR_SESSION="$LAB_SESSION" retire "$PARENT" labfirst
 [ "$RC" -eq 0 ] || fail "L7: retiring labfirst failed"
 ! pane_alive "$P1" || fail "L7: retiring labfirst left its pane $P1 open"
@@ -347,7 +347,7 @@ rm -f "$PARENT/state/labsecond.meta"
 lab_spawn labsecond "$LAB_SLOT"
 [ "$RC" -eq 0 ] || fail "L7: spawning labsecond on the retired slot failed"
 P2=$(sed -n 's/^herdr_pane_id=//p' "$PARENT/state/labsecond.meta")
-[ -n "$P2" ] && pane_alive "$P2" || fail "L7: labsecond pane is not live"
+if [ -z "$P2" ] || ! pane_alive "$P2"; then fail "L7: labsecond pane is not live"; fi
 printf '# L7 labsecond pane %s live on slot %s (%s), marker=%s\n' "$P2" "$LAB_SLOT" "$(slot_state "$LAB_SLOT")" "$(cat "$LAB_SLOT/.fm-secondmate-home")"
 HERDR_SESSION="$LAB_SESSION" retire "$PARENT" labsecond
 [ "$RC" -eq 0 ] || fail "L7: retiring labsecond failed"

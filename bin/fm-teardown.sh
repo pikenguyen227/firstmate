@@ -2696,8 +2696,15 @@ reap_firstmate_home_processes() {  # <home> <label> <expected-id>
   if [ "$expected_id" = "$ID" ] && [ "$home" -ef "${HOME_PATH:-}" ]; then
     reap_task_worktree_processes "$label" "$home"
   else
-    ( ID=$expected_id BACKEND=none T=; reap_task_worktree_processes "$label" "$home" )
+    reap_child_home_processes "$home" "$label" "$expected_id"
   fi
+}
+
+# Shadows the retired task's globals so a child home's reap reports its own id
+# and never reaches the backend process-group fallback.
+reap_child_home_processes() {  # <home> <label> <expected-id>
+  local ID=$3 BACKEND=none T='' TASK_PIDS='' TASK_PIDS_FAILED_DIR=''
+  reap_task_worktree_processes "$2" "$1"
 }
 
 remove_firstmate_home() {
