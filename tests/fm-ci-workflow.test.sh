@@ -238,6 +238,12 @@ raise "lint failures must not cancel another partition" unless lint.fetch("fail-
 matrix = lint.fetch("matrix")
 raise "unexpected lint dimensions" unless matrix.keys == ["partition"]
 parts = matrix.fetch("partition")
+raise "lint must run four memory-safe partitions, got #{parts.inspect}" unless parts == [1, 2, 3, 4]
+step = jobs.fetch("lint").fetch("steps").find { |s| s["name"] == "Lint canonical partition" }
+raise "no Lint canonical partition step" unless step
+env = step.fetch("env", {})
+raise "each lint runner must use one worker" unless env["FM_LINT_JOBS"] == "1"
+raise "each lint runner must set the 14 GiB per-root memory budget" unless env["FM_LINT_RSS_BUDGET_KIB"] == "14680064"
 roots = parts.flat_map do |p|
   output, result = Open3.capture2(File.join(root, "bin/fm-lint.sh"), "--partition", "#{p}of#{parts.length}", "--list-files")
   raise "unsupported lint partition" unless result.success?
@@ -246,7 +252,7 @@ end
 canonical, result = Open3.capture2({"CI" => "true"}, File.join(root, "bin/fm-lint.sh"), "--list-files")
 raise "lint matrix loses or duplicates canonical roots" unless result.success? && roots.sort == canonical.lines.map(&:strip).sort
 RUBY
-  pass "CI matrices cover every executable serial lane and canonical lint root exactly once"
+  pass "CI matrices cover every executable serial lane and canonical lint root exactly once with memory-safe lint runners"
 }
 
 test_ci_matrices_match_executable_partitions

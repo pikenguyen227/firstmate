@@ -1051,6 +1051,10 @@ if [ "${FM_TEARDOWN_GUARD_DONE:-0}" != 1 ]; then
 fi
 HOME_PATH=$(grep '^home=' "$META" | cut -d= -f2- || true)
 PR_URL=$(grep '^pr=' "$META" | tail -1 | cut -d= -f2- || true)
+# Set to 1 only by proof that PR_URL merged: the live check in pr_is_merged, or
+# this home's merge-notification marker for that exact PR. The lifecycle
+# teardown record claims `merged` only on this proof.
+PR_MERGE_PROVEN=0
 # tasktmp is recorded by fm-spawn for tasks that set up a per-task temp root
 # (/tmp/fm-<id>/); absent for tasks spawned before that change, so tolerate empty.
 TASK_TMP=$(grep '^tasktmp=' "$META" | cut -d= -f2- || true)
@@ -1486,6 +1490,7 @@ pr_is_merged() {
     [ -n "$resolved_url" ] || return 1
     PR_URL=$resolved_url
   fi
+  PR_MERGE_PROVEN=1
   return 0
 }
 
@@ -2564,6 +2569,42 @@ EOF
   printf '%s\n' "$abs_home_path"
 }
 
+# Clean the Treehouse pools a retiring secondmate home's workers drew from: its
+# own root outside every home and the pre-move root inside it
+# (fm_treehouse_home_pool_root and fm_treehouse_home_legacy_pool_root own
+# where they live). Only disposable slots are removed; a slot claimed by a recorded
+# task, leased, in use, or holding unlanded work refuses the retirement, naming
+# each one and why, and everything else stays intact.
+retire_firstmate_home_pools() {
+  local home=$1 label=$2 root kept all_kept='' rc
+  if ! fm_treehouse_home_pool_path "$home"; then
+    echo "REFUSED: cannot resolve the Treehouse pool root of $label $home: $FM_TREEHOUSE_POOL_ROOT_ERROR" >&2
+    return 1
+  fi
+  for root in "$FM_TREEHOUSE_POOL_ROOT" "$(fm_treehouse_home_legacy_pool_root "$home/state")"; do
+    [ -n "$root" ] && [ -d "$root" ] || continue
+    command -v treehouse >/dev/null 2>&1 || {
+      echo "error: treehouse command not found; cannot clean $label pool $root" >&2
+      return 1
+    }
+    rc=0
+    kept=$(fm_treehouse_pool_root_drain "$root" "$home/state") || rc=$?
+    case $rc in
+      0) ;;
+      1) all_kept="$all_kept
+$kept" ;;
+      *)
+        echo "error: treehouse could not clean $label pool $root; left intact" >&2
+        return 1
+        ;;
+    esac
+  done
+  [ -z "$all_kept" ] || {
+    echo "REFUSED: $label $home still owns Treehouse pool slots it could not clean; left intact:$all_kept" >&2
+    return 1
+  }
+}
+
 # Everything a seeded secondmate home creates in its slot. All of it is
 # git-ignored, and `treehouse return --force` deliberately keeps ignored files,
 # so a leased home must remove exactly these itself or the next lease of the
@@ -2716,6 +2757,7 @@ remove_firstmate_home() {
   if firstmate_home_has_treehouse_slot "$abs_home_path"; then
     refuse_home_project_clones_unlanded "$abs_home_path" "$label" || return 1
   fi
+  retire_firstmate_home_pools "$abs_home_path" "$label" || return 1
   process_event_backup=$(snapshot_firstmate_home_process_events "$abs_home_path" "$label") || return 1
   if ! cleanup_firstmate_home_process_events "$abs_home_path" "$label"; then
     restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
@@ -3827,6 +3869,14 @@ LAUNCH_HOME_TOKEN=$(teardown_launch_home_token "$FM_HOME") || LAUNCH_HOME_TOKEN=
 if [ -n "$LAUNCH_HOME_TOKEN" ]; then
   rm -rf "/tmp/fm-$ID+$LAUNCH_HOME_TOKEN"
 fi
+# A confirmed merge of this exact PR left its canonical identity in the
+# merge-notification marker (bin/fm-merge-outcome-lib.sh); read it before the
+# marker is removed below.
+if [ "$PR_MERGE_PROVEN" = 0 ] && [ -n "$PR_URL" ] && fm_pr_url_parse "$PR_URL" \
+  && fm_pr_poll_merge_already_notified "$STATE" "$ID" \
+    "$FM_PR_PROVIDER" "$FM_PR_HOST" "$FM_PR_PATH" "$FM_PR_NUMBER"; then
+  PR_MERGE_PROVEN=1
+fi
 remove_pr_poll_artifacts "$STATE" "$ID" || exit 1
 retire_busy_state "$STATE" "$ID" "$BUSY_GEN" || exit 1
 # Opt-in fleet activity ledger (docs/fleet-ledger.md), before the status log is
@@ -3834,7 +3884,7 @@ retire_busy_state "$STATE" "$ID" "$BUSY_GEN" || exit 1
 [ ! -e "$CONFIG/fleet-ledger" ] || FM_HOME=$FM_HOME FM_STATE_OVERRIDE=$STATE FM_CONFIG_OVERRIDE=$CONFIG "$SCRIPT_DIR/fm-fleet-ledger.sh" cleaned_up "$ID" || true
 # Best-effort lifecycle flush and teardown record, before the history below is
 # deleted (bin/fm-lifecycle-lib.sh).
-fm_lifecycle_task_torn_down "$STATE" "$ID" "$BACKLOG_CLOSED" "$BACKLOG_TRANSITION" "$PR_URL" "$FORCE"
+fm_lifecycle_task_torn_down "$STATE" "$ID" "$BACKLOG_CLOSED" "$BACKLOG_TRANSITION" "$PR_URL" "$FORCE" "$PR_MERGE_PROVEN"
 status_retire_presentation_task "$STATE" "$ID" || exit 1
 fm_wake_queue_prune_task "$STATE" "$ID" "$T" 2>/dev/null || true
 rm -f "$STATE/$ID.turn-ended" "$STATE/$ID.progress" \

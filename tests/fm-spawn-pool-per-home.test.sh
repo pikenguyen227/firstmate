@@ -9,13 +9,16 @@
 # refused every claude worker because the worktree was not of the spawning
 # project. bin/fm-spawn.sh now sends each secondmate home's own pool root
 # (fm_treehouse_home_pool_root in bin/fm-wake-lib.sh) and refuses a worktree of
-# any other clone.
+# any other clone. That root sits outside every firstmate home, so no worker's
+# directory ancestry reaches the home's CLAUDE.md or supervisor AGENTS.md; the
+# pre-move in-home pool is drained without losing work, and retirement cleans
+# both pools.
 #
 # The fake treehouse below reproduces the pooling behavior that matters: the
 # pool path is <root>/.treehouse/<repo>-<origin hash>, the root is the LAST
 # --root flag, else TREEHOUSE_ROOT, else $HOME (a wrapper-injected leading
-# --root therefore loses to a later one), and a new slot is created from the
-# invoking clone. The fake tmux runs every line spawn types into the pane from
+# --root therefore loses to a later one), a new slot is created from the
+# invoking clone, and a bulk destroy removes only idle, clean, landed slots. The fake tmux runs every line spawn types into the pane from
 # the pane's current directory, so the worktree recorded is the one the typed
 # command really produced.
 set -u
@@ -113,6 +116,28 @@ case "$cmd" in
     rm -f "$(dirname "$slot")/.in-use"
     printf '%s\n' "$slot" >> "${FM_FAKE_RETURN_LOG:-/dev/null}"
     ;;
+  destroy)
+    # Destroy removes only disposable slots: idle, clean, and landed. A pool
+    # takes --all; a single slot is named by its worktree.
+    if [ "$*" = "$1 --all --yes" ]; then
+      single=0 slots=$(ls -d "$1"/*/ 2>/dev/null)
+    elif [ "$*" = "$1 --yes" ]; then
+      single=1 slots=$(dirname "$1")
+    else
+      exit 2
+    fi
+    status=0
+    for slot in $slots; do
+      slot=${slot%/}
+      wt=$(ls -d "$slot"/*/ 2>/dev/null | head -1)
+      wt=${wt%/}
+      if [ -e "$slot/.in-use" ]; then echo "skip in-use $slot" >&2; status=1; continue; fi
+      if [ -z "$wt" ] || [ -n "$(git -C "$wt" status --porcelain)" ]; then echo "skip dirty $slot" >&2; status=1; continue; fi
+      if [ -n "$(git -C "$wt" rev-list HEAD --not --remotes)" ]; then echo "skip unlanded $slot" >&2; status=1; continue; fi
+      git -C "$wt" worktree remove --force "$wt" && rm -rf "$slot"
+    done
+    [ "$single" -eq 0 ] || exit "$status"
+    ;;
 esac
 exit 0
 SH
@@ -122,19 +147,28 @@ SH
 }
 
 # One origin, a primary home and a secondmate home, each with its own clone of
-# it under its own projects/, sharing one Treehouse default root.
+# it under its own projects/, sharing one Treehouse default root. Each home
+# carries the supervisor contract a real one does (CLAUDE.md importing
+# AGENTS.md), which a worker must never be able to reach from its worktree.
 CASE="$TMP_ROOT/case"
 FAKEBIN=$(make_pool_fakebin "$CASE")
 SHARED_ROOT="$CASE/shared-treehouse-root"
 PRIMARY="$CASE/primary-home"
 MATE="$CASE/mate-home"
+# Secondmate pools live under the user's state dir, outside every home.
+export XDG_STATE_HOME="$CASE/user-state"
 fm_git_init_commit "$CASE/seed/app"
 git clone --quiet --bare "$CASE/seed/app" "$CASE/app.git"
-fm_test_spawn_home "$PRIMARY" claude
-fm_test_spawn_home "$MATE" claude
-printf 'mate\n' > "$MATE/.fm-secondmate-home"
-git clone --quiet "file://$CASE/app.git" "$PRIMARY/projects/app"
-git clone --quiet "file://$CASE/app.git" "$MATE/projects/app"
+
+make_contract_home() {  # <home> [secondmate-id]
+  fm_test_spawn_home "$1" claude
+  printf '@AGENTS.md\n' > "$1/CLAUDE.md"
+  printf '# supervisor contract\n' > "$1/AGENTS.md"
+  [ -z "${2:-}" ] || printf '%s\n' "$2" > "$1/.fm-secondmate-home"
+  git clone --quiet "file://$CASE/app.git" "$1/projects/app"
+}
+make_contract_home "$PRIMARY"
+make_contract_home "$MATE" mate
 
 common_dir() {
   local d
@@ -182,7 +216,7 @@ test_each_home_gets_a_worktree_of_its_own_clone() {
   [ "$(common_dir "$wt_mate")" = "$(common_dir "$MATE/projects/app")" ] ||
     fail "secondmate worktree $wt_mate is not a worktree of the secondmate's own clone"
   case "$wt_mate" in
-    "$(cd "$MATE/state" && pwd -P)/treehouse-pool/"*) ;;
+    "$(cd "$XDG_STATE_HOME" && pwd -P)/firstmate/treehouse-pools/mate-"*) ;;
     *) fail "secondmate worktree $wt_mate is not in the secondmate's own pool" ;;
   esac
   [ "$(common_dir "$wt_mate")" != "$(common_dir "$wt_primary")" ] ||
@@ -299,7 +333,175 @@ test_only_foreign_slots_fail_naming_them() {
   pass "a spawn that is only ever handed foreign slots fails naming each one and its owner"
 }
 
+# The property the pool placement exists for: nothing above a secondmate's
+# worker worktree is that home, or holds its CLAUDE.md or AGENTS.md.
+test_secondmate_worker_cannot_reach_its_home_contract() {
+  local wt dir mate_real case_real
+  wt=$(meta_value "$MATE/state/pool-mate-z1.meta" worktree)
+  [ -n "$wt" ] || fail "no secondmate worker worktree to inspect"
+  wt=$(cd "$wt" && pwd -P)
+  mate_real=$(cd "$MATE" && pwd -P)
+  case_real=$(cd "$CASE" && pwd -P)
+  dir=$(dirname "$wt")
+  while :; do
+    [ "$dir" != "$mate_real" ] || fail "secondmate worker $wt sits inside its home $mate_real"
+    case "$dir" in
+      "$case_real"|"$case_real"/*)
+        [ ! -e "$dir/CLAUDE.md" ] && [ ! -e "$dir/AGENTS.md" ] ||
+          fail "secondmate worker $wt has ancestor $dir holding supervisor instructions"
+        ;;
+    esac
+    [ "$dir" != / ] || break
+    dir=$(dirname "$dir")
+  done
+  [ ! -e "$MATE/state/treehouse-pool" ] || fail "secondmate spawn still created an in-home pool"
+  pass "a secondmate's worker worktree has no ancestor holding that home's CLAUDE.md or AGENTS.md"
+}
+
+pool_root_of() {  # <worktree> -> <root> of <root>/.treehouse/<pool>/<slot>/<repo>
+  dirname "$(dirname "$(dirname "$(dirname "$1")")")"
+}
+
+# Two secondmate homes holding clones of one repository, even under the same
+# id, still get separate pools, each handing out worktrees of its own clone.
+test_two_secondmate_homes_keep_separate_pools() {
+  local out status other="$CASE/other-mate-home" wt_other wt_mate
+  make_contract_home "$other" mate
+  out=$(run_pool_spawn "$other" pool-other-z1)
+  status=$?
+  expect_code 0 "$status" "second secondmate spawn should succeed"$'\n'"$out"
+  wt_other=$(meta_value "$other/state/pool-other-z1.meta" worktree)
+  wt_mate=$(meta_value "$MATE/state/pool-mate-z1.meta" worktree)
+  [ "$(common_dir "$wt_other")" = "$(common_dir "$other/projects/app")" ] ||
+    fail "second secondmate worktree $wt_other is not of its own clone"
+  [ "$(pool_root_of "$wt_other")" != "$(pool_root_of "$wt_mate")" ] ||
+    fail "two secondmate homes drew from one pool root"
+  pass "two secondmate homes with clones of one repository keep separate pools outside both homes"
+}
+
+# A pool root that would land under a firstmate home is refused before any
+# Treehouse command is typed.
+test_pool_root_under_a_home_is_refused() {
+  local out status
+  out=$(XDG_STATE_HOME="$MATE/user-state" run_pool_spawn "$MATE" pool-mate-z6)
+  status=$?
+  [ "$status" -ne 0 ] || fail "spawn allocated from a pool root inside a firstmate home"$'\n'"$out"
+  assert_contains "$out" "sits under firstmate home '$(cd "$MATE" && pwd -P)'" \
+    "refusal does not name the home whose instructions workers would load"
+  [ ! -s "$CASE/typed.pool-mate-z6" ] || fail "spawn typed a treehouse command toward a pool inside a home"
+  [ ! -e "$MATE/state/pool-mate-z6.meta" ] || fail "refused spawn left a task record"
+  pass "a pool root under a firstmate home refuses the spawn before touching any pool"
+}
+
+# Slots left in the pre-move in-home pool: disposable ones are removed at the
+# next spawn, and one still in use is left intact and named.
+test_legacy_in_home_pool_is_drained_without_losing_work() {
+  local out status legacy="$MATE/state/treehouse-pool" free held wt
+  free=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
+  held=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
+  rm -f "$(dirname "$free")/.in-use"
+  out=$(run_pool_spawn "$MATE" pool-mate-z7)
+  status=$?
+  expect_code 0 "$status" "secondmate spawn should succeed beside a legacy pool"$'\n'"$out"
+  wt=$(meta_value "$MATE/state/pool-mate-z7.meta" worktree)
+  case "$(cd "$wt" && pwd -P)" in "$(cd "$MATE" && pwd -P)"/*) fail "spawn still drew from the in-home pool: $wt" ;; esac
+  [ ! -e "$free" ] || fail "a disposable legacy slot was left behind"
+  [ -d "$held" ] && [ -e "$(dirname "$held")/.in-use" ] || fail "an in-use legacy slot was touched"
+  assert_contains "$out" "$(dirname "$held")" "the kept legacy slot was not reported"
+  rm -f "$(dirname "$held")/.in-use"
+  out=$(run_pool_spawn "$MATE" pool-mate-z8)
+  status=$?
+  expect_code 0 "$status" "secondmate spawn should succeed once the legacy slot is free"$'\n'"$out"
+  [ ! -e "$legacy" ] || fail "an emptied legacy pool was not removed"
+  pass "a legacy in-home pool loses only disposable slots and reports the ones it keeps"
+}
+
+# A legacy slot whose lease lapsed (say the tmux server restarted) but whose
+# firstmate claim names a task still recorded in the home is kept, not handed to
+# Treehouse's destroy, until that task's record is gone; a disposable sibling in
+# the same pool is still removed.
+test_legacy_drain_keeps_a_slot_claimed_by_a_live_task() {
+  local out status legacy="$MATE/state/treehouse-pool" claimed sibling
+  claimed=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
+  sibling=$(cd "$MATE/projects/app" && TREEHOUSE_ROOT="$legacy" "$FAKEBIN/treehouse" get) || fail "could not seed a legacy slot"
+  rm -f "$(dirname "$claimed")/.in-use" "$(dirname "$sibling")/.in-use"
+  printf 'task=legacy-live-z1\nhome=%s\n' "$MATE" > "$(dirname "$claimed")/.fm-slot-owner"
+  printf 'worktree=%s\n' "$claimed" > "$MATE/state/legacy-live-z1.meta"
+  out=$(run_pool_spawn "$MATE" pool-mate-z9)
+  status=$?
+  expect_code 0 "$status" "secondmate spawn should succeed beside a claimed legacy slot"$'\n'"$out"
+  [ -d "$claimed" ] || fail "the drain destroyed a legacy slot claimed by a live task"
+  assert_contains "$out" "$(dirname "$claimed") (claimed by task legacy-live-z1)" "the claimed legacy slot was not reported as kept by its claim"
+  [ ! -e "$sibling" ] || fail "a disposable sibling of a claimed legacy slot was left behind"
+  case "$out" in *"$(dirname "$sibling")"*) fail "the removed disposable sibling was reported as kept"$'\n'"$out" ;; esac
+  rm -f "$MATE/state/legacy-live-z1.meta"
+  out=$(run_pool_spawn "$MATE" pool-mate-z10)
+  status=$?
+  expect_code 0 "$status" "secondmate spawn should succeed once the claiming task is gone"$'\n'"$out"
+  [ ! -e "$legacy" ] || fail "a legacy slot whose claiming task is gone was not drained"
+  pass "a legacy in-home pool keeps a slot claimed by a task the home still records"
+}
+
+retire_home() {  # <secondmate-id>
+  FM_ROOT_OVERRIDE='' FM_HOME="$PRIMARY" HOME="$PRIMARY/user-home" CLAUDE_CONFIG_DIR='' \
+    FM_STATE_OVERRIDE="$PRIMARY/state" FM_DATA_OVERRIDE="$PRIMARY/data" \
+    FM_PROJECTS_OVERRIDE="$PRIMARY/projects" FM_CONFIG_OVERRIDE="$PRIMARY/config" \
+    FM_FAKE_PANE_FILE="$CASE/pane" FM_BACKEND=tmux TMUX=fake,1,0 \
+    PATH="$FAKEBIN:$PATH" "$ROOT/bin/fm-teardown.sh" "$1" 2>&1
+}
+
+# Retiring a secondmate home cleans its pools wherever they live, and refuses
+# while any slot still holds work, naming each such slot.
+test_retirement_cleans_the_home_pool() {
+  local out status home="$CASE/retiree-home" wt root legacy_slot
+  make_contract_home "$home" retiree
+  out=$(run_pool_spawn "$home" pool-retiree-z1)
+  status=$?
+  expect_code 0 "$status" "retiree spawn should succeed"$'\n'"$out"
+  wt=$(meta_value "$home/state/pool-retiree-z1.meta" worktree)
+  root=$(pool_root_of "$wt")
+  FM_FAKE_RETURN_LOG=/dev/null "$FAKEBIN/treehouse" return --force "$wt"
+  rm -rf "$home/state/pool-retiree-z1."* "$home/data/pool-retiree-z1"
+  legacy_slot=$(cd "$home/projects/app" && TREEHOUSE_ROOT="$home/state/treehouse-pool" "$FAKEBIN/treehouse" get) ||
+    fail "could not seed a legacy slot"
+  printf 'unsaved\n' > "$wt/work.txt"
+  cat > "$PRIMARY/state/retiree.meta" <<EOF
+window=firstmate:fm-retiree
+worktree=$home
+project=$home
+harness=echo
+kind=secondmate
+mode=secondmate
+yolo=off
+home=$home
+projects=app
+EOF
+  printf '%s\n' "- retiree - retiring domain (home: $home; scope: retiring domain; projects: app; added 2026-09-24)" \
+    > "$PRIMARY/data/secondmates.md"
+  out=$(retire_home retiree)
+  status=$?
+  [ "$status" -ne 0 ] || fail "retirement discarded pool slots holding work"$'\n'"$out"
+  assert_contains "$out" "$(dirname "$legacy_slot")" "refusal does not name the in-use legacy slot"
+  assert_contains "$out" "$(dirname "$wt")" "refusal does not name the slot with uncommitted work"
+  [ -f "$wt/work.txt" ] || fail "retirement lost uncommitted work in a pool slot"
+  [ -d "$legacy_slot" ] || fail "retirement removed an in-use legacy slot"
+  [ -d "$home" ] && [ -e "$PRIMARY/state/retiree.meta" ] || fail "refused retirement removed the home or its record"
+  rm -f "$wt/work.txt" "$(dirname "$legacy_slot")/.in-use"
+  out=$(retire_home retiree)
+  status=$?
+  expect_code 0 "$status" "retirement should succeed once every slot is disposable"$'\n'"$out"
+  [ ! -e "$root" ] || fail "retirement left the home's pool root $root"
+  [ ! -e "$home" ] || fail "retirement did not remove the home"
+  pass "retiring a secondmate home cleans its outside pool and its legacy pool, refusing while any slot holds work"
+}
+
 test_each_home_gets_a_worktree_of_its_own_clone
+test_secondmate_worker_cannot_reach_its_home_contract
+test_two_secondmate_homes_keep_separate_pools
+test_pool_root_under_a_home_is_refused
+test_legacy_in_home_pool_is_drained_without_losing_work
+test_legacy_drain_keeps_a_slot_claimed_by_a_live_task
+test_retirement_cleans_the_home_pool
 test_primary_skips_a_leftover_foreign_slot
 test_only_foreign_slots_fail_naming_them
 test_foreign_clone_worktree_is_refused_loudly
