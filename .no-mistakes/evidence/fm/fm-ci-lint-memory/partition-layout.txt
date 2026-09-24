@@ -1,0 +1,21 @@
+$ CI=true bin/fm-lint.sh --list-files | sort > all
+     423
+partition 1of4:      106 roots,  3584401 bytes, heavy roots: tests/fm-launch-prompt-signals-live-e2e.test.sh 
+partition 2of4:      105 roots,  3583851 bytes, heavy roots: bin/fm-teardown.sh tests/fm-pending-reply.test.sh 
+partition 3of4:      106 roots,  3584106 bytes, heavy roots: 
+partition 4of4:      106 roots,  3584274 bytes, heavy roots: bin/fm-spawn.sh tests/fm-stat-shadowing.test.sh 
+union == full: yes
+duplicates across partitions:        0
+2-way union == full: yes
+
+# adversarial partition values
+--partition 0of4 -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got 0of4.
+--partition 5of4 -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got 5of4.
+--partition 1of0 -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got 1of0.
+--partition abc -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got abc.
+--partition 1of -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got 1of.
+--partition 2of1 -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got 2of1.
+--partition -1of4 -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got -1of4.
+--partition 1of4x -> exit 2 : fm-lint.sh: --partition must be <i>of<n> with 1 <= i <= n, got 1of4x.
+--partition 1of4 --fast -> exit 2 : fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.
+--partition 1of4 <path> -> exit 2 : fm-lint.sh: --partition requires full canonical lint; omit --fast and explicit paths.
