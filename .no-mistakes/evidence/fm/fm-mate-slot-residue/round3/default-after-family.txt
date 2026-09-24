@@ -1,0 +1,14 @@
+w1M	└ mate-slot-residue · p:GSJIlINpAQUT4L-Pzb6MuQ
+w1R	└ pool-outside-home · p:EtSm66Yc-_-1F1OQR_TirQ
+w1T	2ndmate-zoe
+w1W	2ndmate-lma
+wA	Control Tower
+---
+w1M:t2	fm-fm-mate-slot-residue
+w1R:t2	fm-fm-pool-outside-home
+w1T:t2	fm-zoe
+w1W:t2	fm-lma
+wA:t1R	Mates
+wA:t1S	Team
+wA:t5	(General) Captain
+wA:tG	Shell

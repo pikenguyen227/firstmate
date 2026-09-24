@@ -1,0 +1,7 @@
+# treehouse binary: <tmp>/real-bin/treehouse (v2.3.0)
+# git: git version 2.48.1
+# seed first rc=0 home=<tmp>/pool-root/.treehouse/primary-9192ed/1/primary
+# L1 slot <tmp>/pool-root/.treehouse/primary-9192ed/1/primary is leased (held by first)
+# L1 home-owned entries before retirement: .fm-secondmate-home .fm-secondmate-parent config data projects state 
+# fm-teardown.sh first  rc=0
+not ok - treehouse v2.3.0: L1: retired secondmate left .fm-secondmate-home in the returned slot <tmp>/pool-root/.treehouse/primary-9192ed/1/primary

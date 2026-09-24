@@ -1,0 +1,76 @@
+# HEAD 6b2c72a 2026-09-24T07:17:10Z
+# treehouse binary: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/real-bin/treehouse (v2.3.0)
+# git: git version 2.48.1
+# seed first rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# L1 slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary is leased (held by first)
+# L1 home-owned entries before retirement: .fm-secondmate-home .fm-secondmate-parent config data projects state 
+# fm-teardown.sh first  rc=0
+#   teardown| ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   teardown| ●  WATCHER DOWN - SUPERVISION IS OFF
+#   teardown| ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+#   teardown| ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+#   teardown| ●  This is a supervision warning only; the guarded operation WILL still run.
+#   teardown| ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+#   teardown| ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# seed second rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# L1 slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary is leased (held by second); marker=second
+ok - treehouse v2.3.0: L1 retiring a pooled secondmate frees its real slot and the next seed takes it
+# L2 detached pid 61286 cwd=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary/projects/alpha
+# fm-teardown.sh second  rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+#   teardown| teardown: reaping leaked secondmate home process(es) for second: 61286
+# seed third rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+ok - treehouse v2.3.0: L2 a detached process inside the home is reaped and the slot is freed
+# L3 lsof on teardown PATH: none
+# fm-teardown.sh third  rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+#   teardown| warning: lsof is unavailable; cannot resolve the tmux pane process group for third
+ok - treehouse v2.3.0: L3 retirement without lsof completes with a warning and frees the slot
+# seed keeper rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# fm-teardown.sh keeper  rc=1
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+#   teardown| REFUSED: secondmate home project clone /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary/projects/alpha has local commit 022d14aa41a069c9c22569327575a73a8bc7fd0e that no remote contains
+#   teardown| Retiring secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary would delete that unlanded work, so the home is left intact.
+#   teardown| Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force.
+# L4 after unpushed-commit refusal: slot leased (held by keeper), marker=keeper
+# fm-teardown.sh keeper  rc=1
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+#   teardown| REFUSED: secondmate home project clone /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary/projects/scratch is not the top of its own git clone
+#   teardown| Retiring secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary would delete that unlanded work, so the home is left intact.
+#   teardown| Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force.
+# L4 after non-git refusal: slot leased (held by keeper), marker=keeper
+ok - treehouse v2.3.0: L4 unpushed work and a non-git directory refuse retirement and keep the home and lease
+# fm-teardown.sh keeper  rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+# seed fifth rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+ok - treehouse v2.3.0: L5 a stray .DS_Store under projects/ does not block retirement
+# seed nested rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/2/primary
+# L6 parent slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary is leased (held by fifth); nested slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/2/primary is leased (held by nested)
+# fm-teardown.sh fifth --force rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+# L6 after forced retirement: parent slot available, nested slot available
+ok - treehouse v2.3.0: L6 a forced retirement sweeps a nested secondmate and frees both real slots
+# seed sixth rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# L6 sixth sources before: live-src.source 
+# fm-teardown.sh sixth  rc=1
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+#   teardown| injected return failure
+#   teardown| error: treehouse return failed for secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary; lease may still be held
+# L6 after failed return: slot leased (held by sixth), marker=sixth, sources: live-src.16777230-374301705.last-launch live-src.runner live-src.source 
+# fm-teardown.sh sixth  rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+ok - treehouse v2.3.0: L6 a failed return restores the home and its process-event registration, and a retry frees the slot
+# L7 lab session: fm-lab-fm-slot-live-93500-25423
+# seed labfirst rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# L7 spawn labfirst rc=0
+#   out| spawned labfirst harness=sh kind=secondmate mode=secondmate yolo=off window=fm-lab-fm-slot-live-93500-25423:w1:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# fm-teardown.sh labfirst  rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+# seed labsecond rc=0 home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# L7 spawn labsecond rc=0
+#   out| spawned labsecond harness=sh kind=secondmate mode=secondmate yolo=off window=fm-lab-fm-slot-live-93500-25423:w2:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary
+# L7 labsecond pane w2:p2 live on slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-slot-live.vprdx0/pool-root/.treehouse/primary-c98dbb/1/primary (leased (held by labsecond)), marker=labsecond
+# fm-teardown.sh labsecond  rc=0
+#   teardown| WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+ok - treehouse v2.3.0: L7 in a Herdr lab a secondmate retires and a new one seeds and launches on the same slot
+exit=0

@@ -1,0 +1,100 @@
+############ FIX b866479: plain
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== fm-teardown.sh first (no --force)
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.OGNGQk/drv-pool/1/firstmate)
+teardown rc=0
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.OGNGQk/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.OGNGQk/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.OGNGQk/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ FIX b866479: reap
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== detached leftover process pid=88979 cwd=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.0VBVXi/drv-pool/1/firstmate/projects/alpha
+=== fm-teardown.sh first (no --force)
+  | teardown: reaping leaked secondmate home process(es) for first: 88979
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.0VBVXi/drv-pool/1/firstmate)
+teardown rc=0
+leftover pid 88979: gone
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.0VBVXi/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.0VBVXi/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.0VBVXi/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ FIX b866479: nolsof
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== detached leftover process pid=220 cwd=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rqvT6d/drv-pool/1/firstmate/projects/alpha
+=== teardown PATH without lsof: lsof not found
+=== fm-teardown.sh first (no --force)
+  | warning: lsof is unavailable; cannot resolve the tmux pane process group for first
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rqvT6d/drv-pool/1/firstmate)
+teardown rc=0
+leftover pid 220: STILL ALIVE
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rqvT6d/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rqvT6d/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rqvT6d/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ FIX b866479: dsstore
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== wrote stray /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.VfDHEN/drv-pool/1/firstmate/projects/.DS_Store
+=== fm-teardown.sh first (no --force)
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.VfDHEN/drv-pool/1/firstmate)
+teardown rc=0
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.VfDHEN/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.VfDHEN/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.VfDHEN/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ FIX b866479: nongit
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== created non-git dir projects/scratch
+=== fm-teardown.sh first (no --force)
+  | REFUSED: secondmate home project clone /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.H0MV5V/drv-pool/1/firstmate/projects/scratch is not the top of its own git clone
+  | Retiring secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.H0MV5V/drv-pool/1/firstmate would delete that unlanded work, so the home is left intact.
+  | Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force.
+teardown rc=1
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.H0MV5V/drv-pool/1/firstmate):
+.fm-secondmate-home
+.fm-secondmate-parent
+config
+data
+projects
+state
+--- parent meta: first.meta 
+=== seed secondmate 'second' onto the same slot
+  | error: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.H0MV5V/drv-pool/1/firstmate is already marked for first
+fm-home-seed.sh second rc=1; slot marker now=first
+############ FIX b866479: unlanded
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== committed unpushed work in projects/alpha
+=== fm-teardown.sh first (no --force)
+  | REFUSED: secondmate home project clone /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.A2emT1/drv-pool/1/firstmate/projects/alpha has local commit 6a7ea9526faa8bbd2caac120462e63538baca0ab that no remote contains
+  | Retiring secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.A2emT1/drv-pool/1/firstmate would delete that unlanded work, so the home is left intact.
+  | Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force.
+teardown rc=1
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.A2emT1/drv-pool/1/firstmate):
+.fm-secondmate-home
+.fm-secondmate-parent
+config
+data
+projects
+state
+--- parent meta: first.meta 
+=== seed secondmate 'second' onto the same slot
+  | error: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.A2emT1/drv-pool/1/firstmate is already marked for first
+fm-home-seed.sh second rc=1; slot marker now=first

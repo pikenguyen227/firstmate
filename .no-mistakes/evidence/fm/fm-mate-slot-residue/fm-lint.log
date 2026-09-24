@@ -1,0 +1,1 @@
+fm-lint.sh: ShellCheck not found; install ShellCheck 0.11.0 with bin/fm-install-shellcheck.sh <destination-directory> and put that directory on PATH.

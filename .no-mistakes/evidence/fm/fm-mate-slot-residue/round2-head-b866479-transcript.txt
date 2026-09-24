@@ -1,0 +1,142 @@
+############ HEAD b866479: plain
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== fm-teardown.sh first (no --force)
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | ●  WATCHER DOWN - SUPERVISION IS OFF
+  | ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+  | ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  | ●  This is a supervision warning only; the guarded operation WILL still run.
+  | ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.TcvWN6/drv-pool/1/firstmate)
+teardown rc=0
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.TcvWN6/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.TcvWN6/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.TcvWN6/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ HEAD b866479: reap
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== detached leftover process pid=28896 cwd=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.KQSqOQ/drv-pool/1/firstmate/projects/alpha
+=== fm-teardown.sh first (no --force)
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | ●  WATCHER DOWN - SUPERVISION IS OFF
+  | ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+  | ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  | ●  This is a supervision warning only; the guarded operation WILL still run.
+  | ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | teardown: reaping leaked secondmate home process(es) for first: 28896
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.KQSqOQ/drv-pool/1/firstmate)
+teardown rc=0
+leftover pid 28896: gone
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.KQSqOQ/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.KQSqOQ/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.KQSqOQ/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ HEAD b866479: nolsof
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== detached leftover process pid=39953 cwd=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.GvdrMr/drv-pool/1/firstmate/projects/alpha
+=== teardown PATH without lsof: lsof not found
+=== fm-teardown.sh first (no --force)
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | ●  WATCHER DOWN - SUPERVISION IS OFF
+  | ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+  | ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  | ●  This is a supervision warning only; the guarded operation WILL still run.
+  | ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | warning: lsof is unavailable; cannot resolve the tmux pane process group for first
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.GvdrMr/drv-pool/1/firstmate)
+teardown rc=0
+leftover pid 39953: STILL ALIVE
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.GvdrMr/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.GvdrMr/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.GvdrMr/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ HEAD b866479: dsstore
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== wrote stray /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.g1Ev3X/drv-pool/1/firstmate/projects/.DS_Store
+=== fm-teardown.sh first (no --force)
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | ●  WATCHER DOWN - SUPERVISION IS OFF
+  | ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+  | ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  | ●  This is a supervision warning only; the guarded operation WILL still run.
+  | ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.g1Ev3X/drv-pool/1/firstmate)
+teardown rc=0
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.g1Ev3X/drv-pool/1/firstmate):
+(no home-owned entries left)
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | scaffolded: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.g1Ev3X/drv-home/data/second/brief.md (secondmate charter)
+  | home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.g1Ev3X/drv-pool/1/firstmate
+fm-home-seed.sh second rc=0; slot marker now=second
+############ HEAD b866479: nongit
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== created non-git dir projects/scratch
+=== fm-teardown.sh first (no --force)
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | ●  WATCHER DOWN - SUPERVISION IS OFF
+  | ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+  | ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  | ●  This is a supervision warning only; the guarded operation WILL still run.
+  | ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | REFUSED: secondmate home project clone /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.oXiv7n/drv-pool/1/firstmate/projects/scratch is not the top of its own git clone
+  | Retiring secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.oXiv7n/drv-pool/1/firstmate would delete that unlanded work, so the home is left intact.
+  | Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force.
+teardown rc=1
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.oXiv7n/drv-pool/1/firstmate):
+.fm-secondmate-home
+.fm-secondmate-parent
+config
+data
+projects
+state
+--- parent meta: first.meta 
+=== seed secondmate 'second' onto the same slot
+  | error: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.oXiv7n/drv-pool/1/firstmate is already marked for first
+fm-home-seed.sh second rc=1; slot marker now=first
+############ HEAD b866479: unlanded
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== committed unpushed work in projects/alpha
+=== fm-teardown.sh first (no --force)
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | ●  WATCHER DOWN - SUPERVISION IS OFF
+  | ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+  | ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  | ●  This is a supervision warning only; the guarded operation WILL still run.
+  | ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  | ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  | REFUSED: secondmate home project clone /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.FGtzU1/drv-pool/1/firstmate/projects/alpha has local commit 521925bb30865fa0e1b5a8cd5292f9d425c2e933 that no remote contains
+  | Retiring secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.FGtzU1/drv-pool/1/firstmate would delete that unlanded work, so the home is left intact.
+  | Land or push the work in each named clone and re-run, or get the captain's explicit OK to discard it, then --force.
+teardown rc=1
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.FGtzU1/drv-pool/1/firstmate):
+.fm-secondmate-home
+.fm-secondmate-parent
+config
+data
+projects
+state
+--- parent meta: first.meta 
+=== seed secondmate 'second' onto the same slot
+  | error: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.FGtzU1/drv-pool/1/firstmate is already marked for first
+fm-home-seed.sh second rc=1; slot marker now=first

@@ -1,0 +1,39 @@
+# treehouse binary: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/real-bin/treehouse (v2.3.0)
+# primary clone common dir: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app/.git
+# secondmate clone common dir: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/projects/app/.git
+# S5 leased /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/s5-later-root/.treehouse/app-fb57d2/1/app
+ok - treehouse v2.3.0: S5 a later --root wins over a wrapper's leading --root
+# lab session: fm-lab-fm-pool-live-37844-6668
+# spawn livep1 home=primary-home rc=0 elapsed=6s
+#   out| spawned livep1 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-37844-6668:w1:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s12/.treehouse/app-fb57d2/1/app
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+ok - treehouse v2.3.0: S2 primary spawn lands in the default pool on its own clone (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s12/.treehouse/app-fb57d2/1/app)
+# spawn livem1 home=mate-home rc=0 elapsed=7s
+#   out| spawned livem1 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-37844-6668:w2:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/state/treehouse-pool/.treehouse/app-fb57d2/1/app
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/projects/app	--root /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/state/treehouse-pool get
+ok - treehouse v2.3.0: S1 secondmate spawn lands in its own pool on its own clone (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/state/treehouse-pool/.treehouse/app-fb57d2/1/app)
+# S3 seeded free foreign slot /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s3/.treehouse/app-fb57d2/1/app
+# spawn livep2 home=primary-home rc=0 elapsed=9s
+#   out| spawned livep2 harness=sh kind=ship mode=no-mistakes yolo=off window=fm-lab-fm-pool-live-37844-6668:w3:p2 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s3/.treehouse/app-fb57d2/2/app
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+ok - treehouse v2.3.0: S3 primary skips a foreign slot in 9s and a nested get lands in a new own-clone slot (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s3/.treehouse/app-fb57d2/2/app); foreign slot intact
+ok - treehouse v2.3.0: S5 a nested get inside a held slot's subshell hands out a different slot
+# S4 seeded free foreign slots:
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/1/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/2/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/3/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/4/app
+#   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/5/app
+# spawn livep3 home=primary-home rc=1 elapsed=11s
+#   err| error: treehouse get kept handing out worktrees of another clone instead of this home's project '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app' (treehouse root 'configured default'); rejected slots:
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/1/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/projects/app/.git')
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/2/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/projects/app/.git')
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/3/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/projects/app/.git')
+#   err|   /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/default-root-s4/.treehouse/app-fb57d2/4/app (worktree of git common dir '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/mate-home/projects/app/.git')
+#   err| these slots were left untouched; clean them deliberately (for example with treehouse destroy) once they hold no live work; inspect window fm-lab-fm-pool-live-37844-6668:w4:p2
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+#   treehouse (cwd<TAB>argv)| /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pool-live.d76K6V/primary-home/projects/app	get
+ok - treehouse v2.3.0: S4 primary fails after the retry bound naming 4 foreign slots and their owning clone; all 5 left intact

@@ -1,0 +1,14 @@
+ok - FM_HOME parameterizes data and state paths
+ok - fm-lock status is scoped per home
+ok - seed allows overlapping project clone lists and drops the owns/owner routing
+ok - home-seed validation rejects registry records no operational parser can consume
+ok - retiring a pooled secondmate frees its slot for the next secondmate seed
+ok - retiring a pooled secondmate refuses and keeps a clone holding unlanded work
+ok - retiring a pooled secondmate reaps a process left inside its home and frees the slot
+ok - retiring a pooled secondmate ignores a stray regular file under projects/
+ok - secondmate teardown refuses to hide failed leased-home return
+ok - force teardown sweeps nested secondmate homes before deletion
+ok - force teardown preserves nested process-event restoration status and recovery state
+ok - secondmate force teardown discards child work
+ok - secondmate teardown retires empty homes and releases routing
+ok - secondmate teardown raw-removes plain-clone homes

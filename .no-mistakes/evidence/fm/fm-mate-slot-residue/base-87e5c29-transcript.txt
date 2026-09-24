@@ -1,0 +1,36 @@
+############ BASE 87e5c29: plain
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== fm-teardown.sh first (no --force)
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.cFWV2k/drv-pool/1/firstmate)
+teardown rc=0
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.cFWV2k/drv-pool/1/firstmate):
+.fm-secondmate-home
+.fm-secondmate-parent
+config
+data
+projects
+state
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | error: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.cFWV2k/drv-pool/1/firstmate is already marked for first
+fm-home-seed.sh second rc=1; slot marker now=first
+############ BASE 87e5c29: reap
+=== seed secondmate 'first' onto pooled slot
+seed first: rc=0
+=== detached leftover process pid=71607 cwd=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rgVqEp/drv-pool/1/firstmate/projects/alpha
+=== fm-teardown.sh first (no --force)
+  | teardown first complete (window firstmate:fm-first, worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rgVqEp/drv-pool/1/firstmate)
+teardown rc=0
+leftover pid 71607: STILL ALIVE
+--- slot contents (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rgVqEp/drv-pool/1/firstmate):
+.fm-secondmate-home
+.fm-secondmate-parent
+config
+data
+projects
+state
+--- parent meta: home-summary.json 
+=== seed secondmate 'second' onto the same slot
+  | error: secondmate home /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/drive-retire.rgVqEp/drv-pool/1/firstmate is already marked for first
+fm-home-seed.sh second rc=1; slot marker now=first

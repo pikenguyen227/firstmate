@@ -1,0 +1,6 @@
+ok - real Herdr lab: an opted-out spawn retains the Stage 1 Herdr command sequence with zero ordering calls
+not ok - opted-out teardown failed: teardown: reaping leaked worktree process(es) for shape: 33419 38688 38696 39963
+teardown: force-killing leaked worktree process(es) for shape: 33419
+worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-e2e-th4.oMcC5e/root/.treehouse/project-b44121/2/project is not managed by treehouse
+error: treehouse return failed for worktree /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-e2e-th4.oMcC5e/root/.treehouse/project-b44121/2/project; teardown aborted
+rc=1 24s
