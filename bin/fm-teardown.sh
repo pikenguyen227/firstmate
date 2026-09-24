@@ -165,7 +165,7 @@
 # or the next mate seeded onto that slot is refused as already marked. Before
 # that removal a non-forced retirement refuses, naming the clone, while any
 # clone under projects/ holds uncommitted, stashed, or unpushed work, and any
-# retirement refuses while a process still runs inside the home. If the
+# process still running inside the home is reaped. If the
 # treehouse return fails, teardown puts those files back and leaves the leased
 # home and state in place instead of hiding a still-held lease.
 # Usage: fm-teardown.sh <task-id> [--force] [--legacy-record]
@@ -2193,7 +2193,7 @@ EOF
     return 1
   fi
   [ -z "$TASK_PIDS" ] && return 0
-  echo "REFUSED: leaked $label processes for $ID remain after $max_passes reap attempts; preserving the worktree/tasktmp for manual inspection or retry." >&2
+  echo "REFUSED: leaked $label processes for $ID remain after $max_passes reap attempts ($(printf '%s' "$TASK_PIDS" | tr '\n' ' ')); preserving the worktree/tasktmp for manual inspection or retry." >&2
   return 1
 }
 
@@ -2632,8 +2632,7 @@ refuse_home_project_clones_unlanded() {  # <home> <label>
   [ "$FORCE" != "--force" ] || return 0
   [ -d "$home/projects" ] && [ ! -L "$home/projects" ] || return 0
   for clone in "$home/projects"/* "$home/projects"/.[!.]* "$home/projects"/..?*; do
-    [ -e "$clone" ] || [ -L "$clone" ] || continue
-    [ ! -L "$clone" ] || continue
+    [ -d "$clone" ] && [ ! -L "$clone" ] || continue
     if reasons=$(home_project_clone_unlanded_reasons "$clone"); then
       continue
     fi
@@ -2653,31 +2652,9 @@ EOF
 
 # Moves the home-owned entries of a leased home aside, into one staging
 # directory beside the slot, so a failed Treehouse return can put them back.
-# Refuses while any process still runs inside the home. Prints the staging
-# directory, or an empty line when there was nothing to move.
+# Prints the staging directory, or an empty line when there was nothing to move.
 stage_leased_home_owned_entries() {  # <home> <label>
-  local home=$1 label=$2 name stage pids waited=0 wait_secs
-  if ! command -v lsof >/dev/null 2>&1; then
-    echo "REFUSED: lsof is unavailable, so no running process inside $label $home can be ruled out; leaving the home intact" >&2
-    return 1
-  fi
-  # The home's endpoint was closed just before this, so give its processes a
-  # short bounded window to exit before treating them as still running.
-  wait_secs=${FM_TEARDOWN_HOME_PROCESS_WAIT_SECS:-5}
-  case "$wait_secs" in ''|*[!0-9]*) wait_secs=5 ;; esac
-  while :; do
-    if ! pids=$(pids_with_cwd_under "$home"); then
-      echo "REFUSED: cannot determine processes running inside $label $home (lsof failed); leaving the home intact" >&2
-      return 1
-    fi
-    [ -n "$pids" ] && [ "$waited" -lt "$wait_secs" ] || break
-    sleep 1
-    waited=$((waited + 1))
-  done
-  if [ -n "$pids" ]; then
-    echo "REFUSED: processes are still running inside $label $home ($(printf '%s' "$pids" | tr '\n' ' ')); leaving the home intact" >&2
-    return 1
-  fi
+  local home=$1 label=$2 name stage
   stage=
   for name in "${HOME_OWNED_ENTRIES[@]}"; do
     [ -e "$home/$name" ] || [ -L "$home/$name" ] || continue
@@ -2710,6 +2687,19 @@ restore_leased_home_owned_entries() {  # <home> <label> <stage>
   return "$rc"
 }
 
+# Reaps every process still running inside a home whose endpoint is closed,
+# so none keeps writing into the slot after its files are gone. The backend
+# process-group fallback belongs to the task this teardown retires, so a child
+# home reached through forced nested cleanup never uses it.
+reap_firstmate_home_processes() {  # <home> <label> <expected-id>
+  local home=$1 label=$2 expected_id=$3
+  if [ "$expected_id" = "$ID" ] && [ "$home" -ef "${HOME_PATH:-}" ]; then
+    reap_task_worktree_processes "$label" "$home"
+  else
+    ( ID=$expected_id BACKEND=none T=; reap_task_worktree_processes "$label" "$home" )
+  fi
+}
+
 remove_firstmate_home() {
   local home=$1 label=$2 expected_id=${3:-} abs_home_path process_event_backup owned_stage
   [ -n "$home" ] || return 0
@@ -2727,6 +2717,10 @@ remove_firstmate_home() {
   if firstmate_home_has_treehouse_slot "$abs_home_path"; then
     command -v treehouse >/dev/null 2>&1 || {
       echo "error: treehouse command not found; cannot return $label $abs_home_path" >&2
+      restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
+      return 1
+    }
+    reap_firstmate_home_processes "$abs_home_path" "$label" "$expected_id" || {
       restore_firstmate_home_process_events "$abs_home_path" "$label" "$process_event_backup" || return $?
       return 1
     }

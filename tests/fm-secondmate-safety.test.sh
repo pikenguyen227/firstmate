@@ -2018,6 +2018,53 @@ test_secondmate_teardown_frees_pooled_slot_for_next_seed() {
   pass "retiring a pooled secondmate frees its slot for the next secondmate seed"
 }
 
+test_secondmate_teardown_reaps_process_left_in_pooled_home() {
+  local err pid rc leftover
+  command -v lsof >/dev/null 2>&1 || { pass "skipped leftover-process reap test: lsof is unavailable"; return 0; }
+  make_pooled_secondmate_fixture pooled-reap
+  err="$TMP_ROOT/pooled-reap.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" first "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seed onto the pooled slot failed: $(cat "$err")"
+  ( cd "$POOL_SLOT/projects/alpha" && exec sleep 300 ) </dev/null >/dev/null 2>&1 &
+  pid=$!
+  disown "$pid" 2>/dev/null || true
+
+  set +e
+  PATH="$POOL_FAKEBIN:$PATH" FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-reap-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" first >/dev/null 2>"$err"
+  rc=$?
+  set -e
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -KILL "$pid" 2>/dev/null || true
+    fail "retirement left the process running inside the home alive (rc=$rc): $(cat "$err")"
+  fi
+  [ "$rc" -eq 0 ] || fail "retiring a pooled secondmate with a leftover process failed: $(cat "$err")"
+  for leftover in .fm-secondmate-home .fm-secondmate-parent data state config projects; do
+    [ ! -e "$POOL_SLOT/$leftover" ] || fail "retired secondmate left $leftover in the returned slot"
+  done
+  [ ! -e "$POOL_HOME/state/first.meta" ] || fail "retirement kept the parent task record"
+
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" second "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seeding a new secondmate onto the reaped slot failed: $(cat "$err")"
+  pass "retiring a pooled secondmate reaps a process left inside its home and frees the slot"
+}
+
+test_secondmate_teardown_ignores_stray_file_in_pooled_projects() {
+  local err
+  make_pooled_secondmate_fixture pooled-stray
+  err="$TMP_ROOT/pooled-stray.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" first "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seed onto the pooled slot failed: $(cat "$err")"
+  : > "$POOL_SLOT/projects/.DS_Store"
+  PATH="$POOL_FAKEBIN:$PATH" FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-stray-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" first >/dev/null 2>"$err" \
+    || fail "a stray file under projects/ blocked retirement: $(cat "$err")"
+  [ ! -e "$POOL_SLOT/projects" ] || fail "retired secondmate left projects/ in the returned slot"
+  pass "retiring a pooled secondmate ignores a stray regular file under projects/"
+}
+
 test_secondmate_teardown_refuses_pooled_clone_with_unlanded_work() {
   local err rc clone kind
   for kind in commit uncommitted; do
@@ -3275,6 +3322,8 @@ test_secondmate_force_teardown_preserves_nested_restore_status
 test_secondmate_teardown_refuses_failed_leased_home_return
 test_secondmate_teardown_frees_pooled_slot_for_next_seed
 test_secondmate_teardown_refuses_pooled_clone_with_unlanded_work
+test_secondmate_teardown_reaps_process_left_in_pooled_home
+test_secondmate_teardown_ignores_stray_file_in_pooled_projects
 test_secondmate_teardown_removes_plain_clone_home_without_treehouse_return
 test_secondmate_force_teardown_discards_child_work
 test_secondmate_force_teardown_refuses_duplicated_child_slot
