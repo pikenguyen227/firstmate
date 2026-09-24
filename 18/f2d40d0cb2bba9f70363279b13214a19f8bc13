@@ -1,0 +1,19 @@
+tests/fm-control-herdr-smoke.test.sh
+  s_a77deabc55a0fa::t_aeb1927d5e08e5 170,180,295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "18f2d40d0cb2bba9f70363279b13214a19f8bc13",
+  "prompts": {},
+  "sessions": {
+    "s_a77deabc55a0fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba7f9a06-e202-4cb4-b45f-293bb7dc8b10",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
