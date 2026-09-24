@@ -963,6 +963,50 @@ test_lifecycle_outcome_live_merged_pr_is_merged() {
   pass "lifecycle feed records merged from teardown's own merged-PR proof"
 }
 
+# A forced teardown discards work instead of proving it landed, so even this
+# home's merge record for the exact recorded PR must not make it merged.
+test_lifecycle_outcome_forced_is_not_merged() {
+  local case_dir rc
+  case_dir=$(make_case lifecycle-forced-marker)
+  write_meta "$case_dir" no-mistakes ship
+  wt_commit_file "$case_dir" feature.txt hello "merged work"
+  git -C "$case_dir/wt" push -q origin fm/task-x1
+  git -C "$case_dir/project" fetch -q origin
+  append_pr_meta_for_current_head "$case_dir"
+  bash -c '. "$1/bin/fm-pr-lib.sh"; fm_pr_poll_merge_mark_notified "$2" task-x1 github github.com example/repo 7' \
+    _ "$ROOT" "$case_dir/state" || fail "lifecycle-forced-marker: could not record the confirmed merge"
+
+  set +e
+  run_teardown "$case_dir" --force > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+
+  expect_code 0 "$rc" "lifecycle-forced-marker: forced teardown should succeed"
+  assert_equals "unknown https://github.com/example/repo/pull/7" "$(torn_down_outcome "$case_dir")" \
+    "lifecycle-forced-marker: a forced teardown must never record merged"
+  pass "lifecycle feed never records merged for a forced teardown"
+}
+
+# A pushed ship that never opened a PR has nothing to prove merged.
+test_lifecycle_outcome_pushed_without_pr_is_unknown() {
+  local case_dir rc
+  case_dir=$(make_case lifecycle-no-pr)
+  write_meta "$case_dir" no-mistakes ship
+  wt_commit_file "$case_dir" feature.txt hello "pushed work"
+  git -C "$case_dir/wt" push -q origin fm/task-x1
+  git -C "$case_dir/project" fetch -q origin
+
+  set +e
+  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+
+  expect_code 0 "$rc" "lifecycle-no-pr: teardown should succeed for a pushed branch"
+  assert_equals "unknown null" "$(torn_down_outcome "$case_dir")" \
+    "lifecycle-no-pr: a pushed ship with no PR must record unknown with no pr"
+  pass "lifecycle feed records unknown with no pr for a pushed ship without a PR"
+}
+
 test_no_pr_recorded_discovers_merged_pr_by_branch_allows() {
   local case_dir rc local_head pr_head
   case_dir=$(make_case no-pr-branch-discovery)
@@ -4009,6 +4053,8 @@ test_lifecycle_outcome_closed_unmerged_pr_is_not_merged
 test_lifecycle_outcome_confirmed_merge_is_merged
 test_lifecycle_outcome_other_pr_marker_is_not_merged
 test_lifecycle_outcome_live_merged_pr_is_merged
+test_lifecycle_outcome_forced_is_not_merged
+test_lifecycle_outcome_pushed_without_pr_is_unknown
 test_squash_merged_pr_allows_when_head_ancestor_of_pr_head
 test_no_pr_recorded_discovers_merged_pr_by_branch_allows
 test_squash_merged_pr_allows_replayed_unpushed_patch
