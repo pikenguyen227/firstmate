@@ -865,8 +865,8 @@ fm_lifecycle_task_reclassified() {  # <state> <task> <from-kind> <to-kind> <mode
   _fm_lifecycle_best_effort _fm_lifecycle_task_reclassified_body "$@"
 }
 
-_fm_lifecycle_task_torn_down_body() {  # <state> <task> <backlog-closed> <transition> <pr> <force>
-  local state=$1 task=$2 transition=$4 pr=$5 forced=false dir gen now data kind mode outcome report='' data_dir
+_fm_lifecycle_task_torn_down_body() {  # <state> <task> <backlog-closed> <transition> <pr> <force> [merge-proven]
+  local state=$1 task=$2 transition=$4 pr=$5 forced=false merge_proven=${7-} dir gen now data kind mode outcome report='' data_dir
   fm_lifecycle_feed_dir "$state" dir || return 0
   [ "$3" = 1 ] || transition=remove
   [ -z "$6" ] || forced=true
@@ -882,7 +882,7 @@ _fm_lifecycle_task_torn_down_body() {  # <state> <task> <backlog-closed> <transi
     secondmate) outcome=retired ;;
     *)
       if [ "$mode" = local-only ]; then outcome=landed
-      elif [ -n "$pr" ]; then outcome=merged
+      elif [ -n "$pr" ] && [ "$merge_proven" = 1 ]; then outcome=merged
       else outcome=unknown
       fi
       ;;
@@ -905,8 +905,10 @@ _fm_lifecycle_task_torn_down_body() {  # <state> <task> <backlog-closed> <transi
 # Flush a task's untranscribed status tail and acknowledgements and record its
 # teardown. Call before its status/meta/inbox are removed; the cursor stays at
 # the end of the flushed log so a concurrent drain cannot re-read it, and the
-# next drain retires it once the task's records are gone.
-fm_lifecycle_task_torn_down() {  # <state> <task> <backlog-closed:0|1> <close|retain> <pr-url> <force-flag>
+# next drain retires it once the task's records are gone. A ship records
+# `merged` only when the caller passes merge-proven=1 from its own proof that
+# the PR merged; a recorded PR alone never claims a merge.
+fm_lifecycle_task_torn_down() {  # <state> <task> <backlog-closed:0|1> <close|retain> <pr-url> <force-flag> [merge-proven:0|1]
   _fm_lifecycle_best_effort _fm_lifecycle_task_torn_down_body "$@"
 }
 
