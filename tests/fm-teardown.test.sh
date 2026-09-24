@@ -865,6 +865,104 @@ test_squash_merged_pr_allows_when_head_ancestor_of_pr_head() {
   pass "squash-merged PR accepts a local HEAD that is an ancestor of the final PR head"
 }
 
+# The task.torn_down outcome teardown records in this home's lifecycle feed.
+torn_down_outcome() {  # <case_dir> -> "<outcome> <pr>"
+  jq -rs '[.[] | select(.type == "task.torn_down")] | last | "\(.data.outcome) \(.data.pr)"' \
+    "$1/data/lifecycle/events.v1.jsonl"
+}
+
+# A pushed ship whose recorded PR was closed without merging still passes the
+# landed-work gate (its branch is on a remote), so only merge proof may decide
+# the feed's outcome.
+test_lifecycle_outcome_closed_unmerged_pr_is_not_merged() {
+  local case_dir rc
+  case_dir=$(make_case lifecycle-closed-unmerged)
+  write_meta "$case_dir" no-mistakes ship
+  wt_commit_file "$case_dir" feature.txt hello "closed work"
+  git -C "$case_dir/wt" push -q origin fm/task-x1
+  git -C "$case_dir/project" fetch -q origin
+  append_pr_meta_for_current_head "$case_dir"
+
+  set +e
+  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+
+  expect_code 0 "$rc" "lifecycle-closed-unmerged: teardown should succeed for a pushed branch"
+  assert_equals "unknown https://github.com/example/repo/pull/7" "$(torn_down_outcome "$case_dir")" \
+    "lifecycle-closed-unmerged: a PR with no merge proof must not be recorded as merged"
+  pass "lifecycle feed never records a closed-unmerged PR as merged"
+}
+
+# The merge-notification marker is this home's durable record that the exact PR
+# merged, whether this home merged it or its poll detected the merge.
+test_lifecycle_outcome_confirmed_merge_is_merged() {
+  local case_dir rc
+  case_dir=$(make_case lifecycle-confirmed-merge)
+  write_meta "$case_dir" no-mistakes ship
+  wt_commit_file "$case_dir" feature.txt hello "merged work"
+  git -C "$case_dir/wt" push -q origin fm/task-x1
+  git -C "$case_dir/project" fetch -q origin
+  append_pr_meta_for_current_head "$case_dir"
+  bash -c '. "$1/bin/fm-pr-lib.sh"; fm_pr_poll_merge_mark_notified "$2" task-x1 github github.com example/repo 7' \
+    _ "$ROOT" "$case_dir/state" || fail "lifecycle-confirmed-merge: could not record the confirmed merge"
+
+  set +e
+  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+
+  expect_code 0 "$rc" "lifecycle-confirmed-merge: teardown should succeed"
+  assert_equals "merged https://github.com/example/repo/pull/7" "$(torn_down_outcome "$case_dir")" \
+    "lifecycle-confirmed-merge: a confirmed merge of the recorded PR must record merged"
+  pass "lifecycle feed records merged for a PR this home confirmed merged"
+}
+
+# A marker for a different PR is not proof that the recorded PR merged.
+test_lifecycle_outcome_other_pr_marker_is_not_merged() {
+  local case_dir rc
+  case_dir=$(make_case lifecycle-other-pr-marker)
+  write_meta "$case_dir" no-mistakes ship
+  wt_commit_file "$case_dir" feature.txt hello "closed work"
+  git -C "$case_dir/wt" push -q origin fm/task-x1
+  git -C "$case_dir/project" fetch -q origin
+  append_pr_meta_for_current_head "$case_dir"
+  bash -c '. "$1/bin/fm-pr-lib.sh"; fm_pr_poll_merge_mark_notified "$2" task-x1 github github.com example/repo 6' \
+    _ "$ROOT" "$case_dir/state" || fail "lifecycle-other-pr-marker: could not record the other merge"
+
+  set +e
+  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+
+  expect_code 0 "$rc" "lifecycle-other-pr-marker: teardown should succeed"
+  assert_equals "unknown https://github.com/example/repo/pull/7" "$(torn_down_outcome "$case_dir")" \
+    "lifecycle-other-pr-marker: another PR's merge must not prove the recorded PR merged"
+  pass "lifecycle feed ignores a merge confirmation for a different PR"
+}
+
+# Teardown's own live landing proof (a merged PR containing the local work) also
+# proves the merge for the feed.
+test_lifecycle_outcome_live_merged_pr_is_merged() {
+  local case_dir rc pr_head
+  case_dir=$(make_case lifecycle-live-merged)
+  write_meta "$case_dir" no-mistakes ship
+  wt_commit_file "$case_dir" feature.txt hello "add feature"
+  append_pr_meta_for_current_head "$case_dir"
+  pr_head=$(git -C "$case_dir/wt" rev-parse HEAD)
+  add_gh_pr_merged_for_head "$case_dir" "$pr_head"
+
+  set +e
+  run_teardown "$case_dir" > "$case_dir/stdout" 2> "$case_dir/stderr"
+  rc=$?
+  set -e
+
+  expect_code 0 "$rc" "lifecycle-live-merged: teardown should succeed when the PR is merged"
+  assert_equals "merged https://github.com/example/repo/pull/7" "$(torn_down_outcome "$case_dir")" \
+    "lifecycle-live-merged: teardown's merged-PR proof must record merged"
+  pass "lifecycle feed records merged from teardown's own merged-PR proof"
+}
+
 test_no_pr_recorded_discovers_merged_pr_by_branch_allows() {
   local case_dir rc local_head pr_head
   case_dir=$(make_case no-pr-branch-discovery)
@@ -3907,6 +4005,10 @@ test_herdr_projection_teardown_retires_journal_only_after_confirmed_close
 test_herdr_projection_teardown_retains_journal_when_close_unconfirmed
 test_herdr_projection_teardown_surfaces_restore_failure_without_blocking_cleanup
 test_squash_merged_branch_deleted_allows
+test_lifecycle_outcome_closed_unmerged_pr_is_not_merged
+test_lifecycle_outcome_confirmed_merge_is_merged
+test_lifecycle_outcome_other_pr_marker_is_not_merged
+test_lifecycle_outcome_live_merged_pr_is_merged
 test_squash_merged_pr_allows_when_head_ancestor_of_pr_head
 test_no_pr_recorded_discovers_merged_pr_by_branch_allows
 test_squash_merged_pr_allows_replayed_unpushed_patch

@@ -1159,7 +1159,8 @@ A backfilled `task.spawned` takes `at` from the `spawn_gen` epoch and carries `r
 `<stream>`, also carried as `data.stream`, is fixed when that status log is first transcribed: the `spawn_gen` of the task's last recorded `task.spawned`, or its current `spawn_gen` when none is recorded, so a log's keys stay stable across relaunches, and a status log that was replaced gets a stream suffixed with its file identity; the envelope's `task.spawn_gen` names the attempt the line is attributed to.
 `task.decision` records the transitions of the same keyed-decision fold the wake drain uses ([`bin/fm-classify-lib.sh`](../bin/fm-classify-lib.sh)), so a consumer never re-implements it: a `done` or `failed` line on a ship or scout closes every open decision with `closed_by: terminal`.
 Steering events never carry the message body, only its size and SHA-256.
-`outcome` follows the record's kind and delivery: a scout is `reported`, a secondmate `retired`, a local-only ship `landed`, a ship with a recorded PR `merged`, and a forced teardown or anything else `unknown`.
+`outcome` follows the record's kind and delivery: a scout is `reported`, a secondmate `retired`, a local-only ship `landed`, a ship `merged` only when teardown holds proof that its recorded PR merged, and a forced teardown or anything else, including a recorded PR with no merge proof, `unknown`.
+Teardown's merge proof is its own live merged-PR check or this home's confirmed-merge record for that exact PR, so a PR closed without merging never records `merged`, and consumers can still tell an unproven PR apart by `pr`.
 
 ### Timing and ordering
 

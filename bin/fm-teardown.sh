@@ -1044,6 +1044,10 @@ if [ "${FM_TEARDOWN_GUARD_DONE:-0}" != 1 ]; then
 fi
 HOME_PATH=$(grep '^home=' "$META" | cut -d= -f2- || true)
 PR_URL=$(grep '^pr=' "$META" | tail -1 | cut -d= -f2- || true)
+# Set to 1 only by proof that PR_URL merged: the live check in pr_is_merged, or
+# this home's merge-notification marker for that exact PR. The lifecycle
+# teardown record claims `merged` only on this proof.
+PR_MERGE_PROVEN=0
 # tasktmp is recorded by fm-spawn for tasks that set up a per-task temp root
 # (/tmp/fm-<id>/); absent for tasks spawned before that change, so tolerate empty.
 TASK_TMP=$(grep '^tasktmp=' "$META" | cut -d= -f2- || true)
@@ -1479,6 +1483,7 @@ pr_is_merged() {
     [ -n "$resolved_url" ] || return 1
     PR_URL=$resolved_url
   fi
+  PR_MERGE_PROVEN=1
   return 0
 }
 
@@ -3656,6 +3661,14 @@ LAUNCH_HOME_TOKEN=$(teardown_launch_home_token "$FM_HOME") || LAUNCH_HOME_TOKEN=
 if [ -n "$LAUNCH_HOME_TOKEN" ]; then
   rm -rf "/tmp/fm-$ID+$LAUNCH_HOME_TOKEN"
 fi
+# A confirmed merge of this exact PR left its canonical identity in the
+# merge-notification marker (bin/fm-merge-outcome-lib.sh); read it before the
+# marker is removed below.
+if [ "$PR_MERGE_PROVEN" = 0 ] && [ -n "$PR_URL" ] && fm_pr_url_parse "$PR_URL" \
+  && fm_pr_poll_merge_already_notified "$STATE" "$ID" \
+    "$FM_PR_PROVIDER" "$FM_PR_HOST" "$FM_PR_PATH" "$FM_PR_NUMBER"; then
+  PR_MERGE_PROVEN=1
+fi
 remove_pr_poll_artifacts "$STATE" "$ID" || exit 1
 retire_busy_state "$STATE" "$ID" "$BUSY_GEN" || exit 1
 # Opt-in fleet activity ledger (docs/fleet-ledger.md), before the status log is
@@ -3663,7 +3676,7 @@ retire_busy_state "$STATE" "$ID" "$BUSY_GEN" || exit 1
 [ ! -e "$CONFIG/fleet-ledger" ] || FM_HOME=$FM_HOME FM_STATE_OVERRIDE=$STATE FM_CONFIG_OVERRIDE=$CONFIG "$SCRIPT_DIR/fm-fleet-ledger.sh" cleaned_up "$ID" || true
 # Best-effort lifecycle flush and teardown record, before the history below is
 # deleted (bin/fm-lifecycle-lib.sh).
-fm_lifecycle_task_torn_down "$STATE" "$ID" "$BACKLOG_CLOSED" "$BACKLOG_TRANSITION" "$PR_URL" "$FORCE"
+fm_lifecycle_task_torn_down "$STATE" "$ID" "$BACKLOG_CLOSED" "$BACKLOG_TRANSITION" "$PR_URL" "$FORCE" "$PR_MERGE_PROVEN"
 status_retire_presentation_task "$STATE" "$ID" || exit 1
 fm_wake_queue_prune_task "$STATE" "$ID" "$T" 2>/dev/null || true
 rm -f "$STATE/$ID.turn-ended" "$STATE/$ID.progress" \
