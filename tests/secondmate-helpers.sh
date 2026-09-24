@@ -11,7 +11,8 @@
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 # A fake tmux (window ops are logged to FM_FAKE_TMUX_LOG, list-windows returns
-# FM_FAKE_TMUX_WINDOW, capture-pane echoes FM_FAKE_TMUX_CAPTURE) plus a fake
+# FM_FAKE_TMUX_WINDOW, capture-pane echoes FM_FAKE_TMUX_CAPTURE, and any pane_pid
+# lookup answers FM_FAKE_TMUX_PANE_PID) plus a fake
 # treehouse (durable lease of FM_FAKE_TREEHOUSE_HOME, recording the lease holder
 # to FM_FAKE_TREEHOUSE_LEASE_FILE; `return` removes the target and lease unless
 # FM_FAKE_TREEHOUSE_RETURN_FAIL is set). Echoes the fakebin dir.
@@ -73,6 +74,7 @@ EOF
   display-message)
     case "$*" in
       *'#{cursor_y}'*) printf '0\n' ;;
+      *'#{pane_pid}'*) printf '%s\n' "${FM_FAKE_TMUX_PANE_PID:-firstmate}" ;;
       *) printf 'firstmate\n' ;;
     esac
     exit 0

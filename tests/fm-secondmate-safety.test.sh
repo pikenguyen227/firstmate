@@ -1935,6 +1935,220 @@ EOF
   pass "force teardown preserves nested process-event restoration status and recovery state"
 }
 
+# Replaces make_fake_tmux's treehouse with one whose return behaves like the
+# real pool: it resets and cleans the slot but keeps git-ignored files and the
+# slot directory itself, so anything a retired home leaves behind survives.
+install_pool_like_treehouse() {
+  local fakebin=$1
+  cat > "$fakebin/treehouse" <<'SH'
+#!/usr/bin/env bash
+set -u
+printf 'treehouse %s\n' "$*" >> "${FM_FAKE_TMUX_LOG:-/dev/null}"
+case "${1:-}" in
+  get)
+    printf '%s\n' "$FM_FAKE_TREEHOUSE_HOME"
+    ;;
+  return)
+    target=
+    for arg in "$@"; do
+      case "$arg" in return|--force) ;; *) target=$arg ;; esac
+    done
+    git -C "$target" reset -q --hard && git -C "$target" clean -qfd
+    ;;
+esac
+SH
+  chmod +x "$fakebin/treehouse"
+}
+
+# Seeds secondmate <id> onto the pooled <slot> from parent <home> and writes
+# the parent's task record for it, as a launch would.
+seed_pooled_secondmate() {
+  local primary=$1 home=$2 slot=$3 id=$4 fakebin=$5 log=$6
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_FAKE_TREEHOUSE_HOME="$slot" FM_FAKE_TMUX_LOG="$log" \
+    FM_SECONDMATE_CHARTER="$id scope" FM_SECONDMATE_SCOPE="$id scope" \
+    "$primary/bin/fm-home-seed.sh" "$id" - alpha
+  cat > "$home/state/$id.meta" <<EOF
+window=firstmate:fm-$id
+worktree=$slot
+project=$slot
+harness=echo
+kind=secondmate
+mode=secondmate
+yolo=off
+home=$slot
+projects=alpha
+EOF
+}
+
+make_pooled_secondmate_fixture() {
+  local name=$1
+  POOL_HOME="$TMP_ROOT/$name-home"
+  POOL_SLOT="$TMP_ROOT/$name-pool/1/firstmate"
+  mkdir -p "$POOL_HOME/projects" "$POOL_HOME/data" "$POOL_HOME/state" "$TMP_ROOT/$name-pool/1"
+  fm_git_init_commit "$POOL_HOME/projects/alpha"
+  fm_git_add_origin "$POOL_HOME/projects/alpha" "$TMP_ROOT/remotes/$name-alpha.git"
+  printf '%s\n' '- alpha [direct-PR] - alpha project (added 2026-06-22)' > "$POOL_HOME/data/projects.md"
+  POOL_PRIMARY=$(make_seed_primary "$TMP_ROOT/$name-primary")
+  git -C "$POOL_PRIMARY" worktree add --quiet --detach "$POOL_SLOT" main
+  POOL_FAKEBIN=$(make_fake_tmux "$TMP_ROOT/$name-fake")
+  install_pool_like_treehouse "$POOL_FAKEBIN"
+  POOL_LOG="$TMP_ROOT/$name-fake/tmux.log"
+}
+
+test_secondmate_teardown_frees_pooled_slot_for_next_seed() {
+  local err leftover
+  make_pooled_secondmate_fixture pooled-reuse
+  err="$TMP_ROOT/pooled-reuse.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" first "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "first seed onto the pooled slot failed: $(cat "$err")"
+  [ -d "$POOL_SLOT/projects/alpha/.git" ] || fail "first seed did not clone alpha into the pooled slot"
+
+  PATH="$POOL_FAKEBIN:$PATH" FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-reuse-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" first >/dev/null 2>"$err" \
+    || fail "retiring the pooled secondmate failed: $(cat "$err")"
+  [ -d "$POOL_SLOT" ] || fail "fixture treehouse did not keep the returned slot"
+  for leftover in .fm-secondmate-home .fm-secondmate-parent data state config projects; do
+    [ ! -e "$POOL_SLOT/$leftover" ] || fail "retired secondmate left $leftover in the returned slot"
+  done
+
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" second "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seeding a new secondmate onto the retired slot failed: $(cat "$err")"
+  [ "$(cat "$POOL_SLOT/.fm-secondmate-home")" = second ] || fail "new secondmate did not take over the retired slot"
+  pass "retiring a pooled secondmate frees its slot for the next secondmate seed"
+}
+
+test_secondmate_teardown_reaps_process_left_in_pooled_home() {
+  local err pid rc leftover
+  command -v lsof >/dev/null 2>&1 || { pass "skipped leftover-process reap test: lsof is unavailable"; return 0; }
+  make_pooled_secondmate_fixture pooled-reap
+  err="$TMP_ROOT/pooled-reap.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" first "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seed onto the pooled slot failed: $(cat "$err")"
+  ( cd "$POOL_SLOT/projects/alpha" && exec sleep 300 ) </dev/null >/dev/null 2>&1 &
+  pid=$!
+  disown "$pid" 2>/dev/null || true
+
+  set +e
+  PATH="$POOL_FAKEBIN:$PATH" FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-reap-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" first >/dev/null 2>"$err"
+  rc=$?
+  set -e
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -KILL "$pid" 2>/dev/null || true
+    fail "retirement left the process running inside the home alive (rc=$rc): $(cat "$err")"
+  fi
+  [ "$rc" -eq 0 ] || fail "retiring a pooled secondmate with a leftover process failed: $(cat "$err")"
+  for leftover in .fm-secondmate-home .fm-secondmate-parent data state config projects; do
+    [ ! -e "$POOL_SLOT/$leftover" ] || fail "retired secondmate left $leftover in the returned slot"
+  done
+  [ ! -e "$POOL_HOME/state/first.meta" ] || fail "retirement kept the parent task record"
+
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" second "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seeding a new secondmate onto the reaped slot failed: $(cat "$err")"
+  pass "retiring a pooled secondmate reaps a process left inside its home and frees the slot"
+}
+
+# Builds a PATH with every command of <path> except lsof, mirroring each
+# directory that holds an lsof so nothing else drops out.
+path_without_lsof() {  # <path> <mirror-root>
+  local path=$1 root=$2 dir entry mirror out='' i=0
+  local -a dirs
+  IFS=: read -r -a dirs <<< "$path"
+  for dir in "${dirs[@]}"; do
+    [ -n "$dir" ] || continue
+    if [ -e "$dir/lsof" ]; then
+      i=$((i + 1))
+      mirror="$root/$i"
+      mkdir -p "$mirror"
+      for entry in "$dir"/*; do
+        [ "${entry##*/}" = lsof ] || ln -s "$entry" "$mirror/${entry##*/}" 2>/dev/null || true
+      done
+      dir=$mirror
+    fi
+    out="${out:+$out:}$dir"
+  done
+  printf '%s\n' "$out"
+}
+
+test_secondmate_teardown_without_lsof_signals_no_other_window() {
+  local err sentinel nolsof rc leftover
+  make_pooled_secondmate_fixture pooled-nolsof
+  err="$TMP_ROOT/pooled-nolsof.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" zoe "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seed onto the pooled slot failed: $(cat "$err")"
+  sentinel=$(set -m; sleep 300 >/dev/null 2>&1 & echo $!)
+  nolsof=$(path_without_lsof "$POOL_FAKEBIN:$PATH" "$TMP_ROOT/pooled-nolsof-path")
+  PATH=$nolsof command -v lsof >/dev/null 2>&1 && { kill -KILL "$sentinel" 2>/dev/null || true; fail "lsof is still on the no-lsof PATH"; }
+
+  set +e
+  PATH=$nolsof FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_WINDOW="$(printf 'fm-zoe\nfm-zoe-api')" FM_FAKE_TMUX_PANE_PID="$sentinel" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-nolsof-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" zoe >/dev/null 2>"$err"
+  rc=$?
+  set -e
+  if ! kill -0 "$sentinel" 2>/dev/null; then
+    fail "retirement without lsof signalled the process group of live window fm-zoe-api (rc=$rc): $(cat "$err")"
+  fi
+  kill -KILL "$sentinel" 2>/dev/null || true
+  [ "$rc" -eq 0 ] || fail "retiring a pooled secondmate without lsof failed: $(cat "$err")"
+  grep -F 'lsof is unavailable' "$err" >/dev/null || fail "retirement without lsof did not warn: $(cat "$err")"
+  for leftover in .fm-secondmate-home .fm-secondmate-parent data state config projects; do
+    [ ! -e "$POOL_SLOT/$leftover" ] || fail "retired secondmate left $leftover in the returned slot"
+  done
+  pass "retiring a pooled secondmate without lsof warns and signals no other window's process group"
+}
+
+test_secondmate_teardown_ignores_stray_file_in_pooled_projects() {
+  local err
+  make_pooled_secondmate_fixture pooled-stray
+  err="$TMP_ROOT/pooled-stray.err"
+  seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" first "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+    || fail "seed onto the pooled slot failed: $(cat "$err")"
+  : > "$POOL_SLOT/projects/.DS_Store"
+  PATH="$POOL_FAKEBIN:$PATH" FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+    FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-stray-fake/pane.txt" \
+    "$POOL_PRIMARY/bin/fm-teardown.sh" first >/dev/null 2>"$err" \
+    || fail "a stray file under projects/ blocked retirement: $(cat "$err")"
+  [ ! -e "$POOL_SLOT/projects" ] || fail "retired secondmate left projects/ in the returned slot"
+  pass "retiring a pooled secondmate ignores a stray regular file under projects/"
+}
+
+test_secondmate_teardown_refuses_pooled_clone_with_unlanded_work() {
+  local err rc clone kind
+  for kind in commit uncommitted; do
+    make_pooled_secondmate_fixture "pooled-unlanded-$kind"
+    err="$TMP_ROOT/pooled-unlanded-$kind.err"
+    seed_pooled_secondmate "$POOL_PRIMARY" "$POOL_HOME" "$POOL_SLOT" keeper "$POOL_FAKEBIN" "$POOL_LOG" >/dev/null 2>"$err" \
+      || fail "seed onto the pooled slot failed: $(cat "$err")"
+    clone="$POOL_SLOT/projects/alpha"
+    printf 'unlanded\n' > "$clone/work.txt"
+    if [ "$kind" = commit ]; then
+      git -C "$clone" add work.txt
+      git -C "$clone" -c user.name='Firstmate Tests' -c user.email='tests@example.invalid' commit -qm unlanded
+    fi
+    : > "$POOL_LOG"
+
+    set +e
+    PATH="$POOL_FAKEBIN:$PATH" FM_HOME="$POOL_HOME" FM_FAKE_TMUX_LOG="$POOL_LOG" \
+      FM_FAKE_TMUX_CAPTURE="$TMP_ROOT/pooled-unlanded-$kind-fake/pane.txt" \
+      "$POOL_PRIMARY/bin/fm-teardown.sh" keeper >/dev/null 2>"$err"
+    rc=$?
+    set -e
+
+    [ "$rc" -ne 0 ] || fail "retirement succeeded although a clone held $kind unlanded work"
+    grep -F "project clone $clone" "$err" >/dev/null || fail "$kind refusal did not name the clone: $(cat "$err")"
+    [ "$(cat "$clone/work.txt")" = unlanded ] || fail "$kind unlanded work did not survive the refused retirement"
+    [ "$(cat "$POOL_SLOT/.fm-secondmate-home")" = keeper ] || fail "$kind refusal did not leave the home intact"
+    [ -e "$POOL_HOME/state/keeper.meta" ] || fail "$kind refusal removed the parent task record"
+    grep -F 'kill-window' "$POOL_LOG" >/dev/null && fail "$kind refusal closed the secondmate before refusing"
+    grep -F 'treehouse return' "$POOL_LOG" >/dev/null && fail "$kind refusal returned the slot"
+  done
+  pass "retiring a pooled secondmate refuses and keeps a clone holding unlanded work"
+}
+
 test_secondmate_teardown_refuses_failed_leased_home_return() {
   local home subhome subhome_abs fakebin log fmroot err rc sweep_log rearm_log backup
   home="$TMP_ROOT/teardown-return-fail-home"
@@ -3157,6 +3371,11 @@ test_secondmate_teardown_preserves_process_events_on_later_refusal
 test_secondmate_force_teardown_sweeps_nested_homes
 test_secondmate_force_teardown_preserves_nested_restore_status
 test_secondmate_teardown_refuses_failed_leased_home_return
+test_secondmate_teardown_frees_pooled_slot_for_next_seed
+test_secondmate_teardown_refuses_pooled_clone_with_unlanded_work
+test_secondmate_teardown_reaps_process_left_in_pooled_home
+test_secondmate_teardown_without_lsof_signals_no_other_window
+test_secondmate_teardown_ignores_stray_file_in_pooled_projects
 test_secondmate_teardown_removes_plain_clone_home_without_treehouse_return
 test_secondmate_force_teardown_discards_child_work
 test_secondmate_force_teardown_refuses_duplicated_child_slot
