@@ -6,6 +6,23 @@ This record supports the active guarantee that every firstmate home gets task wo
 [`docs/configuration.md`](../configuration.md) owns the operator-facing rule and `fm_treehouse_home_pool_root` in [`bin/fm-wake-lib.sh`](../../bin/fm-wake-lib.sh) owns where each home's pool lives.
 The portable regression `tests/fm-spawn-pool-per-home.test.sh` proves the spawn logic against a fake treehouse; this record proves the real Treehouse side of the contract.
 
+## Real Treehouse, single-slot destroy
+
+When a pre-move in-home pool holds a slot claimed by a task the home still records, `fm_treehouse_pool_root_drain` in [`bin/fm-wake-lib.sh`](../../bin/fm-wake-lib.sh) offers each other slot to `treehouse --root <root> destroy <worktree> --yes` instead of the pool-wide `--all`, and relies on that form keeping a slot that holds work.
+
+Verified on 2026-09-24 with treehouse v2.3.0 on Darwin, in a throwaway sandbox (throwaway `HOME`, origin, clone, and `--root`, shown as `<tmp>`).
+Three slots were leased with `treehouse --root <tmp>/root get --lease --no-fetch`; slot 1 was returned (disposable), slot 2 was returned and then made dirty with an untracked file, and slot 3 was left leased.
+Each was then destroyed on its own with `treehouse --root <tmp>/root destroy <slot worktree> --yes`, in this order, with these results (Treehouse's report quoted as recorded, abbreviated where marked `...`):
+
+```text
+slot 2 (dirty):       did not destroy 2 (dirty); re-run with --include-unlanded   exit 1, worktree still present
+slot 3 (leased):      did not destroy 3 (leased); re-run with --include-leased    exit 1, worktree still present
+slot 1 (disposable):  Destroyed 1 worktree ... [disposable]                        exit 0, worktree gone
+```
+
+So single-slot destroy applies the same safe-by-default checks as the pool-wide form: it removes only a disposable slot and refuses, with a non-zero exit, one that is dirty or leased.
+Scenario S6 of `tests/fm-spawn-pool-per-home-live-e2e.test.sh` repeats this against the real binary outside the Herdr lab and is the command that refreshes this section.
+
 ## Real Treehouse, real spawn, Herdr lab
 
 Treehouse names a pool by repository, so on one root every clone of a repository shares one pool whose slots are worktrees of whichever clone created them.

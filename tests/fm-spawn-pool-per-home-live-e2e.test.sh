@@ -22,7 +22,11 @@
 #       leaving every slot in place;
 #   S5  the real binary honours a later --root over an earlier one (the shape a
 #       wrapper that injects a leading --root produces), and a nested get from
-#       inside a held slot's subshell hands out a different slot.
+#       inside a held slot's subshell hands out a different slot;
+#   S6  a single-slot `treehouse --root <root> destroy <worktree> --yes`, the
+#       call the legacy-pool drain (fm_treehouse_pool_root_drain) makes beside a
+#       claimed slot, removes a disposable slot and refuses, with a non-zero
+#       exit, a dirty one and a leased one, leaving both worktrees in place.
 #
 # It submits no prompt, so the shared live gate runs it wherever herdr, jq, git,
 # and treehouse are installed. FM_TREEHOUSE_LIVE_BIN names the real treehouse
@@ -192,6 +196,34 @@ esac
 (cd "$PRIMARY/projects/app" && treehouse --root "$S5_B" return --force "$S5_PATH" >/dev/null 2>&1) ||
   fail "S5: returning the --root lease failed"
 pass "S5 a later --root wins over a wrapper's leading --root"
+
+# --- S6: single-slot destroy keeps a slot that holds work -------------------
+S6_ROOT="$TMP_ROOT/s6-root"
+S6_WT=()
+for _ in 1 2 3; do
+  S6_PATH=$(cd "$PRIMARY/projects/app" && treehouse --root "$S6_ROOT" get --lease --no-fetch 2>/dev/null) ||
+    fail "S6: treehouse --root <root> get --lease failed"
+  S6_WT+=("$S6_PATH")
+done
+for i in 0 1; do
+  (cd "$PRIMARY/projects/app" && treehouse --root "$S6_ROOT" return --force "${S6_WT[$i]}" >/dev/null 2>&1) ||
+    fail "S6: returning ${S6_WT[$i]} failed"
+done
+printf 'untracked\n' > "${S6_WT[1]}/untracked.txt"
+s6_destroy() { # <worktree>
+  local out rc=0
+  out=$(cd "$S6_ROOT" && treehouse --root "$S6_ROOT" destroy "$1" --yes 2>&1) || rc=$?
+  printf '# S6 destroy %s rc=%s\n' "$1" "$rc"
+  printf '%s\n' "$out" | sed 's/^/#   | /'
+  return "$rc"
+}
+! s6_destroy "${S6_WT[1]}" || fail "S6: destroying the dirty slot exited 0"
+[ -f "${S6_WT[1]}/untracked.txt" ] || fail "S6: single-slot destroy removed a dirty slot's work"
+! s6_destroy "${S6_WT[2]}" || fail "S6: destroying the leased slot exited 0"
+[ -d "${S6_WT[2]}" ] || fail "S6: single-slot destroy removed a leased slot"
+s6_destroy "${S6_WT[0]}" || fail "S6: destroying the disposable slot failed"
+[ ! -e "${S6_WT[0]}" ] || fail "S6: single-slot destroy left the disposable slot"
+pass "S6 single-slot destroy removes a disposable slot and refuses a dirty or leased one"
 
 # Herdr panes inherit the server's environment, so PATH already names the lab
 # wrapper when the lab is provisioned.
