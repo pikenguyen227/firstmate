@@ -19,8 +19,9 @@
 #   Before sending, a conservative pattern screen checks that exact text for
 #   likely secrets (provider key prefixes, credential assignments, private-key
 #   headers, long high-entropy strings), connection strings, private or
-#   link-local addresses, internal-looking hostnames, and any host outside a
-#   fixed list of well-known public domains. A match, a missing Task section,
+#   link-local addresses, internal-looking hostnames, and any host (including
+#   scheme-less host:port, user@host, and any IPv4 literal outside loopback)
+#   outside a fixed list of well-known public domains. A match, a missing Task section,
 #   or a missing screen tool sends nothing and returns escalate with a reason
 #   naming only the kind of match, never the matched text.
 #
@@ -84,6 +85,8 @@ CONFIG="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 . "$SCRIPT_DIR/fm-env-lib.sh"
 # shellcheck source=bin/fm-timing-lib.sh
 . "$SCRIPT_DIR/fm-timing-lib.sh"
+# shellcheck source=bin/fm-dod-lib.sh
+. "$SCRIPT_DIR/fm-dod-lib.sh"
 
 CONFIDENCE_FLOOR=0.6
 TS_MODEL=jev-latest
@@ -99,19 +102,6 @@ no_rules() {
 not_sent() {
   printf 'dispatch-resolve:\n  status: escalate\n  reason: task text not sent: %s\n' "$1"
   exit 0
-}
-
-# The brief's top-level `# Task` section, up to the next top-level heading;
-# headings inside fenced code blocks never end it.
-task_section() {  # <brief>
-  awk '
-    /^[ \t]*(```|~~~)/ { fence = !fence }
-    !fence && /^#[ \t]/ {
-      if (in_task) exit
-      if ($0 ~ /^#[ \t]+Task[ \t]*$/) { in_task = 1; next }
-    }
-    in_task { print }
-  ' "$1"
 }
 
 # Hosts that may appear in text sent to typesafe.ai; each entry also allows
@@ -154,7 +144,7 @@ screen_kind() {  # <text>
   if hit '(^|[^A-Za-z0-9])(sk-[A-Za-z0-9_-]{16,}|[sr]k_(live|test)_[A-Za-z0-9]{10,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|xox[abposr]-[A-Za-z0-9-]{10,}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{30,}|npm_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,})' "$text"; then
     echo "provider key"; return
   fi
-  if hit '(password|passwd|passphrase|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credentials?)["'"'"']?[[:space:]]*(=[[:space:]]*["'"'"']?|:[[:space:]]*["'"'"'])[A-Za-z0-9_./+~!@#%^&*-]{4,}|bearer[[:space:]]+[A-Za-z0-9._~+/-]{16,}' "$lower"; then
+  if hit '(password|passwd|passphrase|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credentials?)["'"'"']?[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_./+~!@#%^&*-]{4,}|bearer[[:space:]]+[A-Za-z0-9._~+/-]{16,}' "$lower"; then
     echo "credential assignment"; return
   fi
   if hit '[a-z][a-z0-9+.-]*://[^[:space:]/@:]+:[^[:space:]/@]+@|(^|[^a-z0-9])(postgres(ql)?|mysql|mariadb|mongodb(\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|jdbc:[a-z0-9]+|odbc|ldaps?|smb|nfs|s3|kafka|nats|mqtt|clickhouse|cassandra|couchdb|neo4j|snowflake)://|(data source|initial catalog|user id|accountkey|sharedaccesskey)[[:space:]]*=' "$lower"; then
@@ -172,9 +162,11 @@ screen_kind() {  # <text>
     {
       grep -Eo -- '[a-z][a-z0-9+.-]*://[^/[:space:]?#"'"'"'<>()`]+' <<<"$lower" |
         sed -E 's#^[^:]*://##; s#^.*@##; s#(\]|[^:]):[0-9]*$#\1#; s#^\[([^]]*)\]$#\1#'
-      grep -Eo -- '([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+(com|net|org|io|ai|dev|co|cloud|biz|info|xyz|tech|site|online|gov|edu|mil|us|uk|ca|au|de|fr|jp|vn|cn|eu|nl|se|ch|kr|sg|hk|tw|br|ru)([^a-z0-9.-]|\.?$|\.[^a-z0-9])' <<<"$lower" |
+      grep -Eo -- '([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+(com|net|org|io|ai|dev|co|cloud|biz|info|xyz|tech|site|online|gov|edu|mil|us|uk|ca|au|de|fr|jp|vn|cn|eu|nl|se|ch|kr|sg|hk|tw|br|ru|app|me|team|tools|systems|company|work|host|network|page|services|solutions|digital|group|zone|pro|live|space|link)([^a-z0-9.-]|\.?$|\.[^a-z0-9])' <<<"$lower" |
         sed -E 's#[^a-z0-9]*$##; s#\.$##'
-      grep -Eo -- '[a-z0-9._-]+@[a-z0-9-]+:' <<<"$lower" | sed -E 's#^.*@##; s#:$##'
+      grep -Eo -- '[a-z0-9._-]+@[a-z][a-z0-9-]*((\.[a-z0-9-]+)+|:)' <<<"$lower" | sed -E 's#^.*@##; s#:$##'
+      grep -Eo -- '(^|[^/a-z0-9._-])[a-z][a-z0-9-]*:[0-9]{2,5}([^0-9]|$)' <<<"$lower" | sed -E 's#^[^a-z]*##; s#:.*$##'
+      grep -Eo -- '[0-9]{1,3}(\.[0-9]{1,3}){3}' <<<"$lower"
     } 2>/dev/null
   )
   while IFS= read -r tok; do
@@ -324,7 +316,7 @@ fi
 for tool in awk grep sed tr; do
   command -v "$tool" >/dev/null 2>&1 || not_sent "the privacy screen needs $tool"
 done
-TASK_TEXT=$(task_section "$BRIEF")
+TASK_TEXT=$(fm_brief_heading_body "$BRIEF" "# Task")
 [ -n "$(printf '%s' "$TASK_TEXT" | tr -d '[:space:]')" ] || not_sent "no Task section in the brief"
 kind=$(screen_kind "$PROJECT"$'\n'"$TASK_TEXT")
 [ -z "$kind" ] || not_sent "possible $kind"

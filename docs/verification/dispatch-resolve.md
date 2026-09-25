@@ -55,7 +55,7 @@ Two default-labeled briefs became ambiguous.
 
 ## Task-section extraction and privacy screen
 
-Run 2026-09-25 over the 54 private briefs in one firstmate home by sourcing the script's `task_section` and `screen_kind` functions under bash 3.2.57 on macOS; no request was sent.
+Run 2026-09-25 over the 54 private briefs in one firstmate home by sourcing the script's Task-section extraction and `screen_kind` function under bash 3.2.57 on macOS; no request was sent.
 
 | Measure | Result |
 | --- | --- |

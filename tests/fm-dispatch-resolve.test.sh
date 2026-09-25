@@ -295,6 +295,16 @@ assert_not_contains "$out$err" 'build01' "the matched host is never echoed"
 screened "a non-public host" 'non-public host' 'Fetch the spec from https://wiki.acme-example.com/pager.'
 screened "a single-label URL host" 'non-public host' 'Trigger http://buildbox:8080/job/pager.'
 screened "an internal host in the project name" 'internal hostname' 'Nothing sensitive here.' --project 'git.acme.internal'
+screened "an unquoted password after a colon" 'credential assignment' 'Log in as admin, password: hunter22'
+assert_not_contains "$out$err" 'hunter22' "the unquoted password is never echoed"
+screened "an unquoted API token after a colon" 'credential assignment' 'API token: 9f8e7d6c5b4a'
+screened "a public IPv4 literal after user@" 'non-public host' 'ssh deploy@203.0.113.9 then restart'
+assert_not_contains "$out$err" '203.0.113.9' "the matched address is never echoed"
+screened "a bare public IPv4 literal" 'non-public host' 'The box answers on 8.8.4.4 today.'
+screened "a bare domain under a generic TLD" 'non-public host' 'Use jira.acme.app for tickets.'
+screened "a scheme-less single-label host:port" 'non-public host' 'Connect to buildbox:8080 first.'
+screened "a scp-style single-label host" 'non-public host' 'Copy it with scp pager.tar deploy@buildbox:/srv.'
+screened "a user@host with an unlisted dotted host" 'non-public host' 'ssh ops@build.acme then restart.'
 pass "a likely secret or internal host in the Task section or project name sends nothing and returns a kind-only reason"
 
 reset_log
@@ -310,6 +320,22 @@ TYPESAFE_API_KEY=$KEY run code out err "$TMP_ROOT/empty-task.md" --project pager
 assert_contains "$out" '  reason: task text not sent: no Task section in the brief' "an empty Task section is not sent"
 assert_absent "$LOG/argv" "an empty Task section never calls curl"
 pass "a brief without a recognizable Task section sends nothing and returns a non-clear outcome"
+
+# A Task code block of one fence kind that shows the other kind's marker must
+# not keep the fence open past the section: later scaffold stays local.
+reset_log
+write_response "$RESPONSE" rule_4 0.9
+{
+  printf '%s\n' '# Task' 'Fix the pager fence rendering.' '```md' '~~~' 'inside the example' '```' ''
+  printf '%s\n' '# Setup' 'Your steering inbox is /Users/someone/home/state/pager.inbox.' '' '# Home brief additions' 'BOILERPLATE-HOME-ADDITION'
+} > "$TMP_ROOT/mixed-fence.md"
+TYPESAFE_API_KEY=$KEY run code out err "$TMP_ROOT/mixed-fence.md" --project pager
+assert_contains "$out" '  status: clear' "a mixed-fence Task section is sent"
+body=$(cat "$LOG/body")
+assert_equals $'Fix the pager fence rendering.\n```md\n~~~\ninside the example\n```' "$(jq -r .state.task.brief <<<"$body")" "only the mixed-fence Task section rides in the state"
+assert_not_contains "$body" 'pager.inbox' "a local path after a mixed-fence Task section never leaves the machine"
+assert_not_contains "$body" 'BOILERPLATE-HOME-ADDITION' "scaffold after a mixed-fence Task section never leaves the machine"
+pass "a Task section's end follows spawn's fence-aware heading parser"
 
 # --- rules are snapshotted and line output is injection-safe -------------------
 MUTATED_RULES="$TMP_ROOT/mutated-rules.json"
