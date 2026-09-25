@@ -1,0 +1,14 @@
+# copy of a real interactive Claude 2.1.x transcript (7 turn_duration markers), bound to the mate home
+$ fm-fresh-start.sh status mate   # clock = last turn end +10min
+mate: wait -: idle 10m of 30m; context 37%
+[exit=0]
+$ fm-fresh-start.sh status mate   # clock = last turn end +31min
+mate: due idle: idle 31m; context 37%
+[exit=0]
+## nightly: nightly_at set, idle off
+$ fm-fresh-start.sh status mate   # clock = last turn end +1317min
+mate: due nightly: nightly at 03:00; context 37%
+[exit=0]
+$ fm-fresh-start.sh status mate   # clock = last turn end +1797min
+mate: wait -: context 37%
+[exit=0]

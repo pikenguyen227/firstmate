@@ -1,0 +1,17 @@
+## S10 arm --if-configured with config present (as session-start bootstrap runs it)
+armed: state/fresh-start.check.sh
+[exit=0]
+fresh-start.check-trust
+fresh-start.check.sh
+--- watcher trust check (fm_custom_check_registered from bin/fm-check-lib.sh)
+registered=yes
+--- run the registered shim as the watcher would (real clock)
+fresh start due for second mate mate (context 14% is at or over 10%): run FM_HOME=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-fresh-live.PeekeF/home /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3BGASK7PY726NDD4SQBP0DE/bin/fm-fresh-start.sh run mate in the background; it reports each outcome on that mate's status channel; fresh-start suggestion (context): my context is at 13%; say /stow then /clear when convenient
+[exit=0]
+## S11 invalid config is reported once by the shim
+fresh-start: config/fresh-start.json is invalid (idle_minutes must be a whole number from 5 to 10080, or null to turn that trigger off); automatic fresh starts are off until it is fixed
+[exit=0]
+[exit=0 second poll]
+## S12 config removed -> arm --if-configured disarms
+[exit=0]
+(no check shim or trust left)

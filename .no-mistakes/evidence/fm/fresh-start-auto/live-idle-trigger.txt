@@ -1,0 +1,24 @@
+## S0 no config: feature off
+$ FM_FRESH_START_NOW=+0min fm-fresh-start.sh check
+[exit=0]
+$ FM_FRESH_START_NOW=+0min fm-fresh-start.sh arm --if-configured
+[exit=0]
+mate.meta
+
+## S1 config idle 5m, context 99, nightly off
+$ FM_FRESH_START_NOW=+0min fm-fresh-start.sh status
+primary: wait -: no work since its session started; context 13%
+mate: wait -: no work since its session started; context 14%
+[exit=0]
+$ FM_FRESH_START_NOW=+1min fm-fresh-start.sh check
+[exit=0]
+## +10min: idle trigger
+$ FM_FRESH_START_NOW=+10min fm-fresh-start.sh status
+primary: wait -: no work since its session started; context 13%
+mate: wait -: no work since its session started; context 14%
+[exit=0]
+$ FM_FRESH_START_NOW=+10min fm-fresh-start.sh check
+[exit=0]
+## same hour again: deduplicated (silent)
+$ FM_FRESH_START_NOW=+15min fm-fresh-start.sh check
+[exit=0]

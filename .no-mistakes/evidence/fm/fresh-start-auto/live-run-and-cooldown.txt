@@ -1,0 +1,22 @@
+## S7 run mate through the REAL bin/fm-secondmate-restart.sh --fresh-start (mate endpoint deliberately unreachable: no pane exists)
+$ fm-fresh-start.sh run mate   # clock +0min
+skipped: mate: the request to write down its open work could not be delivered: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+summary: 0 of 1 restarted, 1 skipped, 0 unreached
+[exit=0]
+--- records
+mate.attempt
+mate.offered
+primary.suggested
+1790314679 context skipped
+--- mate status channel in this home
+note [at=1790314680]: automatic fresh start (context 14% is at or over 10%): not done: the request to write down its open work could not be delivered: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+## S8 cooldown holds after the attempt
+$ fm-fresh-start.sh status mate   # clock +10min
+mate: wait -: cooldown: last fresh start 10m ago, 5h 50m left
+[exit=0]
+$ fm-fresh-start.sh status mate   # clock +420min
+mate: due context: context 14% is at or over 10%
+[exit=0]
+## S9 primary suggestion deduplicated by cooldown
+$ fm-fresh-start.sh check   # clock +66min
+[exit=0]

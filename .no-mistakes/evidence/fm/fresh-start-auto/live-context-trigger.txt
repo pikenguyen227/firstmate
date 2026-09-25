@@ -1,0 +1,29 @@
+# Real Claude 2.1.282 print-mode sessions: mate 31b9e56b-f2f4-42b8-baae-4dcbc198f663, primary 24682b79-7d22-4da2-b493-5659de295e72
+## S2 context trigger: context_percent 10, idle/nightly off
+$ fm-fresh-start.sh status   # clock +0min
+primary: due context: context 13% is at or over 10%
+mate: due context: context 14% is at or over 10%
+[exit=0]
+## S3 adversarial: mate holds a live crewmate worker -> context still due (persist gate files it)
+$ fm-fresh-start.sh status mate   # clock +0min
+mate: due context: context 14% is at or over 10%
+[exit=0]
+## S3b same worker with idle trigger instead of context -> refused busy
+$ fm-fresh-start.sh status mate   # clock +1440min
+mate: busy -: 1 live worker(s)
+[exit=0]
+## S4 child second mate record in mate home is not a live worker
+$ fm-fresh-start.sh status mate   # clock +10min
+mate: wait -: no work since its session started; context 14%
+[exit=0]
+## S5 adversarial: a parent request still awaiting the mate's reply -> context refused
+$ fm-fresh-start.sh status mate   # clock +0min
+mate: busy -: a request still awaiting its reply
+[exit=0]
+## S6 watcher check: one line naming the run command and the primary suggestion
+$ fm-fresh-start.sh check   # clock +0min
+fresh start due for second mate mate (context 14% is at or over 10%): run FM_HOME=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-fresh-live.PeekeF/home /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3BGASK7PY726NDD4SQBP0DE/bin/fm-fresh-start.sh run mate in the background; it reports each outcome on that mate's status channel; fresh-start suggestion (context): my context is at 13%; say /stow then /clear when convenient
+[exit=0]
+## repeated check within the hour: silent
+$ fm-fresh-start.sh check   # clock +5min
+[exit=0]
