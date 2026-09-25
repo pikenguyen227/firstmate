@@ -38,6 +38,12 @@ _FM_SECONDMATE_RESTART_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # correlated answer, never the wall clock, is what releases the restart.
 FM_SECONDMATE_PERSIST_REQUEST='Firstmate was updated and I am about to restart your agent so it comes up on the current instructions and launch-time settings, which drops your conversation but keeps every durable record. Before that, persist the open work you are holding only in this conversation, following the /stow skill'"'"'s "Open-record persistence" section and nothing else from that skill: file a task for each open record that exists only in this conversation, including any captain call you had formed but never registered, and correct any task whose status no longer reflects what you now know. Then rewrite data/left-off.md following that skill'"'"'s "Where-I-left-off note" section, so your fresh start reads where you actually left off. Do NOT run the memory, learnings, or captain-preference sweeps. Then reply on your parent channel saying it is done, or saying what you deliberately left alone and why.'
 
+# The persist request for an automatic fresh start (bin/fm-fresh-start.sh). Same
+# gate and same answer contract as the update restart above; the only additions
+# are the reason and the project map, because a fresh start is meant to pick up
+# from that map instead of re-scanning the repositories it already describes.
+FM_SECONDMATE_FRESH_START_REQUEST='I am about to give you an automatic fresh start: your agent is restarted, which clears your conversation but keeps every durable record, so you pick up from your notes. Before that, persist the open work you are holding only in this conversation, following the /stow skill'"'"'s "Open-record persistence" section: file a task for each open record that exists only in this conversation, including any captain call you had formed but never registered, and correct any task whose status no longer reflects what you now know. Correct or add data/project-map.md entries that this conversation showed wrong or missing, following that skill'"'"'s "Project map" section. Then rewrite data/left-off.md following that skill'"'"'s "Where-I-left-off note" section, so your fresh start reads where you actually left off. Do NOT run the memory, learnings, or captain-preference sweeps. Then reply on your parent channel saying it is done, or saying what you deliberately left alone and why.'
+
 # Resolve one mate's restart capability from its durable record alone.
 # Publishes, on success:
 #   FM_SECONDMATE_RESTART_PLACEMENT  local|remote

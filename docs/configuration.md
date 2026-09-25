@@ -295,6 +295,36 @@ The flag is per home and is not inherited by secondmate homes, because stow cade
 Only the file's presence is read, so its contents are ignored; remove it to return to the default contract on the next pass.
 The skill text owns the marker spelling, the tick order, and the reinforcement rule.
 
+## Automatic fresh starts (config/fresh-start.json)
+
+`config/fresh-start.json` is an optional local, gitignored file that turns on automatic fresh starts for this home: its live second mates are restarted onto a new conversation that picks up from their where-I-left-off note and project map, and the primary is suggested one.
+No file means the feature is off, and the file is not inherited by secondmate homes, because each home decides for its own direct reports.
+Session start arms the check that evaluates it when the file exists and disarms it when the file is gone; [`bin/fm-fresh-start.sh`](../bin/fm-fresh-start.sh) owns the triggers, the in-flight and between-turns refusals, the primary's suggestion, and every record, and a second mate is only ever restarted through the persist gate of `bin/fm-secondmate-restart.sh`.
+
+This section is the single owner of the schema.
+Every key is optional, an unknown key or an out-of-range value makes the whole file invalid, and an invalid file is reported once while fresh starts stay off.
+
+```json
+{
+  "enabled": true,
+  "idle_minutes": 120,
+  "context_percent": 70,
+  "nightly_at": "03:00",
+  "cooldown_hours": 6,
+  "context_windows": { "<model id>": 1000000 }
+}
+```
+
+- `enabled` - `true` (default) or `false`, which keeps the file but turns the feature off.
+- `idle_minutes` - the idle trigger: minutes since the agent's last turn ended, 5 to 10080, default 120; `null` turns this trigger off.
+- `context_percent` - the context trigger: percent of the model's context window in use, 10 to 99, default 70; `null` turns this trigger off.
+- `nightly_at` - the nightly trigger: local time as `HH:MM`, default `03:00`; `null` turns this trigger off.
+- `cooldown_hours` - at most one automatic fresh start per agent (or one suggestion to the primary) in this many hours, 1 to 168, default 6.
+- `context_windows` - optional window sizes in tokens, keyed by the model id the harness records, for a model the built-in table does not know or where this machine's window differs.
+
+Context usage and between-turns state are read only where a verified reader exists, which today is Claude's own session record; any other runtime, and a remote second mate, is reported unavailable rather than guessed.
+Run `bin/fm-fresh-start.sh status` to see each agent's current decision.
+
 ## Secondmate routes (data/secondmates.md)
 
 Persistent secondmate routes live locally in `data/secondmates.md`.

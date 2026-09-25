@@ -2264,3 +2264,40 @@ A throwaway scout was spawned through `bin/fm-spawn.sh --scout --harness omp --m
 6. `bin/fm-control.sh <id> exit` stopped the agent and `bin/fm-teardown.sh` returned the worktree and closed the item.
 
 `FM_OMP_LIVE_E2E=1 tests/fm-omp-primary-live-e2e.test.sh` refreshes the primary evidence; the worker path above is refreshed by repeating the scout dispatch after any omp upgrade.
+
+## Claude session record for automatic fresh starts
+
+`bin/fm-fresh-start.sh` reads three facts from Claude Code's own session record (`<CLAUDE_CONFIG_DIR or ~/.claude>/projects/<cwd with every non-alphanumeric character replaced by ->/<session id>.jsonl`, located through the home's `state/.lock-session`): whether the main thread is between turns, the latest main-thread turn's input usage, and the model id that usage ran on.
+A main-thread turn ends with a `system` record whose `subtype` is `turn_duration` in interactive sessions, preceded by a `stop_hook_summary` record in both interactive and print mode, and no later `user` or `assistant` main-thread record; either marker alone carries the settled verdict, so the print-mode shape and the interactive shape both read correctly.
+Usage is `input_tokens + cache_creation_input_tokens + cache_read_input_tokens` of the last main-thread `assistant` record, and `isSidechain: true` records are subagent turns that are ignored.
+
+Verified 2026-09-25 on Claude Code 2.1.282.
+Turn-end markers in a long-running interactive primary session and in a one-turn print-mode session:
+
+```sh
+jq -r 'select(.isSidechain!=true and .type=="system") | .subtype' <session>.jsonl | sort | uniq -c
+```
+
+```
+# interactive primary session, 79 turns
+  12 away_summary
+   1 local_command
+  79 stop_hook_summary
+  79 turn_duration
+# claude -p, one turn
+   1 stop_hook_summary
+```
+
+The same interactive session measured 334703 context tokens on `claude-opus-5-5`, above a 200K window, which is why the reader takes the window from its model table (1M for the current Opus, Sonnet, and Fable line; 200K for Haiku 4.5) or config `context_windows`, and reports an unknown model or a reading larger than its window as unmeasured instead of guessing.
+
+The live guard that refreshes this record runs one real print-mode turn and reads it back through the script:
+
+```sh
+FM_CLAUDE_LIVE_E2E=1 bash tests/fm-fresh-start-claude-live-e2e.test.sh
+```
+
+```
+ok - claude 2.1.282 (Claude Code): the session record reads settled with context 14%
+```
+
+`tests/fm-fresh-start.test.sh` pins the decision logic over records written in this shape, including a subagent turn that must not count and an open turn that must read as mid-turn.

@@ -1663,6 +1663,12 @@ if [ "${FM_BOOTSTRAP_DETECT_ONLY:-0}" != 1 ]; then
     "$SCRIPT_DIR/fm-contributions.sh" arm --if-owned >/dev/null \
       || echo "MISSING: contribution observation could not be armed; coverage is unconfirmed"
   fi
+  # Automatic fresh starts follow config/fresh-start.json: armed when the file
+  # exists, disarmed when it does not, so an absent file leaves the home as it was.
+  if local_phase && command -v jq >/dev/null 2>&1 && [ -x "$SCRIPT_DIR/fm-fresh-start.sh" ]; then
+    FM_HOME="$FM_HOME" "$SCRIPT_DIR/fm-fresh-start.sh" arm --if-configured >/dev/null \
+      || echo "MISSING: automatic fresh starts could not be armed; config/fresh-start.json is present but its check is not running"
+  fi
   if [ -n "$fleet_sync_pid" ]; then
     wait "$fleet_sync_pid" || true
     cat "$fleet_sync_out"
