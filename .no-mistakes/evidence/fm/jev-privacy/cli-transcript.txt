@@ -1,0 +1,150 @@
+==================================================================
+SCENARIO: clean task is sent as Task section only
+Firstmate spec line: Keep the fix in pager.sh.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: clear
+  model: jev-1.13.0   latency_ms: 0   tokens: 300/40
+  rule: rule_4 (A simple bug fix with a stated root cause.)   confidence: 0.93
+  probabilities: rule_1=0.01 rule_2=0.01 rule_3=0.02 rule_4=0.93 default=0.03
+  note: rule matched
+  note: 2 eligible candidate(s) unranked (cursor, kimi)
+  candidate: claude:sonnet  provider=claude  scope=all_models  remaining=79%  spendPriority=0.5  runway=through_reset  -> eligible
+  candidate: cursor:cursor-grok-4.6-medium  provider=cursor  -> eligible, unranked: provider cursor not in the quota snapshot: disclosed uncertainty
+  candidate: kimi:kimi-code/k3  provider=kimi  -> eligible, unranked: provider kimi not in the quota snapshot: disclosed uncertainty
+  profile: --harness 'claude' --model 'sonnet' --effort 'high'
+[exit 0]
+-> OUTBOUND REQUEST MADE. whole brief 541 bytes; sent state.task.brief 207 bytes
+-> sent state:
+{
+  "task": {
+    "project": "pager",
+    "brief": "## Captain's intent\nFix the off-by-one in the pager; root cause is the <= on line 40 of pager.sh.\n\n## Firstmate spec\nKeep the fix in pager.sh.\nAdd a regression test; see https://github.com/o/pager/issues/4."
+  }
+}
+   absent from body: /Users/someone
+   absent from body: 10.1.2.3
+   absent from body: jenkins
+   absent from body: HOME-ADDITION
+   absent from body: steering
+   absent from body: build01
+   absent from body: acme
+==================================================================
+SCENARIO: internal company server hostname (motivating case)
+Firstmate spec line: Reproduce against https://build01.acme-corp.com/pager first.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible non-public host
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: bare internal host user@host
+Firstmate spec line: ssh deploy@buildbox then restart the pager.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible non-public host
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: internal .corp hostname
+Firstmate spec line: Deploy to build01.acme.corp after tests.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible internal hostname
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: private IP
+Firstmate spec line: The staging box is 192.168.40.7.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible private IP address
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: password assignment
+Firstmate spec line: Log in as admin, password: hunter22
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible credential assignment
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: spaced API key
+Firstmate spec line: API key: 9f8e7d6c5b4a
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible credential assignment
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: provider token
+Firstmate spec line: Use ghp_Zx9Qw8Er7Ty6Ui5Op4As3Df2Gh1Jk0LmNbV for the API.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible provider key
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: connection string
+Firstmate spec line: Point it at postgres://app:pw@db/prod.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible connection string
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: internal host in project name
+Firstmate spec line: Keep the fix in pager.sh.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project git.acme.internal
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible internal hostname
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
+==================================================================
+SCENARIO: version specifier is NOT a host (false-positive guard)
+Firstmate spec line: Bump uses: actions/checkout@v4 and run npx snyk@latest test.
+$ TYPESAFE_API_KEY=*** fm-dispatch-resolve.sh brief.md --project pager
+dispatch-resolve:
+  status: clear
+  model: jev-1.13.0   latency_ms: 0   tokens: 300/40
+  rule: rule_4 (A simple bug fix with a stated root cause.)   confidence: 0.93
+  probabilities: rule_1=0.01 rule_2=0.01 rule_3=0.02 rule_4=0.93 default=0.03
+  note: rule matched
+  note: 2 eligible candidate(s) unranked (cursor, kimi)
+  candidate: claude:sonnet  provider=claude  scope=all_models  remaining=79%  spendPriority=0.5  runway=through_reset  -> eligible
+  candidate: cursor:cursor-grok-4.6-medium  provider=cursor  -> eligible, unranked: provider cursor not in the quota snapshot: disclosed uncertainty
+  candidate: kimi:kimi-code/k3  provider=kimi  -> eligible, unranked: provider kimi not in the quota snapshot: disclosed uncertainty
+  profile: --harness 'claude' --model 'sonnet' --effort 'high'
+[exit 0]
+-> OUTBOUND REQUEST MADE. whole brief 576 bytes; sent state.task.brief 242 bytes
+-> sent state:
+{
+  "task": {
+    "project": "pager",
+    "brief": "## Captain's intent\nFix the off-by-one in the pager; root cause is the <= on line 40 of pager.sh.\n\n## Firstmate spec\nBump uses: actions/checkout@v4 and run npx snyk@latest test.\nAdd a regression test; see https://github.com/o/pager/issues/4."
+  }
+}
+   absent from body: /Users/someone
+   absent from body: 10.1.2.3
+   absent from body: jenkins
+   absent from body: HOME-ADDITION
+   absent from body: steering
+   absent from body: build01
+   absent from body: acme
+==================================================================
+SCENARIO: no Task section
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: no Task section in the brief
+[exit 0]
+-> NO OUTBOUND REQUEST (curl never invoked)
