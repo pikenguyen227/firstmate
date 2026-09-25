@@ -269,7 +269,7 @@ The internal [`stow` skill](../.agents/skills/stow/SKILL.md#project-map-dataproj
 
 Every home keeps one short local, gitignored `data/left-off.md` naming its current focus, each open thread and whom it waits on, and anything a fresh start must do first.
 The session-start context digest prints it first among the memory files, or `ABSENT` when no note exists yet, so a fresh start reads it without a separate lookup.
-Each `/stow` pass rewrites it whole rather than appending; the internal [`stow` skill](../.agents/skills/stow/SKILL.md#where-i-left-off-note-dataleft-offmd) owns its contents and rewrite rule.
+Each `/stow` pass, and the persist step before a persist-gated second-mate restart, rewrites it whole rather than appending; the internal [`stow` skill](../.agents/skills/stow/SKILL.md#where-i-left-off-note-dataleft-offmd) owns its contents and rewrite rule.
 
 ## Startup memory budget (config/startup-memory-budget)
 
