@@ -43,6 +43,7 @@ Write `_vaults/*` once; each further vault adds only its three lines.
 
 A fork carries its vault on our side only: the vault ships only in PRs to our own fork.
 A PR that targets another owner's upstream repository never includes `_vaults/` content or the vault `.gitignore` block, so its task skips vault writes; local raw notes are still allowed.
+Its branch is cut from that upstream's default branch, never from the fork's main, which may already carry the vault; when that is not possible, the worker stops and reports instead of opening the PR.
 
 ## The root index
 
@@ -85,7 +86,7 @@ Make no guess: a fact not verified in code or reference is marked `UNVERIFIED`, 
   The scan stays the one the task needed; it never widens into a survey.
 - **Otherwise:** add or update a wiki note only for what the task taught, inside that task's own PR.
   There are no separate documentation sweeps, and a task that taught nothing writes no note.
-- **The PR targets another owner's upstream repository:** write no vault content and no vault `.gitignore` block in it, as the fork rule above says; keep only local raw notes.
+- **The PR targets another owner's upstream repository:** cut its branch from that upstream's default branch, never the fork's main, and write no vault content and no vault `.gitignore` block in it, as the fork rule above says; keep only local raw notes, and stop and report instead of opening the PR when that is not possible.
 - **A scout** opens no PR, so it compiles no wiki note: it reports what the vault lacked or had wrong as proposed notes with their citations, and a later ship task, including a promotion of that scout, compiles them in its PR.
 
 A project's committed `AGENTS.md` at most points to the vault index; it never restates vault knowledge.
