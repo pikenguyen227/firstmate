@@ -1,0 +1,37 @@
+### Scenario: monorepo .gitignore block from project-vault skill (two app vaults: adc, portal)
+$ git ls-files
+.gitignore
+_vaults/adc/wiki/index.md
+_vaults/portal/wiki/index.md
+$ git check-ignore -v _vaults/adc/raw/2026-09-25-t1-scratch.md _vaults/portal/raw/2026-09-25-t1-scratch.md
+.gitignore:4:_vaults/adc/*	_vaults/adc/raw/2026-09-25-t1-scratch.md
+.gitignore:8:_vaults/portal/*	_vaults/portal/raw/2026-09-25-t1-scratch.md
+
+### Scenario: long-lived clone without the vault block stays clean after raw note + info/exclude line
+$ git check-ignore -q (before)
+rc=1
+$ git status --porcelain (before exclude)
+?? _vaults/
+$ git check-ignore -q (after)
+rc=0
+$ git status --porcelain (after exclude)
+(empty = clean)
+$ git status --porcelain after adding a wiki note (must remain visible/trackable)
+?? _vaults/lma/wiki/index.md
+
+### Scenario: fm-ensure-agents-md.sh skeleton points to the vault
+created: AGENTS.md and CLAUDE.md @AGENTS.md pointer in /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.87OYEmm2WU/newproj
+rc=0
+--- AGENTS.md
+# Project agent memory
+
+This file is the project's committed entry point for agents: the few notes almost every session needs, and pointers to where the rest of the project's knowledge lives.
+
+- Keep project knowledge in the project's vault under `_vaults/` and point to its wiki index from here rather than copying it.
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.
