@@ -164,7 +164,8 @@ screen_kind() {  # <text>
         sed -E 's#^[^:]*://##; s#^.*@##; s#(\]|[^:]):[0-9]*$#\1#; s#^\[([^]]*)\]$#\1#'
       grep -Eo -- '([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+(com|net|org|io|ai|dev|co|cloud|biz|info|xyz|tech|site|online|gov|edu|mil|us|uk|ca|au|de|fr|jp|vn|cn|eu|nl|se|ch|kr|sg|hk|tw|br|ru|app|me|team|tools|systems|company|work|host|network|page|services|solutions|digital|group|zone|pro|live|space|link)([^a-z0-9.-]|\.?$|\.[^a-z0-9])' <<<"$lower" |
         sed -E 's#[^a-z0-9]*$##; s#\.$##'
-      grep -Eo -- '[a-z0-9._-]+@[a-z][a-z0-9-]*(\.[a-z0-9-]+)*' <<<"$lower" | sed -E 's#^.*@##'
+      grep -Eo -- '[a-z0-9._-]+@[a-z][a-z0-9-]*(\.[a-z0-9-]+)*' <<<"$lower" | sed -E 's#^.*@##' |
+        grep -Ev -- '^(latest|next|stable|beta|alpha|canary|rc|main|master|head|v[0-9][a-z0-9-]*|v?[0-9]+(\.[0-9]+)+)$'
       grep -Eo -- '(^|[^/a-z0-9._-])[a-z][a-z0-9-]*:[0-9]{2,5}([^0-9]|$)' <<<"$lower" | sed -E 's#^[^a-z]*##; s#:.*$##'
       grep -Eo -- '[0-9]{1,3}(\.[0-9]{1,3}){3}' <<<"$lower"
     } 2>/dev/null

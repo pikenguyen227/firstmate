@@ -340,6 +340,15 @@ assert_not_contains "$body" 'pager.inbox' "a local path after a mixed-fence Task
 assert_not_contains "$body" 'BOILERPLATE-HOME-ADDITION' "scaffold after a mixed-fence Task section never leaves the machine"
 pass "a Task section's end follows spawn's fence-aware heading parser"
 
+for tagged in 'npx snyk@latest test' 'uses: actions/checkout@v4' 'Pin react@18.2.0 and tool@v1.2.3.'; do
+  reset_log
+  write_response "$RESPONSE" rule_4 0.9
+  printf '%s\n' '# Task' 'Bump the pager dependencies.' "$tagged" '' '# Setup' 'boilerplate' > "$TMP_ROOT/tagged.md"
+  TYPESAFE_API_KEY=$KEY run code out err "$TMP_ROOT/tagged.md" --project pager
+  assert_contains "$out" '  status: clear' "a version or dist-tag after @ is not a host: $tagged"
+done
+pass "a version or dist-tag after @ is sent while a single-label host after @ stays refused"
+
 # --- rules are snapshotted and line output is injection-safe -------------------
 MUTATED_RULES="$TMP_ROOT/mutated-rules.json"
 jq '.rules[3].use = {"harness":"claude","model":"opus"}' "$BASE_RULES" > "$MUTATED_RULES"
