@@ -1,0 +1,21 @@
+.agents/skills/stow/SKILL.md
+  s_eca4efa889e0fc::t_f9d24595f4bb8a 46
+bin/fm-ensure-agents-md.sh
+  s_eca4efa889e0fc::t_f9d24595f4bb8a 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c64958394bbc19cc336e90cc2844ac8b7c8c1b7a",
+  "prompts": {},
+  "sessions": {
+    "s_eca4efa889e0fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5dc6f21-6074-4c0e-b3e9-3eb6fbe1ea74",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
