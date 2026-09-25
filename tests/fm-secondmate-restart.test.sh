@@ -385,6 +385,33 @@ test_unprovable_runtime_falls_back() {
   pass "T3 a runtime that cannot prove a restart falls back to the re-read message"
 }
 
+# --- T3b: --fresh-start asks for the project map too, and skips instead of nudging
+test_fresh_start_mode() {
+  local dir out rc request
+  dir=$(new_case fresh-start)
+  add_local_mate "$dir" sm1
+  arm_answer "$dir" sm1
+  out=$(run_restart "$dir" --fresh-start sm1); rc=$?
+  expect_code 0 "$rc" "a confirmed fresh-start persist should restart the mate"$'\n'"$out"
+  assert_contains "$out" "restarted: sm1 (claude)" "the fresh start must restart the mate"
+  assert_contains "$out" "summary: 1 of 1 restarted, 0 skipped, 0 unreached" "the fresh-start summary counts skips, not nudges"
+  request=$(cat "$dir/home/state/sm1.inbox/handled"/*.msg "$dir/home/state/sm1.inbox"/*.msg 2>/dev/null)
+  assert_contains "$request" "automatic fresh start" "the request must say why the mate is restarted"
+  assert_contains "$request" 'data/project-map.md' "the fresh-start request must refresh the project map"
+  assert_contains "$request" "Where-I-left-off note" "the fresh-start request must refresh the left-off note"
+  assert_contains "$request" "Do NOT run the memory, learnings, or captain-preference sweeps" \
+    "the fresh-start request must still exclude the memory curation half of stow"
+
+  dir=$(new_case fresh-start-skip)
+  add_local_mate "$dir" sm1 claude zellij
+  out=$(run_restart "$dir" --fresh-start sm1); rc=$?
+  expect_code 3 "$rc" "a mate the fresh start could not restart is not a success"$'\n'"$out"
+  assert_contains "$out" "skipped: sm1: its runtime cannot prove an agent stopped" "an unprovable runtime is skipped"
+  assert_not_contains "$out" "nudged: sm1" "a fresh start must never fall back to the update re-read nudge"
+  assert_absent "$dir/home/state/sm1.inbox/001.msg" "a skipped mate must be sent nothing"
+  pass "T3b --fresh-start refreshes the project map and skips instead of nudging"
+}
+
 # --- T4: a mate with no durable record in this home --------------------------
 test_unknown_mate_is_accounted_for() {
   local dir out rc
@@ -846,6 +873,7 @@ test_persist_precedes_restart
 test_arrived_answer_precedes_deadline_check
 test_answer_between_resolution_and_timeout_wins
 test_unprovable_runtime_falls_back
+test_fresh_start_mode
 test_unknown_mate_is_accounted_for
 test_refused_restart_falls_back_without_claiming_a_reload
 test_local_restart_uses_the_home_pin_and_reports_what_ran

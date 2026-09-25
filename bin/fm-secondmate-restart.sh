@@ -2,7 +2,7 @@
 # Restart second mates onto the current instruction surface and launch-time
 # wiring, persisting their open records first.
 #
-# Usage: fm-secondmate-restart.sh <secondmate-id>... [--help]
+# Usage: fm-secondmate-restart.sh [--fresh-start] <secondmate-id>... [--help]
 #
 # This is the executable half of /updatefirstmate's reload step. A running agent
 # holds AGENTS.md and every skill it has loaded frozen from launch, and no
@@ -58,11 +58,19 @@
 # the update pass actually left on the target commit; this command re-checks
 # capability on its own argv rather than trusting a caller's list.
 #
+# --fresh-start is the automatic fresh start's use of this same pass
+# (bin/fm-fresh-start.sh owns when that happens). The gate, the restart, and the
+# report are unchanged; only two things differ. The persist request says why and
+# also asks for the project map the fresh agent reads, and a mate this pass will
+# not restart is reported `skipped:` and left alone, because the re-read nudge
+# is an update remedy with nothing to offer a mate that simply keeps its
+# conversation.
+#
 # Environment knobs:
 #   FM_SECONDMATE_PERSIST_WAIT  seconds to wait for one mate's persist answer (900)
 #   FM_SECONDMATE_PERSIST_POLL  seconds between checks of that answer (5)
 #
-# Exit status: 0 every named mate restarted; 3 at least one was nudged or left
+# Exit status: 0 every named mate restarted; 3 at least one was nudged, skipped, or left
 # unreached and every mate was still accounted for; 1 the input itself is
 # unusable; 2 invalid use.
 set -u
@@ -71,7 +79,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FM_ROOT="${FM_ROOT_OVERRIDE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 usage() {
-  sed -n '2,65{s/^# \{0,1\}//;p;}' "$0"
+  sed -n '2,75{s/^# \{0,1\}//;p;}' "$0"
 }
 
 case "${1:-}" in
@@ -100,8 +108,15 @@ case "$PERSIST_WAIT" in ''|*[!0-9]*) echo "error: FM_SECONDMATE_PERSIST_WAIT mus
 case "$PERSIST_POLL" in ''|*[!0-9]*|0) echo "error: FM_SECONDMATE_PERSIST_POLL must be a positive integer: $PERSIST_POLL" >&2; exit 2 ;; esac
 
 IDS=()
+FRESH_START=0
+PERSIST_REQUEST=$FM_SECONDMATE_PERSIST_REQUEST
 for arg in "$@"; do
   case "$arg" in
+    --fresh-start)
+      FRESH_START=1
+      PERSIST_REQUEST=$FM_SECONDMATE_FRESH_START_REQUEST
+      continue
+      ;;
     -*) echo "error: unexpected argument '$arg'" >&2; usage >&2; exit 2 ;;
   esac
   # /updatefirstmate's action line names each mate by its fm-<id> selector; the
@@ -132,6 +147,7 @@ RESTART_RESULT=()
 
 restarted_count=0
 nudged_count=0
+skipped_count=0
 unreached_count=0
 
 # The first line of a command's output that carries anything, flattened to one
@@ -145,6 +161,11 @@ first_reported_line() {  # <text>
 # plainly which it was. A nudge is a partial reload and is never reported as more.
 fall_back_to_nudge() {  # <id> <reason>
   local id=$1 reason=$2 out
+  if [ "$FRESH_START" -eq 1 ]; then
+    skipped_count=$((skipped_count + 1))
+    printf 'skipped: %s: %s\n' "$id" "$reason"
+    return
+  fi
   if out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
     "$SCRIPT_DIR/fm-send.sh" "$id" "$FM_SECOND_MATE_NUDGE_MESSAGE" 2>&1); then
     nudged_count=$((nudged_count + 1))
@@ -289,14 +310,14 @@ while [ "$i" -lt "${#IDS[@]}" ]; do
   fi
 
   if ! corr=$(fm_pending_reply_create "$FM_HOME" "$STATE" "$id" \
-    "$FM_SECONDMATE_PERSIST_REQUEST"); then
+    "$PERSIST_REQUEST"); then
     REASON[i]="its answer about the open work cannot be tracked, so a clean reload could not be proven"
     i=$((i + 1))
     continue
   fi
   if ! send_out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
     FM_PENDING_REPLY_EXISTING_CORR="$corr" \
-    "$SCRIPT_DIR/fm-send.sh" "$id" "$FM_SECONDMATE_PERSIST_REQUEST" 2>&1); then
+    "$SCRIPT_DIR/fm-send.sh" "$id" "$PERSIST_REQUEST" 2>&1); then
     fm_pending_reply_discard_undelivered "$STATE" "$corr" >/dev/null 2>&1 || true
     REASON[i]="the request to write down its open work could not be delivered: $(first_reported_line "$send_out")"
     i=$((i + 1))
@@ -373,7 +394,12 @@ done
 
 # --- summary ---------------------------------------------------------------
 
-printf 'summary: %d of %d restarted, %d nudged, %d unreached\n' \
-  "$restarted_count" "${#IDS[@]}" "$nudged_count" "$unreached_count"
-[ "$((nudged_count + unreached_count))" -eq 0 ] || exit 3
+if [ "$FRESH_START" -eq 1 ]; then
+  printf 'summary: %d of %d restarted, %d skipped, %d unreached\n' \
+    "$restarted_count" "${#IDS[@]}" "$skipped_count" "$unreached_count"
+else
+  printf 'summary: %d of %d restarted, %d nudged, %d unreached\n' \
+    "$restarted_count" "${#IDS[@]}" "$nudged_count" "$unreached_count"
+fi
+[ "$((nudged_count + skipped_count + unreached_count))" -eq 0 ] || exit 3
 exit 0
