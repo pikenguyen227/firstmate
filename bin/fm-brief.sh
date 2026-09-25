@@ -590,6 +590,7 @@ $INBOX_SECTION
 $VAULT_INTRO
 When the project has no vault for that app, compile one inside this task's PR from the repository scan you do anyway to understand the code, as the skill describes; never widen that scan into a survey.
 Otherwise add or update wiki notes only for what this task taught you, inside this task's PR; there are no separate documentation sweeps.
+If this task's PR targets another owner's upstream repository, as a fork's contribution does, skip both: that PR carries no \`_vaults/\` content and no vault \`.gitignore\` block, because a fork's vault ships only in PRs to our own fork; local raw notes are still allowed.
 $VAULT_RAW
 
 The vault is where project knowledge goes; a project \`AGENTS.md\` at most points to the vault index.

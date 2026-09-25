@@ -549,6 +549,8 @@ test_project_vault_guidance() {
     "ship brief did not build a missing vault from its own scan"
   assert_grep 'add or update wiki notes only for what this task taught you' "$home/data/brief-vault-ship/brief.md" \
     "ship brief did not limit wiki notes to what the task taught"
+  assert_grep "that PR carries no \`_vaults/\` content and no vault \`.gitignore\` block" "$home/data/brief-vault-ship/brief.md" \
+    "ship brief did not keep a fork's vault out of an upstream PR"
   assert_grep 'A scout opens no PR, so it compiles no wiki notes' "$home/data/brief-vault-scout/brief.md" \
     "scout brief did not route wiki proposals through its report"
 
