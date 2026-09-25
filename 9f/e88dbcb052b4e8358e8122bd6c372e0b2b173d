@@ -1,0 +1,23 @@
+.agents/skills/project-vault/SKILL.md
+  s_656d2c2982ce39::t_415d6cc70f4738 46,89
+tests/fm-brief.test.sh
+  s_656d2c2982ce39::t_415d6cc70f4738 554-557
+bin/fm-brief.sh
+  s_656d2c2982ce39::t_415d6cc70f4738 594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9fe88dbcb052b4e8358e8122bd6c372e0b2b173d",
+  "prompts": {},
+  "sessions": {
+    "s_656d2c2982ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9432530-e377-4594-a398-e851f39e1629",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
