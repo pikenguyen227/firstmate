@@ -272,6 +272,7 @@ Each pass rewrites it whole, never appends to it, with only:
 Keep it to a handful of lines that point at the owning records, such as backlog ids, decision keys, and PR URLs, rather than restating them.
 It holds no unique durable knowledge: before rewriting it, file anything still current in the old note to its owner through the sweep above, so the replaced text needs no archive.
 It counts against the startup-memory budget like every other memory file, so keep it short rather than letting it crowd out curated memory.
+The persist-gated second-mate restart asks for this rewrite alongside open-record persistence, without the knowledge sweep, so there the old note's still-current threads are filed through open-record persistence instead.
 
 ## One-time migration of unmarked entries
 
