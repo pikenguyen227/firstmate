@@ -1,0 +1,22 @@
+tests/fm-brief.test.sh
+  s_656d2c2982ce39::t_59e1c288668a77 548
+  s_656d2c2982ce39::t_fe887a45f92619 547
+bin/fm-brief.sh
+  s_656d2c2982ce39::t_fe887a45f92619 455,549
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c7e18664deb24d82db44b2e80a87ba55ed4bddcb",
+  "prompts": {},
+  "sessions": {
+    "s_656d2c2982ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9432530-e377-4594-a398-e851f39e1629",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
