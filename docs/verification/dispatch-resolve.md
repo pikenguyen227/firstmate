@@ -53,6 +53,19 @@ The maximum latency was one outlier; the next slowest request was 309 ms.
 The differing clear result was a synthetic small tweak that matched the simple-bug-fix rule at 0.90 and selected `cursor-grok-4.6-medium` instead of the hand-labeled `cursor-grok-4.6-high`: the tweak exemption removed from the none-option text belongs in that rule's own `when` text.
 Two default-labeled briefs became ambiguous.
 
+## Task-section extraction and privacy screen
+
+Run 2026-09-25 over the 54 private briefs in one firstmate home at commit f1c41882 by sourcing `fm_brief_heading_body` from `bin/fm-dod-lib.sh` and the script's `screen_kind` function under bash 3.2.57 on macOS; no request was sent.
+
+| Measure | Result |
+| --- | --- |
+| Briefs with a Task section | 49 of 54; the other 5 were secondmate charters |
+| Mean bytes: whole brief / Task section | 13,609 / 2,736 (80% smaller) |
+| Task sections the screen refused | 3 of 49 |
+
+One refusal was an internal company server hostname that the whole-brief request would have sent; the other two were false positives that each cost one ordinary intake: a long generated identifier inside a path, and a `tool@local` package reference read as a single-label host.
+The accompanying tier research measured Task-section-only rule matching within its run-to-run spread of whole-brief matching (39 against 41 and 34 against 33 of 48 across two rule sets).
+
 ## Offline behavior
 
 `tests/fm-dispatch-resolve.test.sh` drives the public interface with a fake `curl` that records argv, the request body, the header read from file descriptor 3, and whether the secret reached its environment, plus a fake `quota-axi` that performs the same environment check.
@@ -61,7 +74,8 @@ It proves the absent key (environment and `.env`) prints one stderr line, nothin
 It proves absent, default-only, and empty-rules files return `no rules to match` without a model or quota request, while a broken rules-file symlink exits 2 as unreadable.
 It proves the documented starter configuration resolves its Pi default through the declared Claude provider, a `.env` key turns the tool on, and the environment wins over it.
 It proves the key is absent from child environments, never appears on `curl` argv, and arrives only as the bearer header on the descriptor.
-It proves the request uses the fixed endpoint and model, carries only the project, brief, and rule Choice with one option per rule plus the fixed neutral none option, and never carries `why`, `use`, or quota.
+It proves the request uses the fixed endpoint and model, carries only the project, exactly the brief's Task section, and the rule Choice with one option per rule plus the fixed neutral none option, and never carries scaffold boilerplate, `why`, `use`, or quota.
+It proves a provider key, credential assignment, private-key header, high-entropy string, connection string, private address, internal hostname, or non-public host in the Task section or project name, and a brief with a missing or empty Task section, send nothing, read no quota, and return `escalate` with a reason naming only the kind of match, never the matched text.
 It proves the clear, fixed-floor ambiguous with candidate evidence, escalate (approval with candidate evidence, unverifiable rule floor, tie, nothing rankable), known rule-floor fall-through, known and unverifiable profile-floor evidence, explicit-provider and provider-ID enforcement, authoritative Agy and explicit-provider Gemini routing, partial providers, eligible unranked candidates and their clear-result note, concrete quota vetoes and profile-floor shortfalls taking precedence over uncertainty, account-wide quota veto, limiting-bound ranking, schema-6 account-row binding with schema-5 compatibility, missing-curl and quota-axi failures, HTTP 429 and 500, transport failure, malformed usage, zero-mass or malformed probabilities or confidence, malformed or duplicate profile, invalid selector, removed-option rejection, and out-of-range rule ID paths behave as the contract states, with configuration errors exiting 2 before any network call.
 `tests/fm-bootstrap.test.sh` proves bootstrap ignores resolver-only fields without the typed key, validates each malformed shape when the environment or home `.env` activates typed resolution, and prevents an environment-provided key from reaching child processes.
 

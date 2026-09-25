@@ -13,8 +13,22 @@
 #   The key lives in one shell variable and reaches curl as a header read from
 #   a file descriptor, never on argv; nothing logs or writes it.
 #
+# What is sent: only the brief's top-level `# Task` section (its Captain's
+#   intent and Firstmate spec) and the project name, never the scaffold
+#   boilerplate around it. A brief with no non-empty Task section is not sent.
+#   Before sending, a conservative pattern screen checks that exact text for
+#   likely secrets (provider key prefixes, credential assignments, private-key
+#   headers, long high-entropy strings), connection strings, private or
+#   link-local addresses, internal-looking hostnames, and any host (including
+#   scheme-less host:port, user@host, and any IPv4 literal outside loopback)
+#   outside a fixed list of well-known public domains; a version or dist-tag
+#   after @ (such as @v4, @latest, or @18.2.0) is not read as a host. A match,
+#   a missing Task section, or a missing screen tool sends nothing and returns
+#   escalate with a reason naming only the kind of match, never the matched
+#   text.
+#
 # What it does when on with at least one rule: one POST to
-#   https://api.typesafe.ai/v1/systemone with the project name and the whole brief as
+#   https://api.typesafe.ai/v1/systemone with that screened text as
 #   state and ONE Choice question whose
 #   options are every rule's `when` from config/crew-dispatch.json plus one
 #   fixed generic none option. Jev returns the matched rule, a probability per
@@ -40,7 +54,8 @@
 #     profile: --harness <h> [--model <m>] [--effort <e>]     (status clear only)
 #   clear     -> pass the profile line to fm-spawn.sh unless you state a reason to override
 #   ambiguous -> confidence below the floor; decide as today from the probabilities
-#   escalate  -> the rule requires captain approval, no candidate is rankable, or a genuine tie
+#   escalate  -> the rule requires captain approval, no candidate is rankable, a genuine tie,
+#                or the task text was not sent
 #   error     -> API, network, response, or quota-axi failure; decide as today
 #   Every outcome exits 0 so an intake is never blocked by this tool.
 #   Exit 2 only for a usage or configuration error (unreadable brief, an
@@ -72,6 +87,8 @@ CONFIG="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 . "$SCRIPT_DIR/fm-env-lib.sh"
 # shellcheck source=bin/fm-timing-lib.sh
 . "$SCRIPT_DIR/fm-timing-lib.sh"
+# shellcheck source=bin/fm-dod-lib.sh
+. "$SCRIPT_DIR/fm-dod-lib.sh"
 
 CONFIDENCE_FLOOR=0.6
 TS_MODEL=jev-latest
@@ -84,6 +101,84 @@ no_rules() {
   printf 'dispatch-resolve:\n  status: escalate\n  reason: no rules to match\n'
   exit 0
 }
+not_sent() {
+  printf 'dispatch-resolve:\n  status: escalate\n  reason: task text not sent: %s\n' "$1"
+  exit 0
+}
+
+# Hosts that may appear in text sent to typesafe.ai; each entry also allows
+# its subdomains. Every other host is treated as possibly internal.
+PUBLIC_HOSTS='github.com githubusercontent.com github.io githubassets.com ghcr.io
+gitlab.com bitbucket.org npmjs.com npmjs.org pypi.org crates.io rubygems.org
+go.dev golang.org nodejs.org python.org rust-lang.org docker.com docker.io
+typesafe.ai anthropic.com claude.ai claude.com openai.com chatgpt.com
+google.com googleapis.com microsoft.com apple.com cloudflare.com jsdelivr.net
+unpkg.com stackoverflow.com stackexchange.com wikipedia.org mozilla.org w3.org
+ietf.org iana.org example.com example.org example.net x.com twitter.com ht-ml.app'
+
+host_is_public() {  # <host, lowercase>
+  local d
+  case $1 in
+    localhost|127.*|0.0.0.0|::1|'') return 0 ;;
+  esac
+  for d in $PUBLIC_HOSTS; do
+    case $1 in "$d"|*".$d") return 0 ;; esac
+  done
+  return 1
+}
+
+# A grep failure counts as a match, so a broken screen never sends.
+hit() {  # <pattern> <text>
+  grep -Eq -- "$1" <<<"$2"
+  [ $? -ne 1 ]
+}
+
+# Conservative screen of the exact text that would be sent. Prints the kind of
+# the first match and never the matched text; prints nothing when clean.
+# False positives only cost a normal intake, so every pattern errs wide.
+screen_kind() {  # <text>
+  local text=$1 lower host tok
+  local -x LC_ALL=C
+  lower=$(printf '%s\n' "$text" | tr '[:upper:]' '[:lower:]')
+  if hit '-----BEGIN [A-Z0-9 ]*PRIVATE KEY' "$text"; then
+    echo "private key"; return
+  fi
+  if hit '(^|[^A-Za-z0-9])(sk-[A-Za-z0-9_-]{16,}|[sr]k_(live|test)_[A-Za-z0-9]{10,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|xox[abposr]-[A-Za-z0-9-]{10,}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{30,}|npm_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,})' "$text"; then
+    echo "provider key"; return
+  fi
+  if hit '(password|passwd|passphrase|secret|token|api[_ -]?key|access[_ -]?key|private[_ -]?key|credentials?)["'"'"']?[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_./+~!@#%^&*-]{4,}|bearer[[:space:]]+[A-Za-z0-9._~+/-]{16,}' "$lower"; then
+    echo "credential assignment"; return
+  fi
+  if hit '[a-z][a-z0-9+.-]*://[^[:space:]/@:]+:[^[:space:]/@]+@|(^|[^a-z0-9])(postgres(ql)?|mysql|mariadb|mongodb(\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|jdbc:[a-z0-9]+|odbc|ldaps?|smb|nfs|s3|kafka|nats|mqtt|clickhouse|cassandra|couchdb|neo4j|snowflake)://|(data source|initial catalog|user id|accountkey|sharedaccesskey)[[:space:]]*=' "$lower"; then
+    echo "connection string"; return
+  fi
+  if hit '(^|[^0-9.])(10\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])|192\.168|169\.254|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7]))\.[0-9]{1,3}\.[0-9]{1,3}([^0-9]|$)|(^|[^0-9a-z:])(f[cd][0-9a-f]{2}|fe80):[0-9a-f:]*:' "$lower"; then
+    echo "private IP address"; return
+  fi
+  if hit '[a-z0-9]\.(local|localdomain|internal|intranet|intra|corp|lan|home|home\.arpa|private|priv|office|svc)([^a-z0-9_-]|$)' "$lower"; then
+    echo "internal hostname"; return
+  fi
+  while IFS= read -r host; do
+    host_is_public "$host" || { echo "non-public host"; return; }
+  done < <(
+    {
+      grep -Eo -- '[a-z][a-z0-9+.-]*://[^/[:space:]?#"'"'"'<>()`]+' <<<"$lower" |
+        sed -E 's#^[^:]*://##; s#^.*@##; s#(\]|[^:]):[0-9]*$#\1#; s#^\[([^]]*)\]$#\1#'
+      grep -Eo -- '([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+(com|net|org|io|ai|dev|co|cloud|biz|info|xyz|tech|site|online|gov|edu|mil|us|uk|ca|au|de|fr|jp|vn|cn|eu|nl|se|ch|kr|sg|hk|tw|br|ru|app|me|team|tools|systems|company|work|host|network|page|services|solutions|digital|group|zone|pro|live|space|link)([^a-z0-9.-]|\.?$|\.[^a-z0-9])' <<<"$lower" |
+        sed -E 's#[^a-z0-9]*$##; s#\.$##'
+      grep -Eo -- '[a-z0-9._-]+@[a-z][a-z0-9-]*(\.[a-z0-9-]+)*' <<<"$lower" | sed -E 's#^.*@##' |
+        grep -Ev -- '^(latest|next|stable|beta|alpha|canary|rc|main|master|head|v[0-9][a-z0-9-]*|v?[0-9]+(\.[0-9]+)+)$'
+      grep -Eo -- '(^|[^/a-z0-9._-])[a-z][a-z0-9-]*:[0-9]{2,5}([^0-9]|$)' <<<"$lower" | sed -E 's#^[^a-z]*##; s#:.*$##'
+      grep -Eo -- '[0-9]{1,3}(\.[0-9]{1,3}){3}' <<<"$lower"
+    } 2>/dev/null
+  )
+  while IFS= read -r tok; do
+    case $tok in *[A-Z]*) ;; *) [[ $tok =~ ^[a-z0-9]+$ && ! $tok =~ ^[0-9a-f]{40}$ ]] || continue ;; esac
+    case $tok in *[a-z]*) ;; *) continue ;; esac
+    case $tok in *[0-9]*) echo "high-entropy string"; return ;; esac
+  done < <(grep -Eo -- '[A-Za-z0-9+/_=-]{32,}' <<<"$text" 2>/dev/null)
+}
+
 usage() {
   awk '
     NR == 1 { next }
@@ -220,12 +315,21 @@ if [ "$RULE_COUNT" -eq 0 ]; then
   no_rules
 fi
 
+# ---- what leaves the machine: the Task section and project name, screened ------
+for tool in awk grep sed tr; do
+  command -v "$tool" >/dev/null 2>&1 || not_sent "the privacy screen needs $tool"
+done
+TASK_TEXT=$(fm_brief_heading_body "$BRIEF" "# Task")
+[ -n "$(printf '%s' "$TASK_TEXT" | tr -d '[:space:]')" ] || not_sent "no Task section in the brief"
+kind=$(screen_kind "$PROJECT"$'\n'"$TASK_TEXT")
+[ -z "$kind" ] || not_sent "possible $kind"
+
 RESP_FILE=$(mktemp) || die "mktemp failed"
 QUOTA=$(mktemp) || { rm -f "$RESP_FILE"; die "mktemp failed"; }
 trap 'rm -f "$RULES" "$RESP_FILE" "$QUOTA"' EXIT
 LAT_MS=null
 command -v curl >/dev/null 2>&1 || emit_error "curl not installed"
-  REQUEST=$(jq -n --rawfile brief "$BRIEF" --arg project "$PROJECT" --arg model "$TS_MODEL" \
+  REQUEST=$(jq -n --arg brief "$TASK_TEXT" --arg project "$PROJECT" --arg model "$TS_MODEL" \
     --arg none_criterion "$DEFAULT_WHEN" --slurpfile rules "$RULES" '
     ($rules[0]) as $cfg |
     ($cfg.rules | to_entries | map({key: ("rule_" + ((.key + 1) | tostring)), value: .value.when}) | from_entries) as $criteria |
