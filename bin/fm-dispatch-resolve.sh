@@ -144,7 +144,7 @@ screen_kind() {  # <text>
   if hit '(^|[^A-Za-z0-9])(sk-[A-Za-z0-9_-]{16,}|[sr]k_(live|test)_[A-Za-z0-9]{10,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|glpat-[A-Za-z0-9_-]{16,}|xox[abposr]-[A-Za-z0-9-]{10,}|(AKIA|ASIA)[A-Z0-9]{16}|AIza[A-Za-z0-9_-]{30,}|npm_[A-Za-z0-9]{30,}|hf_[A-Za-z0-9]{30,}|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}|SG\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,})' "$text"; then
     echo "provider key"; return
   fi
-  if hit '(password|passwd|passphrase|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credentials?)["'"'"']?[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_./+~!@#%^&*-]{4,}|bearer[[:space:]]+[A-Za-z0-9._~+/-]{16,}' "$lower"; then
+  if hit '(password|passwd|passphrase|secret|token|api[_ -]?key|access[_ -]?key|private[_ -]?key|credentials?)["'"'"']?[[:space:]]*[=:][[:space:]]*["'"'"']?[A-Za-z0-9_./+~!@#%^&*-]{4,}|bearer[[:space:]]+[A-Za-z0-9._~+/-]{16,}' "$lower"; then
     echo "credential assignment"; return
   fi
   if hit '[a-z][a-z0-9+.-]*://[^[:space:]/@:]+:[^[:space:]/@]+@|(^|[^a-z0-9])(postgres(ql)?|mysql|mariadb|mongodb(\+srv)?|rediss?|amqps?|mssql|sqlserver|oracle|jdbc:[a-z0-9]+|odbc|ldaps?|smb|nfs|s3|kafka|nats|mqtt|clickhouse|cassandra|couchdb|neo4j|snowflake)://|(data source|initial catalog|user id|accountkey|sharedaccesskey)[[:space:]]*=' "$lower"; then
@@ -164,7 +164,7 @@ screen_kind() {  # <text>
         sed -E 's#^[^:]*://##; s#^.*@##; s#(\]|[^:]):[0-9]*$#\1#; s#^\[([^]]*)\]$#\1#'
       grep -Eo -- '([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+(com|net|org|io|ai|dev|co|cloud|biz|info|xyz|tech|site|online|gov|edu|mil|us|uk|ca|au|de|fr|jp|vn|cn|eu|nl|se|ch|kr|sg|hk|tw|br|ru|app|me|team|tools|systems|company|work|host|network|page|services|solutions|digital|group|zone|pro|live|space|link)([^a-z0-9.-]|\.?$|\.[^a-z0-9])' <<<"$lower" |
         sed -E 's#[^a-z0-9]*$##; s#\.$##'
-      grep -Eo -- '[a-z0-9._-]+@[a-z][a-z0-9-]*((\.[a-z0-9-]+)+|:)' <<<"$lower" | sed -E 's#^.*@##; s#:$##'
+      grep -Eo -- '[a-z0-9._-]+@[a-z][a-z0-9-]*(\.[a-z0-9-]+)*' <<<"$lower" | sed -E 's#^.*@##'
       grep -Eo -- '(^|[^/a-z0-9._-])[a-z][a-z0-9-]*:[0-9]{2,5}([^0-9]|$)' <<<"$lower" | sed -E 's#^[^a-z]*##; s#:.*$##'
       grep -Eo -- '[0-9]{1,3}(\.[0-9]{1,3}){3}' <<<"$lower"
     } 2>/dev/null

@@ -305,6 +305,9 @@ screened "a bare domain under a generic TLD" 'non-public host' 'Use jira.acme.ap
 screened "a scheme-less single-label host:port" 'non-public host' 'Connect to buildbox:8080 first.'
 screened "a scp-style single-label host" 'non-public host' 'Copy it with scp pager.tar deploy@buildbox:/srv.'
 screened "a user@host with an unlisted dotted host" 'non-public host' 'ssh ops@build.acme then restart.'
+screened "a user@host with a bare single-label host" 'non-public host' 'ssh deploy@buildbox then restart'
+screened "a spaced API key name" 'credential assignment' 'API key: 9f8e7d6c5b4a'
+screened "a spaced access key name" 'credential assignment' 'access key: 9f8e7d6c5b4a'
 pass "a likely secret or internal host in the Task section or project name sends nothing and returns a kind-only reason"
 
 reset_log
