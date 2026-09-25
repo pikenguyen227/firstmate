@@ -452,7 +452,7 @@ The report is the only thing that survives, so anything worth keeping must be in
 
 # Rules
 1. Never push to any remote and never open a PR.
-2. Stay inside this worktree; the only files you may write outside it are the report, the status file below, and new raw notes under Project knowledge.
+2. Stay inside this worktree; the only files you may write outside it are the report, the status file below, and new raw notes under Project knowledge, plus the single \`/_vaults/*/raw/\` line the project-vault skill may have you append to the project's long-lived clone's repository-local exclude file.
 3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
 4. Report status by appending one line:
    \`$STATUS_APPEND\`
@@ -546,7 +546,7 @@ If the top-level path is the primary checkout or not the worktree you were launc
 
 # Rules
 $RULE1
-2. Stay inside this worktree; modify nothing outside it except new raw notes under Project knowledge.
+2. Stay inside this worktree; modify nothing outside it except new raw notes under Project knowledge, plus the single \`/_vaults/*/raw/\` line the project-vault skill may have you append to the project's long-lived clone's repository-local exclude file.
 3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
 4. Report status by appending one line:
    \`$STATUS_APPEND\`

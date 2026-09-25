@@ -544,6 +544,8 @@ test_project_vault_guidance() {
       "$kind brief did not make each raw note a new dated file"
     assert_grep 'new raw notes under Project knowledge' "$brief" \
       "$kind brief rule 2 does not allow the raw-note write outside the worktree"
+    assert_grep "plus the single \`/_vaults/*/raw/\` line the project-vault skill may have you append to the project's long-lived clone's repository-local exclude file" "$brief" \
+      "$kind brief rule 2 does not allow the raw-note exclude line in the long-lived clone"
   done
   assert_grep 'compile one inside this task'"'"'s PR from the repository scan you do anyway' "$home/data/brief-vault-ship/brief.md" \
     "ship brief did not build a missing vault from its own scan"
