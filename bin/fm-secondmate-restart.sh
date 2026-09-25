@@ -22,9 +22,11 @@
 #   A. PERSIST. Every mate is asked, in one marked request, to durably record the
 #      open work it holds only in conversation - a task for each unfiled open
 #      record, including a captain call it formed but never registered, and a
-#      status correction for each task whose recorded state is now stale. That is
-#      the /stow skill's "Open-record persistence" contract and nothing else from
-#      it: no memory, learnings, or captain-preference sweep, which would make
+#      status correction for each task whose recorded state is now stale - and
+#      to rewrite its where-I-left-off note, which the fresh agent reads first.
+#      That is the /stow skill's "Open-record persistence" and "Where-I-left-off
+#      note" contracts and nothing else from it: no memory, learnings, or
+#      captain-preference sweep, which would make
 #      every instruction update cost far more than the reload it is paying for.
 #      All requests go out before any restart, so a slow mate delays only its own
 #      restart instead of serializing the fleet behind it.

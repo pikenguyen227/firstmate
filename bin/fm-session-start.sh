@@ -51,8 +51,10 @@
 #                       read-only, always runs.
 #   7. network checks - the result of the deferred network stage started back at
 #                       step 1, harvested WITHOUT waiting for it.
-#   8. context digest - data/projects.md, data/secondmates.md, data/captain.md,
-#                       data/captain-shared.md, data/learnings.md: read-only,
+#   8. context digest - data/left-off.md (the home's where-I-left-off note,
+#                       printed first), data/projects.md, data/secondmates.md,
+#                       data/captain.md, data/captain-shared.md,
+#                       data/learnings.md, data/project-map.md: read-only,
 #                       always safe, always runs.
 #   9. closing reminder - prints the context-specific watcher next step; this
 #                       script points back to the emitted harness supervision
@@ -805,8 +807,8 @@ section "READ-ONCE CONTRACT"
 cat <<'EOF'
 Everything below is printed in full for this session start: every state/*.meta,
 a compact data/backlog.md listing, a bounded tail of every state/*.status,
-data/projects.md, data/secondmates.md, data/captain.md, data/captain-shared.md,
-and data/learnings.md.
+data/left-off.md, data/projects.md, data/secondmates.md, data/captain.md,
+data/captain-shared.md, data/learnings.md, and data/project-map.md.
 Do NOT re-read any of them after reading this digest, and do NOT bulk-read
 data/backlog.md or state/*.status: re-reading everything defeats the entire
 point of this command.
@@ -941,14 +943,18 @@ fi
 # Last of the bulk sections deliberately: curated memory is stable session to
 # session, already governed by config/startup-memory-budget, and recoverable
 # with one targeted read, so it is the cheapest thing for a truncated tail to
-# take (see this file's ORDERING note).
+# take (see this file's ORDERING note). Within it, the where-I-left-off note
+# leads: it is the short, stow-rewritten summary of what this home was doing,
+# so a fresh start reads it before the reference files it points into.
 stage context
 section "CONTEXT"
+print_file_or_absent "$DATA/left-off.md" "data/left-off.md (where I left off - read first)"
 print_file_or_absent "$DATA/projects.md" "data/projects.md"
 print_file_or_absent "$DATA/secondmates.md" "data/secondmates.md"
 print_file_or_absent "$DATA/captain.md" "data/captain.md"
 print_file_or_absent "$DATA/captain-shared.md" "data/captain-shared.md (shared, main-authoritative, read-only in secondmate homes)"
 print_file_or_absent "$DATA/learnings.md" "data/learnings.md"
+print_file_or_absent "$DATA/project-map.md" "data/project-map.md"
 
 # --- 9. closing reminder -----------------------------------------------
 stage next-step

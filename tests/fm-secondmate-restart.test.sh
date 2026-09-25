@@ -9,9 +9,9 @@
 #      correlated answer lands on the parent channel, and a mate that never
 #      answers keeps its agent and gets the re-read message instead.
 #   2. The order is persist THEN restart, observable in what reaches the pane.
-#   3. The persist request is the task-subset of /stow: it asks for open records
-#      and task status, and explicitly not for the memory, learnings, or
-#      captain-preference sweeps.
+#   3. The persist request is the task-subset of /stow: it asks for open records,
+#      task status, and a rewritten where-I-left-off note, and explicitly not for
+#      the memory, learnings, or captain-preference sweeps.
 #   4. Every unsafe case says what is known: pre-restart capability and persist
 #      failures use the nudge path, while a failed relaunch is reported as an
 #      unknown outcome; none is reported as a clean reload.
@@ -278,9 +278,11 @@ test_persist_gates_and_asks_only_for_open_records() {
   assert_contains "$request" "correct any task whose status" "the request must ask for stale task status"
   assert_contains "$request" "captain call you had formed but never registered" \
     "the request must flush an unregistered captain call"
+  assert_contains "$request" 'rewrite data/left-off.md following that skill'"'"'s "Where-I-left-off note" section' \
+    "the request must refresh the note the fresh start reads first"
   assert_contains "$request" "Do NOT run the memory, learnings, or captain-preference sweeps" \
     "the request must exclude the memory curation half of stow"
-  pass "T1 persist is a gate, and asks for open records and task status only"
+  pass "T1 persist is a gate, and asks for open records, task status, and the left-off note only"
 }
 
 # --- T2: persist THEN restart, in that order --------------------------------

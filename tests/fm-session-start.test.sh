@@ -730,7 +730,8 @@ EOF
 
   printf '%s\n' '- demo [no-mistakes] - a demo project (added 2026-07-01)' > "$home/data/projects.md"
   : > "$home/data/captain.md"
-  # secondmates.md, captain-shared.md, and learnings.md deliberately absent
+  # left-off.md, secondmates.md, captain-shared.md, learnings.md, and
+  # project-map.md deliberately absent
 
   out=$(run_session_start "$home" "$root" "$fakebin:$BASE_PATH")
 
@@ -749,17 +750,57 @@ EOF
 
   assert_contains "$out" "data/secondmates.md" "digest did not label the secondmates.md section"
   assert_contains "$out" "data/learnings.md" "digest did not label the learnings.md section"
+  assert_contains "$out" "data/left-off.md (where I left off - read first)" \
+    "digest did not label the where-I-left-off note"
+  assert_contains "$out" "data/project-map.md" "digest did not label the project-map.md section"
 
-  # Exactly four context ABSENT markers (secondmates.md, captain-shared.md,
-  # learnings.md; backlog.md is covered by its own test) - and the
-  # present-but-empty captain.md must NOT print ABSENT.
+  # Exactly six context ABSENT markers (left-off.md, secondmates.md,
+  # captain-shared.md, learnings.md, project-map.md; backlog.md is covered by
+  # its own test) - and the present-but-empty captain.md must NOT print ABSENT.
   absent_count=$(printf '%s\n' "$out" | grep -c '^ABSENT$')
-  [ "$absent_count" -eq 4 ] || fail "expected 4 ABSENT markers (secondmates.md, captain-shared.md, learnings.md, backlog.md), got $absent_count: $out"
+  [ "$absent_count" -eq 6 ] || fail "expected 6 ABSENT markers (left-off.md, secondmates.md, captain-shared.md, learnings.md, project-map.md, backlog.md), got $absent_count: $out"
+  left_off_section=$(printf '%s\n' "$out" | awk '/^data\/left-off\.md /{flag=1;next}/^data\//{flag=0}flag')
+  assert_contains "$left_off_section" "ABSENT" "a missing where-I-left-off note was not marked ABSENT"
 
   cap_section=$(printf '%s\n' "$out" | awk '/^data\/captain\.md$/{flag=1;next}/^data\//{flag=0}flag')
   assert_contains "$cap_section" "(present, empty)" "empty-but-present captain.md was not distinguished from ABSENT"
 
   pass "context digest distinguishes ABSENT, empty-but-present, and populated files"
+}
+
+# A fresh start picks up from the stow-written note without a separate lookup,
+# so the digest prints it ahead of every other memory file, and prints a
+# second mate's project map in the same pass.
+test_context_digest_leads_with_left_off_note_and_prints_project_map() {
+  local rec root home fakebin out context note_section note_line projects_line
+  rec=$(new_world context-left-off)
+  IFS='|' read -r root home fakebin <<EOF
+$rec
+EOF
+  make_fake_toolchain "$fakebin"
+  make_fake_ps_claude "$fakebin"
+
+  printf '%s\n' '- demo [no-mistakes] - a demo project (added 2026-07-01)' > "$home/data/projects.md"
+  printf '%s\n' '- Focus: demo fix awaiting the captain merge call.' > "$home/data/left-off.md"
+  printf '%s\n' '## demo' '- Timeline zoom is decided in src/zoom.ts.' > "$home/data/project-map.md"
+
+  out=$(run_session_start "$home" "$root" "$fakebin:$BASE_PATH")
+
+  context=$(printf '%s\n' "$out" | awk '/^CONTEXT$/{flag=1}flag')
+  assert_contains "$context" "- Focus: demo fix awaiting the captain merge call." \
+    "the CONTEXT digest did not print the where-I-left-off note"
+  assert_contains "$context" "- Timeline zoom is decided in src/zoom.ts." \
+    "the CONTEXT digest did not print the project map"
+  note_line=$(printf '%s\n' "$context" | grep -n '^data/left-off\.md ' | head -n 1 | cut -d: -f1)
+  projects_line=$(printf '%s\n' "$context" | grep -n '^data/projects\.md$' | head -n 1 | cut -d: -f1)
+  { [ -n "$note_line" ] && [ -n "$projects_line" ] && [ "$note_line" -lt "$projects_line" ]; } \
+    || fail "the where-I-left-off note did not lead the CONTEXT digest: $context"
+  note_section=$(printf '%s\n' "$context" | awk '/^data\/left-off\.md /{flag=1;next}/^data\//{flag=0}flag')
+  if printf '%s\n' "$note_section" | grep -q '^ABSENT$'; then
+    fail "a present where-I-left-off note was marked ABSENT"
+  fi
+
+  pass "context digest leads with the where-I-left-off note and prints the project map"
 }
 
 # --- lock refusal: read-only path --------------------------------------------
@@ -2700,6 +2741,7 @@ EOF
 }
 
 test_context_digest_absent_empty_present
+test_context_digest_leads_with_left_off_note_and_prints_project_map
 test_lock_refusal_read_only_path
 test_lock_write_failure_read_only_path
 test_trace_context_effective_state_is_frozen_after_lock

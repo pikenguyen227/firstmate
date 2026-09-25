@@ -644,6 +644,10 @@ test_secondmate_no_projects_charter() {
     "secondmate charter did not close a quietly ended routed-work phase"
   assert_grep 'use the same key on its later' "$brief" \
     "secondmate charter did not supersede working phases with later states"
+  assert_grep "map of each of your projects in \`data/project-map.md\`" "$brief" \
+    "secondmate charter did not tell the mate to keep its own project map"
+  assert_grep "which never goes into a project's \`AGENTS.md\`" "$brief" \
+    "secondmate charter did not keep the project map out of the project's AGENTS.md"
   if grep -nE '^-[[:space:]]*$' "$brief" >/dev/null; then
     fail "project-less charter left a stray empty project bullet"
   fi
