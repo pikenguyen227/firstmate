@@ -19,9 +19,10 @@
 #   4. Nightly: due inside the night span when no fresh start happened since
 #      nightly_at, including at the next idle moment after a busy nightly_at.
 #   5. Cooldown: at most one fresh start per window.
-#   6. Refusal while busy: mid-turn always refuses; a live worker, open decision,
-#      unread steering, awaiting a reply, or undrained notifications refuse idle
-#      and nightly but not the context trigger.
+#   6. Refusal while busy: mid-turn and a request awaiting its reply always
+#      refuse; a live worker (not a child second mate), open decision, unread
+#      steering, or undrained notifications refuse idle and nightly but not the
+#      context trigger.
 #   7. run re-decides, calls the restart with --fresh-start, and appends one note
 #      to the mate's status channel; a busy mate is never passed to the restart.
 #   8. The primary gets one deduplicated suggestion instead of a restart, on the
@@ -241,12 +242,20 @@ test_refusal_while_busy() {
     "in-flight work must not refuse the context trigger; the persist gate files it"
   rm -rf "$d/mate/state/child.meta" "$d/home/state/mate.status" "$d/home/state/mate.inbox"
 
+  mkdir -p "$d/home/state/pending-replies"
+  printf 'task_id=mate\nresolved_epoch=\n' > "$d/home/state/pending-replies/0123456789abcdef"
+  assert_contains "$(mate_line "$d" "$NOON")" "mate: busy -: a request still awaiting its reply" \
+    "a request awaiting its reply must refuse even the context trigger"
+  rm -rf "$d/home/state/pending-replies"
+
   mate_session "$d" 3 $((NOON - 3600)) 100000 claude-opus-5
   assert_contains "$(mate_line "$d" "$NOON")" "mate: due idle" "the settled mate under the threshold is due for idle"
 
+  printf 'kind=secondmate\n' > "$d/mate/state/grandchild.meta"
+  assert_contains "$(mate_line "$d" "$NOON")" "mate: due idle" "a child second mate is not a live worker"
   printf 'kind=ship\n' > "$d/mate/state/child.meta"
   assert_contains "$(mate_line "$d" "$NOON")" "mate: busy -: 1 live worker(s)" "a mate with a live worker must be refused"
-  rm -f "$d/mate/state/child.meta"
+  rm -f "$d/mate/state/child.meta" "$d/mate/state/grandchild.meta"
 
   printf 'needs-decision [key=pick]: which one\n' > "$d/home/state/mate.status"
   assert_contains "$(mate_line "$d" "$NOON")" "mate: busy -: an open decision" "an open decision on its parent channel must refuse"
@@ -376,7 +385,11 @@ test_invalid_config_and_arming() {
   fresh "$d" "$NOON" arm --if-configured >/dev/null || fail "arm --if-configured must succeed with a config"
   assert_present "$d/home/state/fresh-start.check.sh" "arm must write the check shim"
   assert_present "$d/home/state/fresh-start.check-trust" "arm must register the check shim"
-  assert_grep "fm-fresh-start.sh check" "$d/home/state/fresh-start.check.sh" "the shim must run the check"
+  config "$d" '{"idle_minutes": 1}'
+  out=$(env -u FM_HOME FM_FRESH_START_NOW="$NOON" bash "$d/home/state/fresh-start.check.sh") \
+    || fail "the armed shim must run"
+  assert_contains "$out" "config/fresh-start.json is invalid (idle_minutes" \
+    "the armed shim must run the check against this home"
   rm -f "$d/home/config/fresh-start.json"
   fresh "$d" "$NOON" arm --if-configured >/dev/null || fail "arm --if-configured must succeed without a config"
   assert_absent "$d/home/state/fresh-start.check.sh" "removing the config must disarm on the next session start"

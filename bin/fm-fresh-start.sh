@@ -33,9 +33,9 @@
 #            /updatefirstmate does for a busy mate. Usage is the latest
 #            main-thread turn's input tokens (input + cache creation + cache
 #            read) from the harness's own session record; the window comes from
-#            config context_windows, then the built-in table below. An unknown model, an unreadable record,
-#            or a reading larger than the window makes this trigger unavailable
-#            for that agent; it is never guessed.
+#            config context_windows, then the built-in table below. An unknown
+#            model, an unreadable record, or a reading larger than the window
+#            makes this trigger unavailable for that agent; it is never guessed.
 #   idle     the agent has no in-flight work and its last turn ended at least
 #            idle_minutes ago.
 #   nightly  local time is inside the six hours after nightly_at, the agent has
@@ -43,16 +43,18 @@
 #            start since this night's nightly_at. An agent busy at nightly_at
 #            is fresh-started at its next idle moment inside that span.
 #
-# Every trigger requires the agent to be between turns, and at most one fresh
+# Every trigger requires the agent to be between turns, every trigger for a
+# second mate requires no parent request still awaiting its reply (such as
+# another persist-gated restart already in progress), and at most one fresh
 # start (or primary suggestion) happens per cooldown_hours. The idle and
 # nightly triggers also require the agent to hold no in-flight work and at
 # least two completed turns in the current session, so a mate that has done
 # nothing since its own fresh start is not restarted again for being idle.
 #
-# In-flight work for a second mate: a live worker record in its home, an open
-# decision on its own or its parent's status channel, an unacknowledged
-# instruction in its steering inbox, a parent request still awaiting its reply,
-# or undrained notifications in its home's wake queue. For the primary: a live
+# In-flight work for a second mate: a live worker record in its home (not a
+# child second mate), an open decision on its own or its parent's status
+# channel, an unacknowledged instruction in its steering inbox, or undrained
+# notifications in its home's wake queue. For the primary: a live
 # worker (not a second mate) or an open decision on any of its status channels.
 #
 # Between turns is read from the harness's own session record, and only Claude
@@ -361,12 +363,14 @@ pending_reply_open() {  # <task-id>
 # One reason a mate is holding work, or nothing.
 mate_in_flight() {  # <id> <home>
   local id=$1 home=$2 n=0 f
-  for f in "$home"/state/*.meta; do [ -f "$f" ] && n=$((n + 1)); done
+  for f in "$home"/state/*.meta; do
+    [ -f "$f" ] || continue
+    [ "$(fm_meta_get "$f" kind)" = secondmate ] || n=$((n + 1))
+  done
   [ "$n" -eq 0 ] || { printf '%d live worker(s)' "$n"; return; }
   for f in "$STATE/$id.inbox"/*.msg; do
     [ -f "$f" ] && { printf 'an unacknowledged instruction in its inbox'; return; }
   done
-  pending_reply_open "$id" && { printf 'a request still awaiting its reply'; return; }
   open_decision_in "$STATE/$id.status" "$home"/state/*.status && { printf 'an open decision'; return; }
   [ -s "$home/state/.wake-queue" ] && { printf 'undrained notifications'; return; }
   return 0
@@ -468,6 +472,9 @@ evaluate_mate() {  # <id>
   fi
   if [ "$S_STATE" != settled ]; then
     verdict busy - "mid-turn"; return
+  fi
+  if pending_reply_open "$id"; then
+    verdict busy - "a request still awaiting its reply"; return
   fi
   context_measure
   context_due && return

@@ -317,7 +317,7 @@ Every key is optional, an unknown key or an out-of-range value makes the whole f
 
 - `enabled` - `true` (default) or `false`, which keeps the file but turns the feature off.
 - `idle_minutes` - the idle trigger: minutes since the agent's last turn ended, 5 to 10080, default 120; `null` turns this trigger off.
-- `context_percent` - the context trigger: percent of the model's context window in use, 10 to 99, default 70; `null` turns this trigger off. Unlike idle and nightly, it fires while the agent still holds in-flight work (live workers, open decisions, unread steering), because the persist gate has the mate file that work before the relaunch; it still waits for the agent to be between turns and honors the cooldown.
+- `context_percent` - the context trigger: percent of the model's context window in use, 10 to 99, default 70; `null` turns this trigger off. Unlike idle and nightly, it fires while the agent still holds in-flight work (live workers, open decisions, unread steering), because the persist gate has the mate file that work before the relaunch; it still waits for the agent to be between turns, for a second mate to have no parent request still awaiting its reply, and for the cooldown.
 - `nightly_at` - the nightly trigger: local time as `HH:MM`, default `03:00`; `null` turns this trigger off.
 - `cooldown_hours` - at most one automatic fresh start per agent (or one suggestion to the primary) in this many hours, 1 to 168, default 6.
 - `context_windows` - optional window sizes in tokens, keyed by the model id the harness records, for a model the built-in table does not know or where this machine's window differs.
