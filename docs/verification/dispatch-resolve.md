@@ -55,15 +55,15 @@ Two default-labeled briefs became ambiguous.
 
 ## Task-section extraction and privacy screen
 
-Run 2026-09-25 over the 54 private briefs in one firstmate home by sourcing the script's Task-section extraction and `screen_kind` function under bash 3.2.57 on macOS; no request was sent.
+Run 2026-09-25 over the 54 private briefs in one firstmate home at commit f1c41882 by sourcing `fm_brief_heading_body` from `bin/fm-dod-lib.sh` and the script's `screen_kind` function under bash 3.2.57 on macOS; no request was sent.
 
 | Measure | Result |
 | --- | --- |
 | Briefs with a Task section | 49 of 54; the other 5 were secondmate charters |
-| Mean bytes: whole brief / Task section | 13,609 / 2,735 (80% smaller) |
-| Task sections the screen refused | 2 of 49 |
+| Mean bytes: whole brief / Task section | 13,609 / 2,736 (80% smaller) |
+| Task sections the screen refused | 3 of 49 |
 
-One refusal was an internal company server hostname that the whole-brief request would have sent; the other was a long generated identifier inside a path, a false positive that costs one ordinary intake.
+One refusal was an internal company server hostname that the whole-brief request would have sent; the other two were false positives that each cost one ordinary intake: a long generated identifier inside a path, and a `tool@local` package reference read as a single-label host.
 The accompanying tier research measured Task-section-only rule matching within its run-to-run spread of whole-brief matching (39 against 41 and 34 against 33 of 48 across two rule sets).
 
 ## Offline behavior

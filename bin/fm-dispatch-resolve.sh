@@ -21,7 +21,8 @@
 #   headers, long high-entropy strings), connection strings, private or
 #   link-local addresses, internal-looking hostnames, and any host (including
 #   scheme-less host:port, user@host, and any IPv4 literal outside loopback)
-#   outside a fixed list of well-known public domains. A match, a missing Task section,
+#   outside a fixed list of well-known public domains; a version or dist-tag
+#   after @ (such as @v4, @latest, or @18.2.0) is not read as a host. A match, a missing Task section,
 #   or a missing screen tool sends nothing and returns escalate with a reason
 #   naming only the kind of match, never the matched text.
 #
