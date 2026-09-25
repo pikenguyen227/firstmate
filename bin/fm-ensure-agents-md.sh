@@ -107,9 +107,9 @@ write_skeleton() {
   cat > "$AGENTS" <<'EOF'
 # Project agent memory
 
-This file is the project's committed home for project-intrinsic agent knowledge: build, test, release, architecture, and sharp-edge notes that should travel with the code.
+This file is the project's committed entry point for agents: the few notes almost every session needs, and pointers to where the rest of the project's knowledge lives.
 
-- Add durable project-specific notes here as they are discovered through real work.
+- Keep project knowledge in the project's vault under `_vaults/` and point to its wiki index from here rather than copying it.
 EOF
   ensure_maintenance_section
 }

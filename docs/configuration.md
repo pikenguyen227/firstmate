@@ -259,10 +259,10 @@ There is no shared learnings file by captain decision.
 
 ## Project map (data/project-map.md)
 
-Each second mate keeps a concise map of its own projects - layout, build and test commands, and where key behaviour is decided - in its local, gitignored `data/project-map.md`, so a fresh start reads the map instead of re-scanning the project.
+Each second mate keeps agent-only notes on its own projects - a pointer to each project's vault index plus fleet and tool facts on this machine - in its local, gitignored `data/project-map.md`, so a fresh start finds each project's knowledge instead of re-scanning the project.
 A primary home keeps one only for projects it works on directly.
 The session-start context digest prints it after `data/learnings.md`, or `ABSENT` when no map exists yet.
-The map is the home's own notes and never goes into a project's committed `AGENTS.md`.
+The map is the home's own notes and never goes into any repository; project knowledge itself lives in each project's vault, whose convention the internal [`project-vault` skill](../.agents/skills/project-vault/SKILL.md) owns.
 The internal [`stow` skill](../.agents/skills/stow/SKILL.md#project-map-dataproject-mapmd) owns its shape, update rule, and aging-tier curation.
 
 ## Where-I-left-off note (data/left-off.md)
