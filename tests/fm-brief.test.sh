@@ -492,13 +492,80 @@ test_ship_project_memory_wording() {
   FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode no-mistakes >/dev/null 2>&1
   brief="$home/data/$id/brief.md"
   assert_present "$brief" "brief was not scaffolded"
-  assert_grep "Record only project knowledge useful to almost every future session." "$brief" \
+  assert_grep "Record in \`AGENTS.md\` only what is useful to almost every future session." "$brief" \
     "project-memory contract lost the durable-knowledge bar"
+  assert_grep "a project \`AGENTS.md\` at most points to the vault index" "$brief" \
+    "project-memory contract no longer defers project knowledge to the vault"
   assert_grep "prefer a pointer to the authoritative file, command, or doc over copying the detail" "$brief" \
     "project-memory contract lost pointer-over-copy guidance"
   assert_grep "follow \`$ROOT/bin/fm-ensure-agents-md.sh\`'s self-governance contract" "$brief" \
     "project-memory contract no longer defers to the ensure helper"
   pass "fm-brief.sh: ship project-memory wording carries the AGENTS.md authoring bar"
+}
+
+# Ship and scout briefs point the worker at the project-vault convention and
+# name an absolute raw-note location in this home's long-lived clone, never the
+# disposable worker copy the brief is read from.
+test_project_vault_guidance() {
+  local home id kind brief raw_line raw_path
+  home="$TMP_ROOT/vault-home"
+  mkdir -p "$home/data"
+  for kind in ship scout; do
+    id="brief-vault-$kind"
+    if [ "$kind" = ship ]; then
+      FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --mode no-mistakes >/dev/null 2>&1
+    else
+      FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "$id" some-proj --scout >/dev/null 2>&1
+    fi
+    brief="$home/data/$id/brief.md"
+    assert_present "$brief" "$kind brief was not scaffolded"
+    grep -qx '# Project knowledge' "$brief" || fail "$kind brief lost its project-knowledge section"
+    assert_grep "\`$ROOT/.agents/skills/project-vault/SKILL.md\` owns that convention" "$brief" \
+      "$kind brief did not point at the project-vault skill"
+    [ -f "$ROOT/.agents/skills/project-vault/SKILL.md" ] || fail "$kind brief points at a missing project-vault skill"
+    # shellcheck disable=SC2016  # the backticks are literal brief text
+    assert_grep 'Before you scan the code, read `_vaults/<name>/wiki/index.md`' "$brief" \
+      "$kind brief did not consult an existing vault first"
+    assert_grep 'The firstmate repository itself is outside the convention' "$brief" \
+      "$kind brief did not keep the firstmate repository outside the convention"
+    raw_line=$(grep 'Keep raw working notes only in this home' "$brief")
+    [ -n "$raw_line" ] || fail "$kind brief did not say where raw notes go"
+    # shellcheck disable=SC2016  # the backticks are a literal sed pattern
+    raw_path=$(printf '%s\n' "$raw_line" | sed -n 's/.*under `\([^`]*\)`.*/\1/p')
+    case "$raw_path" in
+      /*) ;;
+      *) fail "$kind raw-note path is not absolute: $raw_path" ;;
+    esac
+    [ "$raw_path" = "$home/projects/some-proj/_vaults/<name>/raw/" ] \
+      || fail "$kind raw-note path is not in this home's long-lived clone: $raw_path"
+    assert_contains "$raw_line" "never inside this disposable worker copy" \
+      "$kind brief did not keep raw notes out of the worker copy"
+    assert_grep "as a new file named \`<YYYY-MM-DD>-$id-<topic>.md\`" "$brief" \
+      "$kind brief did not make each raw note a new dated file"
+    assert_grep 'new raw notes under Project knowledge' "$brief" \
+      "$kind brief rule 2 does not allow the raw-note write outside the worktree"
+    assert_grep "plus the single \`/_vaults/*/raw/\` line the project-vault skill may have you append to the project's long-lived clone's repository-local exclude file" "$brief" \
+      "$kind brief rule 2 does not allow the raw-note exclude line in the long-lived clone"
+  done
+  assert_grep 'compile one inside this task'"'"'s PR from the repository scan you do anyway' "$home/data/brief-vault-ship/brief.md" \
+    "ship brief did not build a missing vault from its own scan"
+  assert_grep 'add or update wiki notes only for what this task taught you' "$home/data/brief-vault-ship/brief.md" \
+    "ship brief did not limit wiki notes to what the task taught"
+  assert_grep "that PR carries no \`_vaults/\` content and no vault \`.gitignore\` block" "$home/data/brief-vault-ship/brief.md" \
+    "ship brief did not keep a fork's vault out of an upstream PR"
+  assert_grep "Cut that PR's branch from the upstream's default branch, never from the fork's main" "$home/data/brief-vault-ship/brief.md" \
+    "ship brief did not keep an upstream PR off the fork's vault-carrying main"
+  assert_grep "if you cannot, stop and report instead of opening the PR" "$home/data/brief-vault-ship/brief.md" \
+    "ship brief did not stop an upstream PR that cannot avoid the fork's vault"
+  assert_grep 'A scout opens no PR, so it compiles no wiki notes' "$home/data/brief-vault-scout/brief.md" \
+    "scout brief did not route wiki proposals through its report"
+
+  # A relative projects override still renders an absolute raw-note path.
+  (cd "$TMP_ROOT" && FM_HOME="$home" FM_PROJECTS_OVERRIDE=rel-projects \
+    "$ROOT/bin/fm-brief.sh" brief-vault-rel some-proj --scout >/dev/null 2>&1)
+  assert_grep "under \`$TMP_ROOT/rel-projects/some-proj/_vaults/<name>/raw/\`" "$home/data/brief-vault-rel/brief.md" \
+    "relative FM_PROJECTS_OVERRIDE did not resolve to an absolute raw-note path"
+  pass "fm-brief.sh: ship and scout briefs carry vault guidance with an absolute raw-note path in the long-lived clone"
 }
 
 test_herdr_lab_contract_is_explicit_and_complete() {
@@ -644,10 +711,12 @@ test_secondmate_no_projects_charter() {
     "secondmate charter did not close a quietly ended routed-work phase"
   assert_grep 'use the same key on its later' "$brief" \
     "secondmate charter did not supersede working phases with later states"
-  assert_grep "map of each of your projects in \`data/project-map.md\`" "$brief" \
-    "secondmate charter did not tell the mate to keep its own project map"
-  assert_grep "which never goes into a project's \`AGENTS.md\`" "$brief" \
-    "secondmate charter did not keep the project map out of the project's AGENTS.md"
+  assert_grep "agent-only map of each of your projects in \`data/project-map.md\`: a pointer to the project's vault index" "$brief" \
+    "secondmate charter did not tell the mate to keep its own agent-only project map"
+  assert_grep "which never goes into any repository" "$brief" \
+    "secondmate charter did not keep the project map out of every repository"
+  assert_grep "moves into that project's vault only when a task touches it" "$brief" \
+    "secondmate charter did not limit map-to-vault moves to touched facts"
   if grep -nE '^-[[:space:]]*$' "$brief" >/dev/null; then
     fail "project-less charter left a stray empty project bullet"
   fi
@@ -1106,6 +1175,7 @@ test_no_mistakes_dod_green_detection
 test_pr_based_dod_requires_non_draft
 test_ask_user_escalation_format
 test_ship_project_memory_wording
+test_project_vault_guidance
 test_herdr_lab_contract_is_explicit_and_complete
 test_herdr_lab_contract_quotes_foreign_firstmate_path
 test_herdr_lab_omission_is_loud_for_ship_and_scout

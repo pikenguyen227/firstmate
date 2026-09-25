@@ -11,7 +11,7 @@ metadata:
 # stow
 
 Sweep this session for durable knowledge and open-work record state that exist only in conversation, then leave the next session with a compact current operating map rather than an accumulating journal.
-A fresh start after a context reset reads that map from the session-start digest instead of re-scanning the repository: the where-I-left-off note says what this home was doing, and a second mate's project map says where things are in its projects.
+A fresh start after a context reset reads that map from the session-start digest instead of re-scanning the repository: the where-I-left-off note says what this home was doing, and the home's project map points at each project's vault.
 Memory entries are tiered and decay between passes, and stale material retires to a cold archive instead of being deleted.
 This skill writes only through the existing Firstmate ownership and write boundaries.
 
@@ -43,7 +43,7 @@ The tier names say what the pass does with an entry:
 
 Marking rules:
 
-- Tier defaults are file-scoped: entries in `data/captain.md` and `data/captain-shared.md` default to `pinned` because preferences and authority boundaries do not age, and entries in `data/learnings.md` and `data/project-map.md` default to `aging` because operational facts and project layouts must re-prove themselves.
+- Tier defaults are file-scoped: entries in `data/captain.md` and `data/captain-shared.md` default to `pinned` because preferences and authority boundaries do not age, and entries in `data/learnings.md` and `data/project-map.md` default to `aging` because operational facts and project-map entries must re-prove themselves.
 - `data/left-off.md` carries no tier markers at all: every pass rewrites it whole, so it never ages in place.
 - An entry matching its file's `pinned` default carries no marker at all; every `aging` and `perishable` entry always carries its dated marker, whose letter names the tier, so a clock-carrying entry is never ambiguous with unmarked legacy material.
 - Marker and header-pointer bytes count toward the startup-memory budget: the pass's own bookkeeping is costed content, never free, which is why the spellings above are as short as they are.
@@ -94,7 +94,7 @@ Every `/stow` invocation performs this complete pass, even when the session cont
 3. Build one whole-file retention plan before editing, ordered by likelihood of informing a future session.
    Keep in always-loaded memory only current captain preferences, authority and safety boundaries, recurring working style, fleet-wide or frequently relevant operating facts, and concise pointers that are expensive to rediscover.
    Prefer offloading current but conditional, narrow, project-specific, or context-specific material to a live on-demand owner, and archive stale, superseded, or low-recurrence material to the cold tier.
-   A second mate's project map is the exception: its projects are its whole domain, so the map stays in `data/project-map.md` and is kept concise rather than offloaded.
+   A home's project map is the exception: it holds only vault pointers and agent-only facts, so it stays in `data/project-map.md` and is kept concise rather than offloaded.
    Retain lower-utility material only while budget remains.
 4. Reinforce and stamp.
    Refresh an entry's last-reinforced date to today only when this session actually exercised, confirmed, or re-derived it.
@@ -184,17 +184,17 @@ Approved project-level destinations are not produced by stow: they ship normally
   Because this destination is local and untracked, it is also the JIT home for private conditional knowledge that no committed surface may hold.
 - An already-existing user-owned local on-demand note with an established trigger, after confirming it is untracked, private, and able to hold the quoted entry.
   The pass may add the entry to that existing owner but never creates a new note, skill, or trigger for this purpose.
-- A project's existing committed `AGENTS.md`, for project-intrinsic knowledge useful to nearly every session of that project, through a normal crewmate ship task using `bin/fm-ensure-agents-md.sh` and the project's registered delivery mode.
+- A project's vault, for project knowledge, through a normal crewmate ship task under the internal `project-vault` skill and the project's registered delivery mode.
 - A project-level skill in the project's own repository, for situation-conditional knowledge within one project, through the same ship-task path.
 
-Forbidden destinations: any firstmate-repo-tracked skill per the hard rule; for a `data/project-map.md` entry, the project's own `AGENTS.md` or project-level skill, because the map is the fleet's notes and never ships into the project; firstmate's own `AGENTS.md`, which is always-loaded for every fleet session; `docs/` alone, which is never agent-loaded on demand, though a skill body may point into docs for depth; and any committed surface for private content.
+Forbidden destinations: any firstmate-repo-tracked skill per the hard rule; for a `data/project-map.md` entry, every project destination, because a project fact in the map moves into its vault only inside a task that touches it, never through this pass; firstmate's own `AGENTS.md`, which is always-loaded for every fleet session; `docs/` alone, which is never agent-loaded on demand, though a skill body may point into docs for depth; and any committed surface for private content.
 A local skill exists only in this home, so offloading an entry out of `data/captain-shared.md` removes it from every inheriting home's always-injected memory: the proposal must say so, and the default for shared entries is keep.
 
 ### Flow: reduce, approve, migrate, remove
 
 1. Reduce non-pinned material now.
    For each eligible non-pinned candidate, record its first line, source file, estimated tokens, one-line trigger, live destination, privacy and visibility verdict, and actual budget relief in the completion receipt.
-   Autonomously relocate it only by adding it to an already-existing allowed JIT note, or by routing it through a project's established delivery path to its existing owning `AGENTS.md`, then confirming that destination holds the quoted entry before removing the memory entry.
+   Autonomously relocate it only by adding it to an already-existing allowed JIT note, or by routing it through a project's established delivery path to that project's existing vault, then confirming that destination holds the quoted entry before removing the memory entry.
    A destination that needs creation, uncompleted project delivery, or any other future work is not live and cannot count as relief, so continue with the next archival or eviction rung instead of leaving an over-budget proposal pending.
 2. Propose pinned relocation only.
    For a pinned candidate, append a `proposed-offload` section with the same fields to the completion receipt, create or refresh one durable backlog item with `bin/fm-tasks-axi.sh add`, `bin/fm-tasks-axi.sh show <id> --full`, and `bin/fm-tasks-axi.sh update <id> --body-file <path>` as appropriate, then hold it through `bin/fm-captain-hold.sh hold`.
@@ -224,9 +224,9 @@ A local skill exists only in this home, so offloading an entry out of `data/capt
      Create `data/learnings.md` only for a genuinely new local learning with no stronger owner.
    - In a primary home, curate shared captain preferences only under the existing primary-authoritative shared-preference contract.
      In a secondmate home, route a newly discovered shared preference to the main firstmate through marked status or a document pointer instead of editing the inherited file.
-   - Project-intrinsic knowledge never goes directly into a project's `AGENTS.md`.
-     Route it through a normal ship task so a crewmate records it with `bin/fm-ensure-agents-md.sh` and the project's delivery path.
-   - What this home needs to find its way around its own projects goes to its `data/project-map.md` under the project-map section below, never to the project's `AGENTS.md`.
+   - Project knowledge never goes directly into a project's repository.
+     It belongs in that project's vault under the internal `project-vault` skill, compiled by a crewmate inside the task that taught it.
+   - What this home needs to find its way to its projects - vault pointers and agent-only facts - goes to its `data/project-map.md` under the project-map section below, never into any repository.
    - Knowledge general to every Firstmate user belongs in this repo's shared tracked material through the normal branch, no-mistakes, PR, and captain-merge path.
    - For task-scoped notes, inspect the item with `bin/fm-tasks-axi.sh show <id> --full`, classify the change as new, duplicate, superseding, or obsolete, then use a considered replacement body through `bin/fm-tasks-axi.sh update <id> --body-file <path>`.
      Use `--archive-body` when recoverability matters.
@@ -251,12 +251,13 @@ Where the right correction is a judgment you cannot make, leave the record alone
 
 ## Project map: data/project-map.md
 
-A second mate keeps, in its own `data/project-map.md`, a concise map of each project it works on, so a fresh start reads the map instead of re-scanning the project.
-A primary home keeps one only for projects it works on directly.
-Give each project one `## <project>` heading with short entries for its layout, its build and test commands, and where key behaviour is decided, naming the file or module that decides it.
-Point at the project's own docs rather than copying them, and keep only what a fresh start would otherwise have to grep for.
-Update the map whenever a task taught this home something the map lacked, such as where the behaviour it was asked to change is decided, and correct an entry the moment a task shows it wrong.
-The map is this home's own notes: it never goes into the project's `AGENTS.md`, because a project may already ship its own and the fleet's notes are not pushed into it.
+The project map is agent knowledge: this home's own notes on reaching its projects, never project knowledge, which lives in each project's vault under the internal `project-vault` skill.
+A second mate keeps one for the projects in its domain, and a primary home keeps one only for projects it works on directly.
+Give each project one `## <project>` heading holding a pointer to each of its vault indexes, such as `_vaults/<name>/wiki/index.md`, plus only agent-only facts about working that project from this machine, such as fleet or tool behaviour.
+A project with no vault yet gets only the agent-only facts; its vault is compiled when a task first works on it.
+A project fact already in the map moves into the project's vault only when a task touches it, and the entry then shrinks to the vault pointer; there is no migration sweep, and a pass never moves one.
+Correct an entry the moment a task shows it wrong.
+The map never goes into any repository.
 Its entries default to `aging`, and re-checking an entry against this home's own read-only clone during the pass is current-session evidence that re-validates it.
 Remove a project's section, archiving it with provenance, when the project leaves this home.
 

@@ -67,11 +67,15 @@
 # Every scaffold also carries the steering-inbox receive-and-ack section:
 # process state/<id>.inbox/*.msg in order and acknowledge each by moving it to
 # handled/ (record, doorbell, and ladder owned by bin/fm-task-inbox-lib.sh).
-# Ship tasks include a project-memory section so durable project-intrinsic
-# learnings can be committed to AGENTS.md through the project's delivery path;
-# it carries the AGENTS.md authoring bar (widely useful knowledge only, pointers
-# over copied detail) and defers self-governance recognition and insertion to
-# fm-ensure-agents-md.sh's contract.
+# Ship and scout tasks include a project-knowledge section pointing the worker
+# at .agents/skills/project-vault/SKILL.md, the single owner of the vault
+# convention: consult the project's vault first, compile one from the task's own
+# scan when the project has none, otherwise write wiki notes only for what the
+# task taught, and keep raw notes as new dated files in this home's long-lived
+# clone at an absolute path under projects/ (FM_PROJECTS_OVERRIDE for tests),
+# never in the disposable worker copy. The ship section also carries the
+# AGENTS.md authoring bar (a project AGENTS.md at most points to the vault) and
+# defers self-governance recognition and insertion to fm-ensure-agents-md.sh.
 # Scaffolds carry no role scope: fm-spawn.sh supplies fm_brief_worker_role from
 # fm-dod-lib.sh to every ship/scout launch brief, so this file never becomes a
 # second owner of a contract that must stay current across relaunches.
@@ -138,6 +142,8 @@ else
 fi
 CONFIG="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 case "$CONFIG" in /*) ;; *) CONFIG="$PWD/$CONFIG" ;; esac
+PROJECTS="${FM_PROJECTS_OVERRIDE:-$FM_HOME/projects}"
+case "$PROJECTS" in /*) ;; *) PROJECTS="$PWD/$PROJECTS" ;; esac
 KIND=ship
 HERDR_LAB=0
 NO_PROJECTS=0
@@ -302,7 +308,9 @@ You are in an isolated firstmate home. The local \`AGENTS.md\` is your job descr
 $PROJECT_CLONES_NOTE
 Delegate project work to your own crewmates with the normal firstmate lifecycle: brief, spawn, status, watcher, steer, teardown, and recovery.
 Do not invent a second delegation system.
-Keep your own map of each of your projects in \`data/project-map.md\` and update it whenever a task teaches you something it lacked, such as where the behaviour you were asked to change is decided; the \`stow\` skill owns the map, which never goes into a project's \`AGENTS.md\`.
+Project knowledge lives in each project's own vault, which your crews compile inside their task PRs under the \`project-vault\` skill; the firstmate repository itself is outside that convention.
+Keep your own agent-only map of each of your projects in \`data/project-map.md\`: a pointer to the project's vault index plus facts about working it from this machine, such as fleet and tool behaviour; the \`stow\` skill owns the map, which never goes into any repository.
+A project fact already in your map moves into that project's vault only when a task touches it, never through a migration sweep.
 You do not generate your own work.
 Act only on tasks the main firstmate routes to you.
 Never start a survey, audit, or "find improvements" sweep on your own initiative; that is not your job and it is unwanted.
@@ -364,6 +372,22 @@ exit 0
 fi
 
 REPO=${POS[1]}
+
+# Shared opening and raw-note lines of the ship and scout project-knowledge
+# sections; the vault convention itself is owned by the project-vault skill.
+VAULT_SKILL="$FM_ROOT/.agents/skills/project-vault/SKILL.md"
+RAW_DIR="$PROJECTS/$REPO/_vaults/<name>/raw"
+IFS= read -r -d '' VAULT_INTRO <<EOF || true
+Project knowledge lives in this project's own repository as a vault, and \`$VAULT_SKILL\` owns that convention: read it before you read, create, or change a vault.
+The firstmate repository itself is outside the convention and keeps its knowledge as it is.
+Before you scan the code, read \`_vaults/<name>/wiki/index.md\` for the app you are working on when it exists, and follow its routing; the project's own vault rules and checks win over the skill.
+EOF
+VAULT_INTRO=${VAULT_INTRO%$'\n'}
+IFS= read -r -d '' VAULT_RAW <<EOF || true
+Keep raw working notes only in this home's long-lived clone, under \`$RAW_DIR/\`, never inside this disposable worker copy, which is discarded at cleanup.
+Write each raw note as a new file named \`<YYYY-MM-DD>-$ID-<topic>.md\` there and never edit another worker's note, so concurrent workers never collide; the skill says how to keep that clone clean, and without that clone keep no raw notes.
+EOF
+VAULT_RAW=${VAULT_RAW%$'\n'}
 
 if [ "$HERDR_LAB" -eq 1 ]; then
 HERDR_LAB_HELPER=$(shell_quote "$FM_ROOT/bin/fm-herdr-lab.sh")
@@ -428,7 +452,7 @@ The report is the only thing that survives, so anything worth keeping must be in
 
 # Rules
 1. Never push to any remote and never open a PR.
-2. Stay inside this worktree; the only files you may write outside it are the report and the status file below.
+2. Stay inside this worktree; the only files you may write outside it are the report, the status file below, and new raw notes under Project knowledge, plus the single \`/_vaults/*/raw/\` line the project-vault skill may have you append to the project's long-lived clone's repository-local exclude file.
 3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
 4. Report status by appending one line:
    \`$STATUS_APPEND\`
@@ -465,6 +489,11 @@ The report is the only thing that survives, so anything worth keeping must be in
    timed-out call was only waiting for a read while the run kept working.
 
 $INBOX_SECTION
+
+# Project knowledge
+$VAULT_INTRO
+A scout opens no PR, so it compiles no wiki notes: put what the vault lacked or had wrong into the report as proposed wiki notes with their file:line citations, and a later ship task, including a promotion of this one, compiles them in its PR.
+$VAULT_RAW
 
 # Definition of done
 Write your findings to \`$DATA/$ID/report.md\`.
@@ -517,7 +546,7 @@ If the top-level path is the primary checkout or not the worktree you were launc
 
 # Rules
 $RULE1
-2. Stay inside this worktree; modify nothing outside it.
+2. Stay inside this worktree; modify nothing outside it except new raw notes under Project knowledge, plus the single \`/_vaults/*/raw/\` line the project-vault skill may have you append to the project's long-lived clone's repository-local exclude file.
 3. Use gh-axi for GitHub operations and chrome-devtools-axi for browser operations.
 4. Report status by appending one line:
    \`$STATUS_APPEND\`
@@ -557,9 +586,17 @@ $ASK_USER_BLOCK
 
 $INBOX_SECTION
 
-# Project memory
-If \`AGENTS.md\` or \`CLAUDE.md\` already exists, or if this task produced durable project-intrinsic knowledge, run \`$FM_ROOT/bin/fm-ensure-agents-md.sh .\` in the worktree.
-Record only project knowledge useful to almost every future session.
+# Project knowledge
+$VAULT_INTRO
+When the project has no vault for that app, compile one inside this task's PR from the repository scan you do anyway to understand the code, as the skill describes; never widen that scan into a survey.
+Otherwise add or update wiki notes only for what this task taught you, inside this task's PR; there are no separate documentation sweeps.
+If this task's PR targets another owner's upstream repository, as a fork's contribution does, skip both: that PR carries no \`_vaults/\` content and no vault \`.gitignore\` block, because a fork's vault ships only in PRs to our own fork; local raw notes are still allowed.
+Cut that PR's branch from the upstream's default branch, never from the fork's main, which may already carry the vault; if you cannot, stop and report instead of opening the PR.
+$VAULT_RAW
+
+The vault is where project knowledge goes; a project \`AGENTS.md\` at most points to the vault index.
+If \`AGENTS.md\` or \`CLAUDE.md\` already exists, or this task adds that vault pointer, run \`$FM_ROOT/bin/fm-ensure-agents-md.sh .\` in the worktree.
+Record in \`AGENTS.md\` only what is useful to almost every future session.
 For anything the codebase already shows, prefer a pointer to the authoritative file, command, or doc over copying the detail.
 If you touch a project \`AGENTS.md\`, follow \`$FM_ROOT/bin/fm-ensure-agents-md.sh\`'s self-governance contract in the same pass.
 Keep it proportionate: skip \`AGENTS.md\` edits for trivial tasks that produced no durable project knowledge.
