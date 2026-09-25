@@ -24,14 +24,30 @@ RULES="$HOME_DIR/config/crew-dispatch.json"
 QUOTA="$TMP_ROOT/quota.json"
 BASE_PATH=$PATH
 mkdir -p "$HOME_DIR/config" "$LOG" "$NO_CURL_BIN"
-for command_name in bash chmod cp dirname jq mktemp rm; do
+for command_name in awk bash chmod cp dirname grep jq mktemp rm sed tr; do
   ln -s "$(command -v "$command_name")" "$NO_CURL_BIN/$command_name"
 done
 
-cat > "$BRIEF" <<'MD'
-# Task
+# The brief carries scaffold boilerplate around its Task section, and the
+# boilerplate holds a local path and a private address that must never leave
+# the machine; only the Task section and project name are sent.
+TASK_SECTION="$TMP_ROOT/task-section.md"
+cat > "$TASK_SECTION" <<'MD'
+## Captain's intent
 Fix the off-by-one in the pager: root cause is the `<=` on line 40 of pager.sh, expected behavior is one page per call.
+
+## Firstmate spec
+Keep the fix in pager.sh and add a regression test; see https://github.com/o/pager/issues/4.
+```sh
+# a fenced shell comment is not a heading
+bash tests/pager.test.sh
+```
 MD
+{
+  printf '%s\n' '# Current worker role contract' 'Your steering inbox is /Users/someone/home/state/pager.inbox.' '' '# Task'
+  cat "$TASK_SECTION"
+  printf '%s\n' '' '# Setup' 'You are in a disposable worktree; the build cache is at 10.1.2.3.' '' '# Home brief additions' 'BOILERPLATE-HOME-ADDITION'
+} > "$BRIEF"
 
 cat > "$BASE_RULES" <<'JSON'
 {
@@ -236,7 +252,10 @@ assert_equals $'curl:clean\nquota-axi:clean' "$(cat "$LOG/child-env")" "the API 
 body=$(cat "$LOG/body")
 assert_equals 'jev-latest' "$(jq -r .model <<<"$body")" "default model is jev-latest"
 assert_equals 'pager' "$(jq -r .state.task.project <<<"$body")" "project rides in the state"
-assert_contains "$(jq -r .state.task.brief <<<"$body")" 'off-by-one in the pager' "the whole brief rides in the state"
+assert_equals "$(cat "$TASK_SECTION")" "$(jq -r .state.task.brief <<<"$body")" "exactly the Task section rides in the state"
+assert_not_contains "$body" 'BOILERPLATE-HOME-ADDITION' "scaffold boilerplate never leaves the machine"
+assert_not_contains "$body" '10.1.2.3' "text outside the Task section is never sent or screened"
+assert_not_contains "$body" 'steering inbox' "the role contract never leaves the machine"
 assert_equals '["rule"]' "$(jq -c '.questions | keys' <<<"$body")" "only the rule Choice is asked"
 assert_equals '["default","rule_1","rule_2","rule_3","rule_4"]' "$(jq -c '.questions.rule.criteria | keys' <<<"$body")" "one option per rule plus default"
 assert_equals 'No listed rule applies to this task.' "$(jq -r '.questions.rule.criteria.default' <<<"$body")" "the fixed generic none criterion is the default option"
@@ -245,6 +264,52 @@ assert_not_contains "$body" 'SECRET-WHY-TEXT' "why text never leaves the machine
 assert_not_contains "$body" 'spendPriority' "quota never leaves the machine"
 assert_not_contains "$body" 'cursor-grok' "use profiles never leave the machine"
 pass "clear: one rule Choice request, key on the fd header only, spendPriority argmax over every candidate"
+
+# --- the privacy screen: a match sends nothing and names only its kind ---------
+screened() {  # <case> <kind> <task line> [--project <name>]
+  local label=$1 kind=$2 line=$3 screened_brief="$TMP_ROOT/screened.md"
+  shift 3
+  printf '%s\n' '# Task' '## Captain'"'"'s intent' 'Fix the pager.' '## Firstmate spec' "$line" '' '# Setup' 'boilerplate' > "$screened_brief"
+  reset_log
+  write_response "$RESPONSE" rule_4 0.9
+  TYPESAFE_API_KEY=$KEY run code out err "$screened_brief" "$@"
+  expect_code 0 "$code" "$label exits 0"
+  assert_contains "$out" '  status: escalate' "$label is a non-clear outcome"
+  assert_contains "$out" "  reason: task text not sent: possible $kind" "$label names only the kind of match"
+  assert_not_contains "$out" 'profile:' "$label emits no profile"
+  assert_absent "$LOG/argv" "$label never calls curl"
+  assert_absent "$LOG/quota-axi.calls" "$label never reads quota-axi"
+}
+FAKE_KEY='ghp_Zx9Qw8Er7Ty6Ui5Op4As3Df2Gh1Jk0LmNbV'
+screened "a fake provider key" 'provider key' "Use the token $FAKE_KEY for the API."
+assert_not_contains "$out$err" "$FAKE_KEY" "the matched key is never echoed"
+screened "a password assignment" 'credential assignment' 'Set DB_PASSWORD=hunter22 before running.'
+assert_not_contains "$out$err" 'hunter22' "the matched password is never echoed"
+screened "a private key header" 'private key' '-----BEGIN OPENSSH PRIVATE KEY-----'
+screened "a high-entropy string" 'high-entropy string' 'Seed with aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3z.'
+screened "a connection string" 'connection string' 'Point it at postgres://app@db/prod.'
+screened "a private IP" 'private IP address' 'The build server is at 192.168.40.7.'
+assert_not_contains "$out$err" '192.168.40.7' "the matched address is never echoed"
+screened "an internal hostname" 'internal hostname' 'Deploy to build01.acme.corp after tests.'
+assert_not_contains "$out$err" 'build01' "the matched host is never echoed"
+screened "a non-public host" 'non-public host' 'Fetch the spec from https://wiki.acme-example.com/pager.'
+screened "a single-label URL host" 'non-public host' 'Trigger http://buildbox:8080/job/pager.'
+screened "an internal host in the project name" 'internal hostname' 'Nothing sensitive here.' --project 'git.acme.internal'
+pass "a likely secret or internal host in the Task section or project name sends nothing and returns a kind-only reason"
+
+reset_log
+printf '%s\n' '# Charter' 'Own the pager domain.' '# Setup' 'boilerplate' > "$TMP_ROOT/no-task.md"
+TYPESAFE_API_KEY=$KEY run code out err "$TMP_ROOT/no-task.md" --project pager
+expect_code 0 "$code" "a brief without a Task section exits 0"
+assert_contains "$out" '  status: escalate' "a brief without a Task section is a non-clear outcome"
+assert_contains "$out" '  reason: task text not sent: no Task section in the brief' "a missing Task section is named"
+assert_absent "$LOG/argv" "a brief without a Task section never calls curl"
+reset_log
+printf '%s\n' '# Task' '' '# Setup' 'boilerplate' > "$TMP_ROOT/empty-task.md"
+TYPESAFE_API_KEY=$KEY run code out err "$TMP_ROOT/empty-task.md" --project pager
+assert_contains "$out" '  reason: task text not sent: no Task section in the brief' "an empty Task section is not sent"
+assert_absent "$LOG/argv" "an empty Task section never calls curl"
+pass "a brief without a recognizable Task section sends nothing and returns a non-clear outcome"
 
 # --- rules are snapshotted and line output is injection-safe -------------------
 MUTATED_RULES="$TMP_ROOT/mutated-rules.json"
