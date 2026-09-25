@@ -166,7 +166,7 @@ test_safe_parser_rejects_ambiguous_and_unsafe_values() {
   pass "budget parser accepts one exact positive value and rejects malformed or unsafe inputs"
 }
 
-test_budget_accounting_reports_all_three_files_and_safe_failure() {
+test_budget_accounting_reports_every_startup_file_and_safe_failure() {
   local home out rc outside
   home="$TMP_ROOT/accounting-home"
   mkdir -p "$home/config" "$home/data"
@@ -183,8 +183,23 @@ test_budget_accounting_reports_all_three_files_and_safe_failure() {
     "report did not account for shared memory"
   assert_contains "$out" 'file=data/learnings.md bytes=0 estimated_tokens=0 status=absent' \
     "report did not account for absent learnings"
-  assert_contains "$out" 'total_estimated_tokens=5' "report total was not the sum of all three files"
+  assert_contains "$out" 'file=data/left-off.md bytes=0 estimated_tokens=0 status=absent' \
+    "report did not account for an absent where-I-left-off note"
+  assert_contains "$out" 'file=data/project-map.md bytes=0 estimated_tokens=0 status=absent' \
+    "report did not account for an absent project map"
+  assert_contains "$out" 'total_estimated_tokens=5' "report total was not the sum of every startup file"
   assert_contains "$out" 'budget_status=within-budget' "report did not classify the initial total"
+
+  printf 'ab\n' > "$home/data/left-off.md"
+  printf 'abcd\n' > "$home/data/project-map.md"
+  out=$(FM_HOME="$home" "$BUDGET" report)
+  assert_contains "$out" 'file=data/left-off.md bytes=3 estimated_tokens=1 status=present' \
+    "report did not account for the where-I-left-off note"
+  assert_contains "$out" 'file=data/project-map.md bytes=5 estimated_tokens=2 status=present' \
+    "report did not account for the project map"
+  assert_contains "$out" 'total_estimated_tokens=8' \
+    "the where-I-left-off note and project map did not count against the budget"
+  rm -f "$home/data/left-off.md" "$home/data/project-map.md"
 
   printf 'abcdefabcdefabcdefabcdef\n' > "$home/data/learnings.md"
   out=$(FM_HOME="$home" "$BUDGET" report)
@@ -202,7 +217,7 @@ test_budget_accounting_reports_all_three_files_and_safe_failure() {
   assert_contains "$out" 'memory file is not an ordinary regular file' \
     "accounting failure did not identify the unsafe memory file"
   [ "$(<"$outside")" = outside ] || fail "accounting failure changed a symlink target"
-  pass "budget accounting sums the three startup files and reports safe failures"
+  pass "budget accounting sums every startup memory file and reports safe failures"
 }
 
 new_propagation_world() {
@@ -328,7 +343,7 @@ test_primary_budget_converges_with_exact_reread_and_safe_failures() {
 
 test_primary_bootstrap_materializes_visible_default
 test_safe_parser_rejects_ambiguous_and_unsafe_values
-test_budget_accounting_reports_all_three_files_and_safe_failure
+test_budget_accounting_reports_every_startup_file_and_safe_failure
 test_primary_budget_converges_with_exact_reread_and_safe_failures
 
 echo '# all fm-startup-memory-budget tests passed'

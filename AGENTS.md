@@ -95,6 +95,8 @@ data/                personal fleet records; LOCAL, gitignored as a whole
   captain.md         this home's domain-local captain preferences and working style; LOCAL, gitignored, canonical even if harness memory mirrors it, and updated with inspect-then-update
   captain-shared.md  main-authoritative shared captain preferences propagated read-only to secondmate homes; LOCAL, gitignored, owned by secondmate-provisioning
   learnings.md       fleet-local operational facts and gotchas; LOCAL, gitignored; dated, evidence-backed, curated, and updated with inspect-then-update - rewrite and prune rather than append forever, the same contract as captain.md; created lazily, absent until this home has a learning to store
+  project-map.md     this home's concise map of each project it works on (layout, build and test commands, where key behaviour is decided); LOCAL, gitignored, never copied into a project's AGENTS.md; owned by the stow skill
+  left-off.md        short where-I-left-off note (current focus, open threads and whom they wait on, what a fresh start does first) that the startup digest prints first; LOCAL, gitignored; rewritten whole by /stow, never appended
   projects.md        thin fleet navigation registry recording each project's standing delivery posture; firstmate-private, parsed for mechanical sync and seeding by fm-project-mode.sh (section 6)
   secondmates.md      local and remote secondmate routing table; firstmate-private, maintained by the secondmate seed helpers (section 6)
   <id>/brief.md      per-task crewmate brief, or per-secondmate charter brief when kind=secondmate
@@ -179,7 +181,7 @@ Run-tier harness surfaces run this command for you at session open while the res
 Read the complete digest once and trust it as this turn's startup and recovery input.
 If the harness shows only a preview and persists the full output to a file, read that file before acting.
 Do not separately re-read the context, backlog, metadata, or bulk status inputs it just printed unless a source was reported absent or corrupt, older history is specifically needed, or a targeted workflow must inspect before writing.
-An `ABSENT` captain, shared-captain, secondmate, or learnings file means the firstmate repo's built-in defaults, no shared captain preferences, no registered secondmates, or no captured learnings; rebuild an absent or stale project registry from the clones before dispatch.
+An `ABSENT` captain, shared-captain, secondmate, learnings, project-map, or where-I-left-off file means the firstmate repo's built-in defaults, no shared captain preferences, no registered secondmates, no captured learnings, no project map yet, or no saved note yet; rebuild an absent or stale project registry from the clones before dispatch.
 
 If the session lock cannot be acquired and verified, report its exact diagnostic and remain read-only; another active session is only one possible cause.
 A lock-refused session must not spawn, steer, merge, drain the wake queue, repair supervision, repair a checkout, or perform any other fleet mutation.
@@ -207,7 +209,7 @@ When that section reports its checks still in progress it names exactly what is 
    That liveness line is a fast presence check only, not a full state read - when you need a crew's actual current state (a run-step, not just "is the pane there"), read it with `bin/fm-crew-state.sh <id>` as before; the digest deliberately skips that deeper, slower read for every task so it stays fast and bounded.
 6. **Network checks** - after the fleet-state digest, the deferred stage's result, or an explicit statement of what it has not confirmed yet.
    A read-only session runs no network checks at all and says so.
-7. **Context digest and next step** - last of the bulk sections, the full contents of `data/projects.md`, `data/secondmates.md`, `data/captain.md`, `data/captain-shared.md`, and `data/learnings.md`, each clearly delimited, followed by the closing reminder.
+7. **Context digest and next step** - last of the bulk sections, the full contents of `data/left-off.md` first, then `data/projects.md`, `data/secondmates.md`, `data/captain.md`, `data/captain-shared.md`, `data/learnings.md`, and `data/project-map.md`, each clearly delimited, followed by the closing reminder.
    A file that does not exist prints an explicit `ABSENT` marker, never confused with an empty-but-present file: absence is meaningful (`captain.md` absent means use the firstmate repo's built-in defaults, `projects.md` absent means rebuild it from the clones under `projects/`, etc.).
    The closing reminder points back to the emitted supervision block and preserves only the lock, afk, Relay, and read-once reminders.
 
@@ -280,6 +282,7 @@ Route durable knowledge to its most specific owner:
 - Home-domain captain preferences and working style belong in `data/captain.md` after inspect-then-update.
 - Captain preferences shared across secondmate domains belong in the primary home's `data/captain-shared.md` under the `secondmate-provisioning` contract.
 - Fleet-local operational facts belong in curated, home-local `data/learnings.md`.
+- A home's map of its own projects belongs in its `data/project-map.md`, never in the project's `AGENTS.md`, and its where-I-left-off note in `data/left-off.md`; the `stow` skill owns both.
 - Task-scoped notes belong with the backlog item, and investigation findings belong in the scout report.
 - Knowledge useful to almost every contributor to one project belongs in that project's committed `AGENTS.md`.
 - Knowledge general to every firstmate user belongs in this repo's shared tracked surface.

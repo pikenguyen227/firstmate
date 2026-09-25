@@ -1,6 +1,6 @@
 ---
 name: stow
-description: Sweep the current session for uncaptured durable knowledge, file it to disk, persist the open work records this session knows are unfiled or now wrong, and curate the home's tiered, decaying startup memory before a context reset. Use when the captain invokes /stow (e.g. "/stow", "stow what you've learned"), before a session reset or context compaction, or periodically to keep operational memory current.
+description: Sweep the current session for uncaptured durable knowledge, file it to disk, persist the open work records this session knows are unfiled or now wrong, curate the home's tiered, decaying startup memory including its project map, and rewrite its where-I-left-off note before a context reset. Use when the captain invokes /stow (e.g. "/stow", "stow what you've learned"), before a session reset or context compaction, or periodically to keep operational memory current.
 user-invocable: true
 metadata:
   internal: true
@@ -11,6 +11,7 @@ metadata:
 # stow
 
 Sweep this session for durable knowledge and open-work record state that exist only in conversation, then leave the next session with a compact current operating map rather than an accumulating journal.
+A fresh start after a context reset reads that map from the session-start digest instead of re-scanning the repository: the where-I-left-off note says what this home was doing, and a second mate's project map says where things are in its projects.
 Memory entries are tiered and decay between passes, and stale material retires to a cold archive instead of being deleted.
 This skill writes only through the existing Firstmate ownership and write boundaries.
 
@@ -42,7 +43,8 @@ The tier names say what the pass does with an entry:
 
 Marking rules:
 
-- Tier defaults are file-scoped: entries in `data/captain.md` and `data/captain-shared.md` default to `pinned` because preferences and authority boundaries do not age, and entries in `data/learnings.md` default to `aging` because operational facts must re-prove themselves.
+- Tier defaults are file-scoped: entries in `data/captain.md` and `data/captain-shared.md` default to `pinned` because preferences and authority boundaries do not age, and entries in `data/learnings.md` and `data/project-map.md` default to `aging` because operational facts and project layouts must re-prove themselves.
+- `data/left-off.md` carries no tier markers at all: every pass rewrites it whole, so it never ages in place.
 - An entry matching its file's `pinned` default carries no marker at all; every `aging` and `perishable` entry always carries its dated marker, whose letter names the tier, so a clock-carrying entry is never ambiguous with unmarked legacy material.
 - Marker and header-pointer bytes count toward the startup-memory budget: the pass's own bookkeeping is costed content, never free, which is why the spellings above are as short as they are.
 - Each memory file's header carries at most a one-line pointer naming this skill as the scheme owner, such as `<!-- memory tiers: see the stow skill -->`.
@@ -79,19 +81,20 @@ Every `/stow` invocation performs this complete pass, even when the session cont
 
 1. Run `bin/fm-startup-memory-budget.sh report` before considering a write.
    Record its effective budget and each file's estimated-token total.
-   The budget is per home: this home's three files against this home's own allowance, never a fleet total.
+   The budget is per home: this home's startup memory files against this home's own allowance, never a fleet total.
    The helper's stable estimate is the documented conservative local approximation, not provider-exact accounting.
    If it rejects the setting or a memory file, do not infer a default or silently continue.
    Report that concrete exception and do not call the session reset-safe.
-2. Read every current memory file completely: `data/captain.md`, `data/captain-shared.md`, and `data/learnings.md`.
+2. Read every current memory file completely: `data/captain.md`, `data/captain-shared.md`, `data/learnings.md`, `data/project-map.md`, and `data/left-off.md`.
    Treat an absent local file as absent, not as an invitation to manufacture content.
-   In a primary home, all three are curation inputs under their existing ownership rules.
+   In a primary home, all of them are curation inputs under their existing ownership rules.
    In a secondmate home, `data/captain-shared.md` is a read-only primary-owned input: count it, never edit it, and curate only the editable local files.
    Every mutation in the rest of this pass, including reinforcement, retiering, decay archival, legacy migration, consolidation, budget archival, and offload, applies only to an editable memory file.
    When a read-only shared entry appears to require one of those changes, leave it untouched, report the required change as an ownership exception, and route it to the primary owner.
 3. Build one whole-file retention plan before editing, ordered by likelihood of informing a future session.
    Keep in always-loaded memory only current captain preferences, authority and safety boundaries, recurring working style, fleet-wide or frequently relevant operating facts, and concise pointers that are expensive to rediscover.
    Prefer offloading current but conditional, narrow, project-specific, or context-specific material to a live on-demand owner, and archive stale, superseded, or low-recurrence material to the cold tier.
+   A second mate's project map is the exception: its projects are its whole domain, so the map stays in `data/project-map.md` and is kept concise rather than offloaded.
    Retain lower-utility material only while budget remains.
 4. Reinforce and stamp.
    Refresh an entry's last-reinforced date to today only when this session actually exercised, confirmed, or re-derived it.
@@ -115,7 +118,8 @@ Every `/stow` invocation performs this complete pass, even when the session cont
    Convergence precondition: before evicting anything, total the eligible pool and check that archiving all of it would reach the budget; when even that cannot, skip the eviction rung entirely, archive nothing for budget reasons, and carry the concrete inability to the final step, naming the exempt pinned floor that crowds out the budget.
    Automatic processes never move a `pinned` entry: decay clocks, legacy grace cycles, oldest-first budget eviction, immediate budget archiving, and autonomous offload do not apply to it.
    The sole exception is relocation to a JIT owner after explicit, per-item captain approval under the offload flow below, and that entry remains in memory until its destination is live.
-8. Run `bin/fm-startup-memory-budget.sh report` again after the complete pass.
+8. Rewrite `data/left-off.md` under the where-I-left-off section below, last, once the knowledge sweep and open-record persistence have filed everything it points to.
+9. Run `bin/fm-startup-memory-budget.sh report` again after the complete pass.
    Finish at or below the effective budget, or open a concrete captain decision before ending the pass.
    A secondmate must explicitly report `primary-owned-shared-file-alone-exceeds-budget` when the inherited shared file alone exceeds its allowance, because local curation cannot resolve it.
    Route that constraint to the primary owner and open one concrete captain decision at the primary owning level that names the shortfall, with exactly these options: raise the affected home's effective budget, or explicitly approve the primary owner trimming or offloading each named shared-file entry.
@@ -183,7 +187,7 @@ Approved project-level destinations are not produced by stow: they ship normally
 - A project's existing committed `AGENTS.md`, for project-intrinsic knowledge useful to nearly every session of that project, through a normal crewmate ship task using `bin/fm-ensure-agents-md.sh` and the project's registered delivery mode.
 - A project-level skill in the project's own repository, for situation-conditional knowledge within one project, through the same ship-task path.
 
-Forbidden destinations: any firstmate-repo-tracked skill per the hard rule; firstmate's own `AGENTS.md`, which is always-loaded for every fleet session; `docs/` alone, which is never agent-loaded on demand, though a skill body may point into docs for depth; and any committed surface for private content.
+Forbidden destinations: any firstmate-repo-tracked skill per the hard rule; for a `data/project-map.md` entry, the project's own `AGENTS.md` or project-level skill, because the map is the fleet's notes and never ships into the project; firstmate's own `AGENTS.md`, which is always-loaded for every fleet session; `docs/` alone, which is never agent-loaded on demand, though a skill body may point into docs for depth; and any committed surface for private content.
 A local skill exists only in this home, so offloading an entry out of `data/captain-shared.md` removes it from every inheriting home's always-injected memory: the proposal must say so, and the default for shared entries is keep.
 
 ### Flow: reduce, approve, migrate, remove
@@ -222,6 +226,7 @@ A local skill exists only in this home, so offloading an entry out of `data/capt
      In a secondmate home, route a newly discovered shared preference to the main firstmate through marked status or a document pointer instead of editing the inherited file.
    - Project-intrinsic knowledge never goes directly into a project's `AGENTS.md`.
      Route it through a normal ship task so a crewmate records it with `bin/fm-ensure-agents-md.sh` and the project's delivery path.
+   - What this home needs to find its way around its own projects goes to its `data/project-map.md` under the project-map section below, never to the project's `AGENTS.md`.
    - Knowledge general to every Firstmate user belongs in this repo's shared tracked material through the normal branch, no-mistakes, PR, and captain-merge path.
    - For task-scoped notes, inspect the item with `bin/fm-tasks-axi.sh show <id> --full`, classify the change as new, duplicate, superseding, or obsolete, then use a considered replacement body through `bin/fm-tasks-axi.sh update <id> --body-file <path>`.
      Use `--archive-body` when recoverability matters.
@@ -244,6 +249,30 @@ One bound holds: this covers the open work you are actually holding in context, 
 It is not a reconciliation of durable records against repository or forge reality, cannot become one on input this volatile, and must never be reported as one.
 Where the right correction is a judgment you cannot make, leave the record alone and raise the question instead of guessing.
 
+## Project map: data/project-map.md
+
+A second mate keeps, in its own `data/project-map.md`, a concise map of each project it works on, so a fresh start reads the map instead of re-scanning the project.
+A primary home keeps one only for projects it works on directly.
+Give each project one `## <project>` heading with short entries for its layout, its build and test commands, and where key behaviour is decided, naming the file or module that decides it.
+Point at the project's own docs rather than copying them, and keep only what a fresh start would otherwise have to grep for.
+Update the map whenever a task taught this home something the map lacked, such as where the behaviour it was asked to change is decided, and correct an entry the moment a task shows it wrong.
+The map is this home's own notes: it never goes into the project's `AGENTS.md`, because a project may already ship its own and the fleet's notes are not pushed into it.
+Its entries default to `aging`, and re-checking an entry against this home's own read-only clone during the pass is current-session evidence that re-validates it.
+Remove a project's section, archiving it with provenance, when the project leaves this home.
+
+## Where-I-left-off note: data/left-off.md
+
+Every home keeps one short `data/left-off.md` that a fresh start reads first; the session-start digest prints it ahead of the other memory files, or `ABSENT` when none exists yet.
+Each pass rewrites it whole, never appends to it, with only:
+
+- the current focus;
+- each open thread and whom it waits on: the captain, a named second mate or worker, or an external event;
+- anything a fresh start must do first.
+
+Keep it to a handful of lines that point at the owning records, such as backlog ids, decision keys, and PR URLs, rather than restating them.
+It holds no unique durable knowledge: before rewriting it, file anything still current in the old note to its owner through the sweep above, so the replaced text needs no archive.
+It counts against the startup-memory budget like every other memory file, so keep it short rather than letting it crowd out curated memory.
+
 ## One-time migration of unmarked entries
 
 Legacy entries carry no markers; an unmarked entry is its file's default tier with unknown age, and unknown age is not guilt.
@@ -260,7 +289,7 @@ The first pass after adoption performs a one-time revalidation sweep of editable
 Report the outcome in plain captain-facing language with all of these facts:
 
 - effective startup-memory budget and total estimated tokens before and after;
-- one or more actions for each of `data/captain.md`, `data/captain-shared.md`, and `data/learnings.md`, using only `unchanged`, `added`, `rewritten`, `pruned`, `routed`, `archived`, or `proposed-offload`; adding or replacing a migration marker is `rewritten`, never a new action verb such as `migrated`;
+- one or more actions for each of `data/captain.md`, `data/captain-shared.md`, `data/learnings.md`, `data/project-map.md`, and `data/left-off.md`, using only `unchanged`, `added`, `rewritten`, `pruned`, `routed`, `archived`, or `proposed-offload`; adding or replacing a migration marker is `rewritten`, never a new action verb such as `migrated`;
 - each durable finding filed outside memory and its authoritative owner;
 - each archived entry's reason, each autonomous offload's live destination and actual relief, and, when a pinned candidate was proposed, the `proposed-offload` section with every candidate's fields;
 - every unresolved exception, including a primary-owned shared-file constraint in a secondmate home, and every concrete captain decision opened for an over-budget result;
@@ -284,9 +313,9 @@ Every home is judged against its own `config/startup-memory-budget` allowance, s
 
 Act on each home by its reported `transport`:
 
-- `agent` - send the marked request with `bin/fm-send.sh fm-<id> "<request>"` so the live secondmate performs its own `/stow`, including the uncaptured knowledge that exists only in its session.
+- `agent` - send the marked request with `bin/fm-send.sh fm-<id> "<request>"` so the live secondmate performs its own `/stow`, including the uncaptured knowledge that exists only in its session, its project map, and its where-I-left-off note.
   Ask it for the same completion receipt this skill defines, and read its reply from its status file or the document it points to, never from its chat.
-- `direct` - curate that local home's editable memory files yourself under the same retention plan, then re-run the cascade to confirm the after totals.
+- `direct` - curate that local home's editable memory files yourself under the same retention plan, including its project map, and rewrite its where-I-left-off note from its own durable records, then re-run the cascade to confirm the after totals.
   `data/captain-shared.md` stays a read-only counted input there, exactly as it is in any secondmate home.
 - `deferred` - a remote home with no live agent. Its memory is accounted read-only and cannot be curated from here, because there is no generic remote write path for a home's own memory files.
   Report it as an unresolved exception and leave it to its next cascade.

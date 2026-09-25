@@ -6,7 +6,8 @@
 #
 # `read` prints the one validated effective budget from
 # config/startup-memory-budget.  `report` prints the stable local estimate for
-# data/captain.md, data/captain-shared.md, and data/learnings.md together.
+# data/captain.md, data/captain-shared.md, data/learnings.md, data/left-off.md,
+# and data/project-map.md together.
 # Bootstrap owns default materialization; this command never creates or repairs
 # configuration, so an absent, malformed, symlinked, hardlinked, or otherwise
 # unsafe value is a concrete error rather than an inferred default.
@@ -22,7 +23,7 @@ DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
 . "$SCRIPT_DIR/fm-startup-memory-budget-lib.sh"
 
 usage() {
-  sed -n '2,11{s/^# \{0,1\}//;p;}' "$0"
+  sed -n '2,12{s/^# \{0,1\}//;p;}' "$0"
 }
 
 print_error() {
@@ -50,7 +51,7 @@ report() {
   printf 'estimator=ceil(UTF-8 bytes / 3) conservative-local-estimate\n'
   printf 'role=%s\n' "$role"
   printf 'effective_budget_tokens=%s\n' "$budget"
-  for file in captain.md captain-shared.md learnings.md; do
+  for file in captain.md captain-shared.md learnings.md left-off.md project-map.md; do
     if ! fm_startup_memory_measure_file "$DATA/$file" >/dev/null; then
       print_error "$FM_STARTUP_MEMORY_BUDGET_ERROR"
       return 2
