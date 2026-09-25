@@ -19,11 +19,13 @@
 #   4. Nightly: due inside the night span when no fresh start happened since
 #      nightly_at, including at the next idle moment after a busy nightly_at.
 #   5. Cooldown: at most one fresh start per window.
-#   6. Refusal while busy: mid-turn, live worker, open decision, unread steering,
-#      awaiting a reply, undrained notifications.
+#   6. Refusal while busy: mid-turn always refuses; a live worker, open decision,
+#      unread steering, awaiting a reply, or undrained notifications refuse idle
+#      and nightly but not the context trigger.
 #   7. run re-decides, calls the restart with --fresh-start, and appends one note
 #      to the mate's status channel; a busy mate is never passed to the restart.
-#   8. The primary gets one deduplicated suggestion instead of a restart.
+#   8. The primary gets one deduplicated suggestion instead of a restart, on the
+#      context trigger even while it holds a live worker.
 #   9. Invalid config is reported once; arm --if-configured follows the file.
 set -u
 
@@ -231,6 +233,16 @@ test_refusal_while_busy() {
 
   mate_session "$d" 3 $((NOON - 3600)) 950000 claude-opus-5
   assert_contains "$(mate_line "$d" "$NOON")" "mate: due context" "the settled mate is due"
+  printf 'kind=ship\n' > "$d/mate/state/child.meta"
+  printf 'needs-decision [key=pick]: which one\n' > "$d/home/state/mate.status"
+  mkdir -p "$d/home/state/mate.inbox"
+  printf 'do this\n' > "$d/home/state/mate.inbox/001.msg"
+  assert_contains "$(mate_line "$d" "$NOON")" "mate: due context" \
+    "in-flight work must not refuse the context trigger; the persist gate files it"
+  rm -rf "$d/mate/state/child.meta" "$d/home/state/mate.status" "$d/home/state/mate.inbox"
+
+  mate_session "$d" 3 $((NOON - 3600)) 100000 claude-opus-5
+  assert_contains "$(mate_line "$d" "$NOON")" "mate: due idle" "the settled mate under the threshold is due for idle"
 
   printf 'kind=ship\n' > "$d/mate/state/child.meta"
   assert_contains "$(mate_line "$d" "$NOON")" "mate: busy -: 1 live worker(s)" "a mate with a live worker must be refused"
@@ -259,8 +271,8 @@ test_refusal_while_busy() {
   assert_contains "$(mate_line "$d" "$NOON")" "mate: busy -: undrained notifications" "undrained notifications must refuse"
   : > "$d/mate/state/.wake-queue"
 
-  assert_contains "$(mate_line "$d" "$NOON")" "mate: due context" "with nothing in flight the mate is due again"
-  pass "a mate mid-turn or holding in-flight work is refused"
+  assert_contains "$(mate_line "$d" "$NOON")" "mate: due idle" "with nothing in flight the mate is due again"
+  pass "mid-turn refuses every trigger; in-flight work refuses idle and nightly but not context"
 }
 
 test_unavailable_runtimes() {
@@ -337,7 +349,13 @@ test_primary_suggestion() {
   assert_contains "$out" "fresh-start suggestion" "the suggestion may return once the cooldown passes"
   printf 'kind=ship\n' > "$d/home/state/work.meta"
   out=$(fresh "$d" $((NOON + 14 * 3600)) check)
-  assert_equals "" "$out" "a primary with a live worker gets no suggestion"
+  assert_contains "$out" "fresh-start suggestion (context)" "a live worker must not hold back the context suggestion"
+  config "$d" '{"context_percent": null, "idle_minutes": 5, "nightly_at": null}'
+  out=$(fresh "$d" $((NOON + 21 * 3600)) check)
+  assert_equals "" "$out" "a primary with a live worker gets no idle suggestion"
+  rm -f "$d/home/state/work.meta"
+  out=$(fresh "$d" $((NOON + 21 * 3600)) check)
+  assert_contains "$out" "fresh-start suggestion (idle)" "with nothing in flight the idle suggestion fires"
   pass "the primary is suggested a fresh start once per cooldown and never restarted"
 }
 

@@ -28,10 +28,12 @@
 # primary for itself:
 #
 #   context  the agent's current context usage is at or over context_percent of
-#            its model's window. Usage is the latest main-thread turn's input
-#            tokens (input + cache creation + cache read) from the harness's own
-#            session record; the window comes from config context_windows, then
-#            the built-in table below. An unknown model, an unreadable record,
+#            its model's window, even while it holds in-flight work: the
+#            persist gate files that work before the relaunch, as
+#            /updatefirstmate does for a busy mate. Usage is the latest
+#            main-thread turn's input tokens (input + cache creation + cache
+#            read) from the harness's own session record; the window comes from
+#            config context_windows, then the built-in table below. An unknown model, an unreadable record,
 #            or a reading larger than the window makes this trigger unavailable
 #            for that agent; it is never guessed.
 #   idle     the agent has no in-flight work and its last turn ended at least
@@ -41,11 +43,11 @@
 #            start since this night's nightly_at. An agent busy at nightly_at
 #            is fresh-started at its next idle moment inside that span.
 #
-# Every trigger requires the agent to be between turns and to hold no in-flight
-# work, and at most one fresh start (or primary suggestion) happens per
-# cooldown_hours. The idle and nightly triggers also require at least two
-# completed turns in the current session, so a mate that has done nothing since
-# its own fresh start is not restarted again for being idle.
+# Every trigger requires the agent to be between turns, and at most one fresh
+# start (or primary suggestion) happens per cooldown_hours. The idle and
+# nightly triggers also require the agent to hold no in-flight work and at
+# least two completed turns in the current session, so a mate that has done
+# nothing since its own fresh start is not restarted again for being idle.
 #
 # In-flight work for a second mate: a live worker record in its home, an open
 # decision on its own or its parent's status channel, an unacknowledged
@@ -395,14 +397,17 @@ pct_note() {
   if [ -n "$EV_PCT" ]; then printf 'context %d%%' "$EV_PCT"; else printf '%s' "$EV_CONTEXT_NOTE"; fi
 }
 
-# Shared trigger arithmetic once an agent is known to be between turns with no
-# in-flight work. <last> is the epoch of its last fresh start or suggestion.
+# The context trigger, decided once an agent is known to be between turns and
+# before its in-flight work is considered.
+context_due() {
+  [ -n "$EV_PCT" ] && [ "$CFG_CONTEXT_PCT" != off ] && [ "$EV_PCT" -ge "$CFG_CONTEXT_PCT" ] || return 1
+  verdict due context "context ${EV_PCT}% is at or over ${CFG_CONTEXT_PCT}%"
+}
+
+# The idle and nightly triggers once an agent is known to be between turns with
+# no in-flight work. <last> is the epoch of its last fresh start or suggestion.
 decide_triggers() {  # <last>
   local last=$1 open idle_for
-  if [ -n "$EV_PCT" ] && [ "$CFG_CONTEXT_PCT" != off ] && [ "$EV_PCT" -ge "$CFG_CONTEXT_PCT" ]; then
-    verdict due context "context ${EV_PCT}% is at or over ${CFG_CONTEXT_PCT}%"
-    return
-  fi
   if [ -n "$S_TURNS" ] && [ "$S_TURNS" -lt "$MIN_TURNS" ]; then
     verdict wait - "no work since its session started; $(pct_note)"
     return
@@ -453,10 +458,6 @@ evaluate_mate() {  # <id>
   if [ -n "$left" ]; then
     verdict wait - "cooldown: last fresh start $(span $((NOW - last))) ago, $(span "$left") left"; return
   fi
-  why=$(mate_in_flight "$id" "$home")
-  if [ -n "$why" ]; then
-    verdict busy - "$why"; return
-  fi
   harness=$(fm_meta_get "$meta" harness)
   case "$harness" in
     claude|claude-*) ;;
@@ -469,6 +470,11 @@ evaluate_mate() {  # <id>
     verdict busy - "mid-turn"; return
   fi
   context_measure
+  context_due && return
+  why=$(mate_in_flight "$id" "$home")
+  if [ -n "$why" ]; then
+    verdict busy - "$why"; return
+  fi
   decide_triggers "$last"
 }
 
@@ -479,10 +485,6 @@ evaluate_primary() {
   left=$(cooldown_left "$last")
   if [ -n "$left" ]; then
     verdict wait - "cooldown: last suggestion $(span $((NOW - last))) ago, $(span "$left") left"; return
-  fi
-  why=$(primary_in_flight)
-  if [ -n "$why" ]; then
-    verdict busy - "$why"; return
   fi
   cwd=$(cd "$FM_HOME" 2>/dev/null && pwd) || cwd=$FM_HOME
   if session_read "$STATE" "$cwd"; then
@@ -496,6 +498,11 @@ evaluate_primary() {
     # No verified session reader: only the nightly trigger can be decided.
     S_TURNS=; S_SETTLED=
     EV_CONTEXT_NOTE="context unmeasured: $S_PROBLEM"
+  fi
+  context_due && return
+  why=$(primary_in_flight)
+  if [ -n "$why" ]; then
+    verdict busy - "$why"; return
   fi
   decide_triggers "$last"
 }
