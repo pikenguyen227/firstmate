@@ -1,0 +1,21 @@
+tests/fm-dispatch-resolve.test.sh
+  s_4051d7fd9ce5d4::t_65bbfd1b9292b6 343-351
+bin/fm-dispatch-resolve.sh
+  s_4051d7fd9ce5d4::t_65bbfd1b9292b6 167-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f1c4188243e4f277ea4a4e91c3c582ed8a1e9471",
+  "prompts": {},
+  "sessions": {
+    "s_4051d7fd9ce5d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5357ea9-abb4-454c-8353-c041ee159f92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
