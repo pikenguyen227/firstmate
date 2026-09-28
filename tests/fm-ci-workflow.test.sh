@@ -243,7 +243,7 @@ step = jobs.fetch("lint").fetch("steps").find { |s| s["name"] == "Lint canonical
 raise "no Lint canonical partition step" unless step
 env = step.fetch("env", {})
 raise "each lint runner must use one worker" unless env["FM_LINT_JOBS"] == "1"
-raise "each lint runner must set the 14 GiB per-root memory budget" unless env["FM_LINT_RSS_BUDGET_KIB"] == "14680064"
+raise "each lint runner must enforce its per-root bounds" unless env["FM_LINT_REQUIRE_BOUNDS"] == "1"
 roots = parts.flat_map do |p|
   output, result = Open3.capture2(File.join(root, "bin/fm-lint.sh"), "--partition", "#{p}of#{parts.length}", "--list-files")
   raise "unsupported lint partition" unless result.success?
