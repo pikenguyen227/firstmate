@@ -7,16 +7,15 @@
 #
 #   1. Every mode, for each of the three subscription shapes (Claude plus Codex,
 #      Claude only, Codex only), resolves every worker route to an explicit
-#      harness, model, and effort from the declared providers only, keeps the
-#      requested-model rule with a candidate for each declared provider, and pins
-#      new second mates on an available provider.
+#      harness, model, and effort from the declared providers only, keeps one
+#      single-profile requested-model rule per declared provider and none for a
+#      missing one, and pins new second mates on an available provider.
 #   2. Mode contents: full keeps today's tiers, balanced and lean move the hard
 #      Codex tier from Astra to Sol, lean turns second mates off and recommends
 #      /quiet, and every Codex coordinator runs Sol at high effort.
 #   3. set on an older unmarked file pins the requested-worker rules, adds the
-#      requested-model rule, keeps
-#      custom rules, custom top-level keys, and extra keys on managed rules, and
-#      is idempotent.
+#      requested-model rules, keeps custom rules, custom top-level keys, and
+#      extra keys on managed rules, and is idempotent.
 #   4. set shows the diff and writes nothing without --yes on a non-terminal or
 #      with --dry-run; it pushes only when routing changed, and a failed push
 #      exits 1 and names the push to rerun.
@@ -63,12 +62,12 @@ profiles() {
 }
 
 # An older routing file with no strategy markers: today's tiers, no
-# requested-model rule, unpinned requested-worker rules, one custom rule, a custom top-level key, and an
-# approval key on the hard tier.
+# requested-model rules, unpinned requested-worker rules, one custom rule, a
+# custom top-level key, and an approval key on the hard tier.
 write_legacy_dispatch() {
   jq '
     .dispatch
-    | .rules |= map(select(.strategy != "model-requested") | del(.strategy))
+    | .rules |= map(select(.strategy | endswith("model-requested") | not) | del(.strategy))
     | .rules[0].use = {harness: "codex"}
     | .rules[1].use = {harness: "claude"}
     | .rules[4].approval = "captain"
@@ -94,20 +93,20 @@ test_every_mode_and_shape_is_explicit() {
         codex)
           assert_not_contains "$(profiles "$home")" "claude-requested" "$mode: a Codex-only home keeps no Claude-requested rule"
           expected_mate="codex gpt-6-sol high"
-          expected_named="model-requested codex gpt-6-sol high"
+          expected_named="codex-model-requested codex gpt-6-sol high"
           ;;
         claude)
           assert_not_contains "$(profiles "$home")" "codex-requested" "$mode: a Claude-only home keeps no Codex-requested rule"
           expected_mate="claude claude-opus-5-5 medium"
-          expected_named="model-requested claude claude-opus-5-5 high"
+          expected_named="claude-model-requested claude claude-opus-5-5 high"
           ;;
         *)
           expected_mate="claude claude-opus-5-5 medium"
-          expected_named="model-requested claude claude-opus-5-5 high"$'\n'"model-requested codex gpt-6-sol high"
+          expected_named="claude-model-requested claude claude-opus-5-5 high"$'\n'"codex-model-requested codex gpt-6-sol high"
           ;;
       esac
-      assert_equals "$expected_named" "$(profiles "$home" | grep '^model-requested ')" \
-        "$mode/$shape honors a named model on each declared harness only"
+      assert_equals "$expected_named" "$(profiles "$home" | grep -E '^(claude|codex)-model-requested ')" \
+        "$mode/$shape keeps a requested-model rule for each declared harness only, so a model from a missing provider matches none"
       assert_equals "$expected_mate" "$(grep -v '^#' "$home/config/secondmate-harness")" "$mode/$shape second mate pin"
       assert_contains "$(cat "$home/config/strategy")" "mode=$mode"$'\n'"providers=$shape" "$mode/$shape selection record"
     done
@@ -167,7 +166,7 @@ test_set_merges_legacy_file() {
     "an extra key on a managed rule is kept"
   assert_equals "Anything about the design system." "$(jq -r '.rules[-1].when' "$home/config/crew-dispatch.json")" \
     "the custom rule is kept after the managed rules"
-  assert_equals 7 "$(jq '.rules | length' "$home/config/crew-dispatch.json")" "legacy rules are replaced, not duplicated"
+  assert_equals 8 "$(jq '.rules | length' "$home/config/crew-dispatch.json")" "legacy rules are replaced, not duplicated"
   assert_equals "codex gpt-6-sol high" \
     "$(jq -r '.rules[] | select(.strategy == "codex-requested") | .use | "\(.harness) \(.model) \(.effort)"' "$home/config/crew-dispatch.json")" \
     "the requested Codex rule is pinned"
