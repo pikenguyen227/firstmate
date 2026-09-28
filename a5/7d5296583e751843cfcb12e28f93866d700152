@@ -1,0 +1,21 @@
+bin/fm-test-run.sh
+  s_6adcd1dc627bae::t_a537957421532f 1459-1461
+tests/fm-strategy.test.sh
+  s_6adcd1dc627bae::t_a537957421532f 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a57d5296583e751843cfcb12e28f93866d700152",
+  "prompts": {},
+  "sessions": {
+    "s_6adcd1dc627bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43660050-4503-42e8-b880-436ee643775b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
