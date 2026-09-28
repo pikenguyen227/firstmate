@@ -530,9 +530,11 @@ EOF
 # The stream a status log's lines are keyed under, from the cursor just read
 # by _fm_lifecycle_cursor_read (_FM_LC_VALID=0 when there is none): the cursor's
 # stream while it follows the log; otherwise a new stream anchored on the last
-# recorded spawn_gen, else <gen>, suffixed with the log's identity when it
-# replaced the one the cursor followed, plus its head's checksum when that
-# identity names the replaced stream again. Anchoring on the recorded spawn_gen
+# recorded spawn_gen, else <gen>, suffixed with the log's birth time when it
+# replaced the one the cursor followed, plus a checksum of the replaced stream
+# and the new head when the replacement kept the old identity or its suffix
+# names the replaced stream again, so each such stream chains from its
+# predecessor and never repeats an earlier one. Anchoring on the recorded spawn_gen
 # rather than the caller's <gen> is what lets a reader outside the writer
 # predict the stream before the first pass (fm_lifecycle_status_stream).
 _fm_lifecycle_stream_pick() {  # <cur-ident> <cur-head> <gen> <outvar>
@@ -544,8 +546,8 @@ _fm_lifecycle_stream_pick() {  # <cur-ident> <cur-head> <gen> <outvar>
   __base=${_FM_LC_SPAWNED:-${3:-unknown}}
   if _fm_lifecycle_replaced "$1" "$2"; then
     __s="$__base~${1##*:}"
-    if [ "$__s" = "$_FM_LC_STREAM" ]; then
-      __crc=$(printf '%s' "$2" | cksum) || return 1
+    if [ "$1" = "$_FM_LC_IDENT" ] || [ "$__s" = "$_FM_LC_STREAM" ]; then
+      __crc=$(printf '%s\n%s' "$_FM_LC_STREAM" "$2" | cksum) || return 1
       __s="$__s.${__crc%% *}"
     fi
     printf -v "$4" '%s' "$__s"

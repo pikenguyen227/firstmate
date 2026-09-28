@@ -435,7 +435,19 @@ test_recreated_log_with_the_same_identity_is_a_new_stream() {
   feed_json "$home" | jq -e --arg prev "$key" '[.[] | select(.type == "task.status")][-1] |
     .data.note == "third log" and (.key | endswith("/@0")) and .key != $prev' >/dev/null \
     || fail "a shorter log with the old identity should be recorded under yet another stream: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,note:.data.note}')"
-  assert_equals 7 "$(count_type "$home" task.status t1)" "every line of every log should be recorded exactly once"
+  # Replaced once more by a log that starts like the longer one: a stream
+  # distinct from every earlier one, so none of its lines is dropped as seen.
+  printf '%s\n' 'working [at=1790000600]: replacement one' 'working [at=1790000800]: fourth log' > "$status"
+  run_drain "$home" >/dev/null
+  assert_feed_valid "$home" "same identity, repeated head"
+  feed_json "$home" | jq -e '[.[] | select(.type == "task.status")][-2:] | map(.data.note) ==
+    ["replacement one","fourth log"]' >/dev/null \
+    || fail "a log repeating an earlier log's head should be transcribed whole: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,note:.data.note}')"
+  feed_json "$home" | jq -e '[.[] | select(.type == "task.status") | .key] as $k |
+    ($k | length) == ($k | unique | length) and
+    ([$k[-7:][] | sub("/@[0-9]+$"; "")] | unique | length) == 4' >/dev/null \
+    || fail "every replacement should be keyed under its own stream: $(feed_json "$home" | jq -c '[.[] | select(.type == "task.status") | .key]')"
+  assert_equals 9 "$(count_type "$home" task.status t1)" "every line of every log should be recorded exactly once"
   pass "drain: a recreated log that keeps the old identity still starts a new stream"
 }
 
