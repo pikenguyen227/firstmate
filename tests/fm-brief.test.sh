@@ -427,7 +427,7 @@ test_no_mistakes_dod_green_detection() {
     "no-mistakes DOD must make each run or respond call drive its gate"
   assert_grep "While a drive call is outstanding, do not loop on \`no-mistakes axi status\`, \`no-mistakes axi logs\`, or \`sleep\`" "$brief" \
     "no-mistakes DOD must forbid polling while a drive call is outstanding"
-  assert_grep "A returned wait timeout means reattach by re-running the same drive call, not by polling" "$brief" \
+  assert_grep "A returned wait timeout means reattach by re-running \`no-mistakes axi run\`, never by repeating a \`respond\` call or polling" "$brief" \
     "no-mistakes DOD must reattach after a drive-call timeout"
   assert_grep "Use status reads only for a stated diagnostic reason, such as investigating a daemon problem" "$brief" \
     "no-mistakes DOD must retain status reads for diagnostics"

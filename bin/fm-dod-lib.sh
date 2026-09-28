@@ -315,7 +315,7 @@ Do not hand-edit, commit, or fix findings yourself while a run is active - the p
 
 At each gate, drive it with one \`no-mistakes axi run\` or \`no-mistakes axi respond\` call and act on that call's return; background the call only when the harness needs it to stay alive.
 While a drive call is outstanding, do not loop on \`no-mistakes axi status\`, \`no-mistakes axi logs\`, or \`sleep\`.
-A returned wait timeout means reattach by re-running the same drive call, not by polling.
+A returned wait timeout means reattach by re-running \`no-mistakes axi run\`, never by repeating a \`respond\` call or polling.
 Use status reads only for a stated diagnostic reason, such as investigating a daemon problem.
 
 One drive call blocks until the next gate or outcome, which routinely outlives what your harness lets a single command run: Claude Code kills a command at ten minutes maximum, while one fix round is capped around thirty minutes and up to three rounds chain.
