@@ -1,0 +1,37 @@
+## drift: operator flips enabled=false under balanced
+drift:
+  config/fresh-start.json enabled differs from balanced
+  run bin/fm-strategy.sh set balanced to see and apply the difference
+recorded autonomy: balanced
+
+## drift: legacy config/strategy without autonomy line
+drift:
+  config/strategy differs from balanced (autonomy selection)
+  config/fresh-start.json enabled differs from balanced
+  run bin/fm-strategy.sh set balanced to see and apply the difference
+recorded autonomy: 
+  legacy selection: autonomy not applied; existing supervision behavior remains
+fresh-start check: present (config validation above; runtime support is reported by fm-fresh-start.sh status)
+
+## guard: invalid fresh-start tuning is refused and nothing is written
+$ env FM_HOME=/tmp/fmlab-home.MMG2 /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3KFYDFDC1HNFB8J2BKH9FWB/bin/fm-strategy.sh set lean --yes
+fm-fresh-start: idle_minutes must be a whole number from 5 to 10080, or null to turn that trigger off
+[exit 1]
+config/strategy unchanged
+{"idle_minutes": "soon"}
+
+## guard: non-object fresh-start.json is refused
+$ env FM_HOME=/tmp/fmlab-home.MMG2 /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3KFYDFDC1HNFB8J2BKH9FWB/bin/fm-strategy.sh set lean --yes
+jq: error (at <stdin>:1): fresh-start config must be an object
+[exit 1]
+config/strategy unchanged
+
+## guard: fresh-start arm/disarm failure exits 1, keeps config, names retry
++}
+written: strategy fresh-start.json
+fresh-start check was not updated; rerun bin/fm-strategy.sh set lean --yes
+[exit 1]
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=lean
+providers=claude,codex
+autonomy=lean

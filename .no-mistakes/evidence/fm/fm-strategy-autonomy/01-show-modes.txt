@@ -1,0 +1,30 @@
+===== show full =====
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+  automatic fresh starts: true
+  automatic fleet reviews: true
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+second mates: allowed (optional in balanced); new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+===== show balanced =====
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+second mates: allowed (optional in balanced); new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+===== show lean =====
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+  automatic fresh starts: false
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-opus-5-5 medium (config/secondmate-harness)
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem

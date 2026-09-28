@@ -1,0 +1,156 @@
+## seed operator trigger tuning
+{"idle_minutes": 45, "nightly_at": "03:30", "cooldown_hours": 8}
+
+## dry-run full (must write nothing)
++  ]
++}
+--- a/config/secondmate-harness
++++ b/config/secondmate-harness
+@@ -0,0 +1 @@
++claude claude-opus-5-5 medium
+--- a/config/strategy
++++ b/config/strategy
+@@ -0,0 +1,4 @@
++# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
++mode=full
++providers=claude,codex
++autonomy=full
+--- a/config/fresh-start.json
++++ b/config/fresh-start.json
+@@ -1 +1,6 @@
+-{"idle_minutes": 45, "nightly_at": "03:30", "cooldown_hours": 8}
++{
++  "idle_minutes": 45,
++  "nightly_at": "03:30",
++  "cooldown_hours": 8,
++  "enabled": true
++}
+dry run: nothing written
+[exit 0]
+/tmp/fmlab-home.MMG2/config:
+fresh-start.json
+
+/tmp/fmlab-home.MMG2/state:
+
+## set full --yes
++}
+written: crew-dispatch.json secondmate-harness strategy fresh-start.json
+armed: state/fresh-start.check.sh
+  ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ●  WATCHER DOWN - SUPERVISION IS OFF
+  ●  1 registered custom check(s), but no watcher has a fresh beacon (last beat: never, grace 300s).
+  ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+  ●  This is a supervision warning only; the guarded operation WILL still run.
+  ●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+  ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  config-push: no live secondmate homes found
+[exit 0]
+--- config/strategy
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=full
+providers=claude,codex
+autonomy=full
+--- config/fresh-start.json
+{
+  "idle_minutes": 45,
+  "nightly_at": "03:30",
+  "cooldown_hours": 8,
+  "enabled": true
+}
+--- state
+fresh-start.check-trust
+fresh-start.check.sh
+
+## status full
+$ env FM_HOME=/tmp/fmlab-home.MMG2 /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3KFYDFDC1HNFB8J2BKH9FWB/bin/fm-strategy.sh status
+strategy: full (providers: claude,codex)
+  Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed.
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+  automatic fresh starts: true
+  automatic fleet reviews: true
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+drift:
+  none
+recorded autonomy: full
+fresh-start check: present (config validation above; runtime support is reported by fm-fresh-start.sh status)
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show full
+[exit 0]
+
+## set lean --yes
++++ b/config/fresh-start.json
+@@ -2,5 +2,5 @@
+   "idle_minutes": 45,
+   "nightly_at": "03:30",
+   "cooldown_hours": 8,
+-  "enabled": true
++  "enabled": false
+ }
+written: crew-dispatch.json strategy fresh-start.json
+disarmed: state/fresh-start.check.sh
+  config-push: no live secondmate homes found
+[exit 0]
+--- config/strategy
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=lean
+providers=claude,codex
+autonomy=lean
+--- config/fresh-start.json
+{
+  "idle_minutes": 45,
+  "nightly_at": "03:30",
+  "cooldown_hours": 8,
+  "enabled": false
+}
+--- state
+
+## status lean
+$ env FM_HOME=/tmp/fmlab-home.MMG2 /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3KFYDFDC1HNFB8J2BKH9FWB/bin/fm-strategy.sh status
+strategy: lean (providers: claude,codex)
+  Manual starts and retries with unchanged validation; Sol on Codex, Opus on Claude, one coordinator by default, quiet while present.
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+  automatic fresh starts: false
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+drift:
+  none
+recorded autonomy: lean
+fresh-start check: disabled by selected policy
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show lean
+  /quiet is requested; the coordinator applies it through strategy-autonomy
+[exit 0]
+
+## set balanced --yes
+   "nightly_at": "03:30",
+   "cooldown_hours": 8,
+-  "enabled": false
++  "enabled": true
+ }
+written: strategy fresh-start.json
+armed: state/fresh-start.check.sh
+[exit 0]
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=balanced
+providers=claude,codex
+autonomy=balanced
+{
+  "idle_minutes": 45,
+  "nightly_at": "03:30",
+  "cooldown_hours": 8,
+  "enabled": true
+}
+fresh-start.check-trust
+fresh-start.check.sh
+
+## rerun balanced --yes (unchanged; must re-reconcile check)
+
+no change: this home already matches balanced
+armed: state/fresh-start.check.sh
+[exit 0]
+fresh-start.check-trust
+fresh-start.check.sh

@@ -1,0 +1,29 @@
+== show full --providers claude
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+== show balanced --providers claude
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+== show lean --providers claude
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+== show full --providers codex
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+== show balanced --providers codex
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+== show lean --providers codex
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+
+== validation/merge surface unchanged by this change (template diff outside autonomy/summary/present_mode)
+full: validation, dispatch rules, coordinator, second-mate pins identical to base
+balanced: validation, dispatch rules, coordinator, second-mate pins identical to base
+lean: validation, dispatch rules, coordinator, second-mate pins identical to base
