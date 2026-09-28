@@ -24,6 +24,9 @@
 #   6. Refusals: a second mate home, malformed routing, an unknown mode or
 #      provider set.
 #   7. The provider set is detected from PATH when undeclared and then reused.
+#   8. In a Codex-only home a brief naming a Claude model is offered no
+#      requested-model rule, so bin/fm-dispatch-resolve.sh (with Jev and
+#      quota-axi stubbed) resolves it through the tier rules.
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -277,6 +280,42 @@ test_provider_detection() {
   pass "the provider set is detected when undeclared and then reused"
 }
 
+test_missing_provider_model_falls_to_tiers() {
+  local home bin hard out
+  home=$(new_home named-missing)
+  bin="$home/fakebin"
+  mkdir -p "$bin"
+  strat "$home" set lean --providers codex --yes >/dev/null || fail "set lean for codex failed"
+  hard=$(jq -r '.rules | to_entries[] | select(.value.strategy == "hard") | "rule_\(.key + 1)"' "$home/config/crew-dispatch.json")
+  printf '%s\n' '# Task' '## Captain'"'"'s intent' 'Use claude-fable-5-1 to diagnose this unexplained crash in the pager.' > "$home/brief.md"
+  jq --arg hard "$hard" '{model: "jev-test", answers: {rule: {type: "choice", choice: $hard, confidence: 0.9,
+      probabilities: ([(.rules | to_entries[] | "rule_\(.key + 1)"), "default"] | map({key: ., value: (if . == $hard then 1 else 0 end)}) | from_entries)}}}' \
+    "$home/config/crew-dispatch.json" > "$home/response.json"
+  cat > "$home/quota.json" <<'JSON'
+{ "generatedAt": "2030-01-01T00:00:00Z", "schemaVersion": 5, "providers": [
+  { "provider": "codex", "state": { "status": "fresh" }, "quotaSemantics": { "status": "known", "effectiveAvailability": [
+    { "scope": "all_models", "status": "known", "effectivePercentRemaining": 80, "runway": { "status": "through_reset" }, "selection": { "spendPriority": 0.5 } } ] } } ] }
+JSON
+  cat > "$bin/curl" <<SH
+#!/usr/bin/env bash
+out=''
+while [ \$# -gt 0 ]; do case "\$1" in -o) out=\$2; shift 2 ;; *) shift ;; esac; done
+cat > "$home/request.json"
+cp "$home/response.json" "\$out"
+printf 200
+SH
+  printf '#!/usr/bin/env bash\ncat "%s"\n' "$home/quota.json" > "$bin/quota-axi"
+  chmod +x "$bin/curl" "$bin/quota-axi"
+  out=$(PATH="$bin:$PATH" FM_HOME="$home" TYPESAFE_API_KEY=test-key "$ROOT/bin/fm-dispatch-resolve.sh" "$home/brief.md" 2>&1)
+  assert_contains "$(cat "$home/request.json")" "exact Codex model" "the resolver is offered the Codex-model rule"
+  assert_not_contains "$(cat "$home/request.json")" "exact Claude model" \
+    "a Codex-only home offers the resolver no Claude-model rule to match"
+  assert_contains "$out" "status: clear" "the brief resolves through a tier rule"
+  assert_contains "$out" "profile: --harness 'codex' --model 'gpt-6-sol' --effort 'high'" \
+    "a Claude model named in a Codex-only home resolves to the hard Codex tier, not a requested-model rule"
+  pass "a model from a missing provider matches no requested-model rule and falls to the tier rules"
+}
+
 test_every_mode_and_shape_is_explicit
 test_mode_contents
 test_set_merges_legacy_file
@@ -284,4 +323,5 @@ test_set_confirmation_and_push
 test_status_reports
 test_refusals
 test_provider_detection
+test_missing_provider_model_falls_to_tiers
 echo "# all fm-strategy tests passed"

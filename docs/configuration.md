@@ -632,7 +632,8 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 
 `full` is today's behavior with every route pinned; `balanced` removes Astra from routine routing; `lean` also drops the standing cost of second mates and routine coordinator turns.
 Fable and Astra otherwise run only when the captain names them for a job, which the requested-model rules honor: one rule per provider in the home, a Claude-model rule on claude and a Codex-model rule on codex, each a single profile whose pin firstmate replaces with the named model, so no quota ranking crosses harnesses.
-A home without a provider has no rule for its models, so a model from a missing provider matches no requested-model rule, and firstmate asks the captain rather than substituting.
+A home without a provider has no rule for its models, so a brief naming a model from a missing provider matches no requested-model rule and routing resolves it through the tier rules like any other brief.
+The only guard is `AGENTS.md` section 4 intake precedence: the captain's explicit per-task override wins over every rule, so firstmate must not silently dispatch a tier substitute for a model the home cannot run.
 Lean with second mates off means no new second mate is created unless the captain asks; recorded ones keep running until the captain retires them, and `status` lists them.
 
 Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.
