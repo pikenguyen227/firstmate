@@ -115,6 +115,11 @@ No fast mode, path skips, reduced checks, or paid runner provisioning is part of
 The former RSS-only budget and its recorded peak do not characterize the bounded engine.
 Linux CI must measure the composed four-partition engine before its peak memory or latency is treated as verified; partition membership alone proves neither.
 
+The performance objective is a complete green run under fifteen minutes including start delay: roughly twelve minutes of longest-path execution, at most two minutes of runner delay, and less than one minute of other overhead.
+The candidate uses sixteen long-lived Linux jobs (nine serial, two parallel, Herdr, four lint), plus short checks and macOS; insufficient shared account capacity can erase the packing gain.
+Compare complete before/after runs, preserve cancelled and partial-run evidence, and measure a representative normal-run sample before claiming a P95 improvement.
+The workflow retains per-PR supersession without cancelling main pushes or changing the compliance workflow's event semantics.
+
 ## Local entry points
 
 [CONTRIBUTING.md](../CONTRIBUTING.md) owns the local test policy and common entry points.
