@@ -1,0 +1,19 @@
+docs/fm-test-portable-shards.md
+  s_a5af4c40dee247::t_4c1ce547305743 118-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6c066ba150c24679708d743a725cb24e65805572",
+  "prompts": {},
+  "sessions": {
+    "s_a5af4c40dee247": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dbd6e967-647f-487b-a1d2-76675f6bc7c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
