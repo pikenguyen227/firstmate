@@ -875,17 +875,19 @@ test_spawn_explicit_harness_does_not_inherit_secondmate_harness_tokens() {
 
   spawn_secondmate_capture "$w" sm "$sm" "$launchlog" --harness codex >/dev/null 2>&1
 
+  # The file's Claude tokens never carry over; the empty axes get Firstmate's
+  # Codex fallback profile rather than the operator's ~/.codex default.
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
   meta="$w/home/state/sm.meta"
   [ "$(meta_field "$meta" harness)" = codex ] || fail "explicit-harness-no-tokens: meta harness not codex"
-  [ "$(meta_field "$meta" model)" = default ] || fail "explicit-harness-no-tokens: meta model should stay default"
-  [ "$(meta_field "$meta" effort)" = default ] || fail "explicit-harness-no-tokens: meta effort should stay default"
+  [ "$(meta_field "$meta" model)" = "$FM_CODEX_FALLBACK_MODEL" ] || fail "explicit-harness-no-tokens: meta model should be the codex fallback"
+  [ "$(meta_field "$meta" effort)" = "$FM_CODEX_FALLBACK_EFFORT" ] || fail "explicit-harness-no-tokens: meta effort should be the codex fallback"
   launch=$(cat "$launchlog")
-  assert_contains "$launch" "codex --dangerously-bypass-approvals-and-sandbox" \
-    "explicit-harness-no-tokens: launch did not use codex"
-  assert_not_contains "$launch" "--model" "explicit-harness-no-tokens: launch must not carry a --model flag"
-  assert_not_contains "$launch" "model_reasoning_effort" \
-    "explicit-harness-no-tokens: launch must not carry a codex effort flag"
-  pass "C7 spawn: an explicit --harness starts with clean model/effort defaults"
+  assert_contains "$launch" "codex --model '$FM_CODEX_FALLBACK_MODEL' -c 'model_reasoning_effort=\"$FM_CODEX_FALLBACK_EFFORT\"' --dangerously-bypass-approvals-and-sandbox" \
+    "explicit-harness-no-tokens: launch did not use codex with the fallback profile"
+  assert_not_contains "$launch" "--model 'opus'" "explicit-harness-no-tokens: launch leaked the file's model token"
+  pass "C7 spawn: an explicit --harness starts from the codex fallback, not the file's model/effort"
 }
 
 test_spawn_explicit_harness_uses_explicit_profile_axes() {
@@ -972,12 +974,15 @@ test_spawn_fallback_chain_and_crew_scout_unaffected() {
   meta="$w/home/state/sm.meta"
   [ "$(meta_field "$meta" harness)" = codex ] \
     || fail "fallback: secondmate harness did not fall back to crew-harness codex"
-  [ "$(meta_field "$meta" model)" = default ] || fail "fallback: meta model should stay default with no tokens anywhere"
-  [ "$(meta_field "$meta" effort)" = default ] || fail "fallback: meta effort should stay default with no tokens anywhere"
+  # With no tokens anywhere, the Codex launch names Firstmate's fallback profile.
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
+  [ "$(meta_field "$meta" model)" = "$FM_CODEX_FALLBACK_MODEL" ] || fail "fallback: meta model should be the codex fallback with no tokens anywhere"
+  [ "$(meta_field "$meta" effort)" = "$FM_CODEX_FALLBACK_EFFORT" ] || fail "fallback: meta effort should be the codex fallback with no tokens anywhere"
 
   # Crew/scout launch: same crew-harness config, no --secondmate. Must resolve
-  # the crew harness and record no model/effort - this codepath must never read
-  # config/secondmate-harness's tokens at all.
+  # the crew harness and record only the codex fallback profile - this codepath
+  # must never read config/secondmate-harness's tokens at all.
   id="crew-unaffected-z1"
   home="$w/home"
   proj="$w/crew-project"
@@ -1003,11 +1008,11 @@ EOF
   meta="$home/state/$id.meta"
   [ "$(meta_field "$meta" kind)" = ship ] || fail "crew-unaffected: expected an ordinary ship task"
   [ "$(meta_field "$meta" harness)" = codex ] || fail "crew-unaffected: crew harness resolution changed"
-  [ "$(meta_field "$meta" model)" = default ] || fail "crew-unaffected: crew task must not invent a model"
-  [ "$(meta_field "$meta" effort)" = default ] || fail "crew-unaffected: crew task must not invent an effort"
+  [ "$(meta_field "$meta" model)" = "$FM_CODEX_FALLBACK_MODEL" ] || fail "crew-unaffected: crew task should get the codex fallback model"
+  [ "$(meta_field "$meta" effort)" = "$FM_CODEX_FALLBACK_EFFORT" ] || fail "crew-unaffected: crew task should get the codex fallback effort"
   launch=$(cat "$launchlog")
-  assert_not_contains "$launch" "--model" "crew-unaffected: crew launch must not carry a --model flag"
-  assert_not_contains "$launch" "--effort" "crew-unaffected: crew launch must not carry an --effort flag"
+  assert_contains "$launch" "codex --model '$FM_CODEX_FALLBACK_MODEL' -c 'model_reasoning_effort=\"$FM_CODEX_FALLBACK_EFFORT\"'" \
+    "crew-unaffected: crew launch did not name the codex fallback profile"
   pass "C9 spawn: the harness fallback chain still resolves with no tokens; crew/scout launches are unaffected by this feature"
 }
 

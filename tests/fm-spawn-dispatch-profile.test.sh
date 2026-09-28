@@ -455,6 +455,47 @@ test_codex_omits_max_effort_for_unsupported_model() {
   pass "codex omits max for models without the catalog capability"
 }
 
+# A canonical Codex launch never falls back to the operator's ~/.codex default
+# model and effort, and always raises the project-doc budget so the whole
+# AGENTS.md chain loads; bin/fm-codex-launch-lib.sh owns both values.
+test_codex_launch_fills_the_fallback_profile_and_doc_budget() {
+  local rec id out status launch
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
+  id=profile-codex-fallback-z4e
+  rec=$(make_spawn_case profile-codex-fallback codex "$id" "$id-effort")
+  read_case_record "$rec"
+
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR")
+  status=$?
+  expect_code 0 "$status" "codex spawn with no profile should succeed"$'\n'"$out"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" codex "$FM_CODEX_FALLBACK_MODEL" "$FM_CODEX_FALLBACK_EFFORT"
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "codex --model '$FM_CODEX_FALLBACK_MODEL' -c 'model_reasoning_effort=\"$FM_CODEX_FALLBACK_EFFORT\"'" \
+    "codex launch with no profile did not name the fallback model and effort"
+  assert_contains "$launch" "-c project_doc_max_bytes=$FM_CODEX_PROJECT_DOC_MAX_BYTES" \
+    "codex launch did not raise the project-doc budget"
+  pass "a codex launch with no profile names the fallback model and effort and loads the whole contract"
+}
+
+test_codex_explicit_model_keeps_it_and_fills_only_effort() {
+  local rec id out status launch
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
+  id=profile-codex-fallback-effort-z4f
+  rec=$(make_spawn_case profile-codex-fallback-effort codex "$id")
+  read_case_record "$rec"
+
+  out=$(run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" --model gpt-5)
+  status=$?
+  expect_code 0 "$status" "codex spawn with only a model should succeed"$'\n'"$out"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" codex gpt-5 "$FM_CODEX_FALLBACK_EFFORT"
+  launch=$(cat "$LAUNCH_LOG")
+  assert_contains "$launch" "codex --model 'gpt-5' -c 'model_reasoning_effort=\"$FM_CODEX_FALLBACK_EFFORT\"'" \
+    "codex launch did not keep the explicit model while filling the effort"
+  pass "an explicit codex model wins and only the empty effort axis is filled"
+}
+
 # Codex parks a crewmate launch forever on its unanswerable hook-trust modal
 # unless the launch turns the hook layer off. These two cases pin the split:
 # a crewmate runs hook-free, a secondmate keeps the project hooks that carry its
@@ -496,6 +537,8 @@ test_codex_secondmate_launch_keeps_the_hook_layer() {
   launch=$(cat "$LAUNCH_LOG")
   assert_not_contains "$launch" "--disable hooks" \
     "codex secondmate launch disabled the project hooks its own primary supervision depends on"
+  assert_contains "$launch" "-c project_doc_max_bytes=" \
+    "codex secondmate launch did not raise the project-doc budget"
   pass "a codex secondmate keeps the project hook layer its primary session runs on"
 }
 
@@ -1083,7 +1126,10 @@ test_active_dispatch_profile_does_not_block_secondmate_launch() {
   expect_code 0 "$status" "secondmate spawn should be exempt from the dispatch-profile explicit harness requirement"
   assert_contains "$out" "spawned $id harness=codex kind=secondmate" "secondmate launch did not use secondmate harness resolution"
   assert_grep "kind=secondmate" "$HOME_DIR/state/$id.meta" "secondmate meta missing kind=secondmate"
-  assert_meta_profile "$HOME_DIR/state/$id.meta" codex default default
+  # An unpinned Codex secondmate still names a model: the Firstmate fallback.
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" codex "$FM_CODEX_FALLBACK_MODEL" "$FM_CODEX_FALLBACK_EFFORT"
   pass "active crew-dispatch profile does not block secondmate launches"
 }
 
@@ -1497,6 +1543,8 @@ test_claude_threads_model_and_effort
 test_codex_threads_model_and_effort
 test_codex_threads_model_and_max_effort
 test_codex_omits_max_effort_for_unsupported_model
+test_codex_launch_fills_the_fallback_profile_and_doc_budget
+test_codex_explicit_model_keeps_it_and_fills_only_effort
 test_codex_crewmate_launch_disables_the_hook_layer
 test_codex_secondmate_launch_keeps_the_hook_layer
 test_grok_threads_model_and_reasoning_effort

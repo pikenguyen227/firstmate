@@ -556,7 +556,8 @@ A profile `floor` contains only `scope` and `min_percent`, always uses that prof
 An absent or unknown named row also makes the candidate unrankable and is reported as an unverifiable floor, not as a known shortfall.
 `ultra` is native-only: the model-aware validation contract and launch mapping are owned by `bin/fm-harness.sh validate-native-effort` and `bin/fm-spawn.sh` respectively.
 Codex `max` is valid when the profile selects `gpt-5.6-luna`, whose installed catalog entry supports that reasoning level.
-An omitted model or effort means the selected harness uses its own default for that axis.
+An omitted model or effort means the selected harness uses its own default for that axis, except on Codex: every canonical Codex launch names a model and effort, filling an empty axis from [`bin/fm-codex-launch-lib.sh`](../bin/fm-codex-launch-lib.sh) rather than the operator's `~/.codex` default, and raises Codex's 32 KiB project-doc budget so the whole `AGENTS.md` loads until that file fits under 32 KiB.
+A rule may carry a `strategy` key naming the slot [token strategies](#token-strategies-binfm-strategysh-configstrategy) manage; routing ignores it.
 Every profile array is an implicit quota-aware choice resolved through `quota-array-dispatch`.
 If no dispatch rule fits, firstmate resolves `default` through the same object-or-array path before falling back to `config/crew-harness`.
 Except for `ultra`, which refuses unsupported profiles under the native-effort contract above, an effort value the chosen harness does not accept is recorded as `effort=` in task meta for traceability but omitted from the launch flags.
@@ -606,6 +607,40 @@ The resolver and bootstrap copy an environment-provided key into a non-exported 
 The resolver sends the key to `curl` only as a header read from a file descriptor, never on argv, and nothing prints, logs, or writes it.
 The resolver fixes the endpoint at `https://api.typesafe.ai`, model at `jev-latest`, confidence floor at 0.6, and request timeout at 5 seconds; `TYPESAFE_API_KEY` is its only resolver-specific environment setting.
 The live rule-match evidence is recorded in [`verification/dispatch-resolve.md`](verification/dispatch-resolve.md).
+
+## Token strategies (bin/fm-strategy.sh, config/strategy)
+
+A token strategy is a named bundle of the settings above, chosen per home to match the subscriptions it runs on: `full`, `balanced`, or `lean`.
+Each mode is a tracked template in [`bin/strategies/`](../bin/strategies/), and [`bin/fm-strategy.sh`](../bin/fm-strategy.sh) renders it into this home's gitignored config: `config/crew-dispatch.json` for worker routing, `config/secondmate-harness` for new second mates, and the selection itself in `config/strategy`, which is local and not inherited.
+Run `bin/fm-strategy.sh list` to compare the modes, `show <mode>` to print the exact result for each role, `set <mode>` to see the diff and apply it, and `status` for the selected mode, any drift from it, and what it could not apply; the script header owns flags, merge rules, and output.
+
+The provider set - Claude plus Codex, Claude only, or Codex only - is an input to every mode, declared with `--providers` or detected from the `claude` and `codex` executables on `PATH`, then recorded.
+Every worker route, the requested-worker rules, and the default resolve to an explicit harness, model, and effort from that set only, so nothing falls back to a harness's own default model and no route names a provider the home lacks.
+Worker model switching stays with the tiered dispatch rules for both Claude and Codex.
+
+| Role | full | balanced | lean |
+|---|---|---|---|
+| Primary coordinator on Claude | Opus 5.5, high effort | same | same |
+| Primary coordinator on Codex | Sol, high effort | same | same |
+| Second mates | allowed | allowed | off by default |
+| Light / standard / hard workers on Claude | Sonnet 5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
+| Light / standard / hard workers on Codex | Luna medium / Sol medium / Astra high | Luna medium / Sol medium / Sol high | same as balanced |
+| A requested Claude or Codex worker | Opus 5.5 high or Sol high | same | same |
+| A requested exact Claude or Codex model | that model on claude or codex, high effort | same | same |
+| Validation (no-mistakes) | Opus 5.5 high, Sol high | same | same |
+| While the captain is present | normal supervision | normal supervision | `/quiet` recommended |
+
+`full` is today's behavior with every route pinned; `balanced` removes Astra from routine routing; `lean` also drops the standing cost of second mates and routine coordinator turns.
+Fable and Astra otherwise run only when the captain names them for a job, which the requested-model rules honor: one rule per provider in the home, a Claude-model rule on claude and a Codex-model rule on codex, each a single profile whose pin firstmate replaces with the named model, so no quota ranking crosses harnesses.
+A home without a provider has no rule for its models, so a brief naming a model from a missing provider matches no requested-model rule and routing resolves it through the tier rules like any other brief.
+The only guard is `AGENTS.md` section 4 intake precedence: the captain's explicit per-task override wins over every rule, so firstmate must not silently dispatch a tier substitute for a model the home cannot run.
+Lean with second mates off means no new second mate is created unless the captain asks; recorded ones keep running until the captain retires them, and `status` lists them.
+
+Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.
+The script never edits the user's global Claude, Codex, or no-mistakes settings or any launcher.
+The primary coordinator's launch flags and the no-mistakes `agent_config` live there, so `show` prints the exact value to apply by hand instead.
+`set` refuses in a second mate home, keeps custom rules and fields in `config/crew-dispatch.json`, writes atomically, and runs `bin/fm-config-push.sh` after a routing change so live second mates inherit it.
+A mode template is one JSON object with a section per concern, so a later setting joins as a new section without reshaping the command.
 
 ## Toolchain
 

@@ -195,6 +195,10 @@
 #   the file governs the spawn, its model/effort tokens are re-resolved on every
 #   respawn exactly like the harness axis, and explicit --model/--effort flags
 #   still win over the file's tokens.
+#   A canonical codex launch always names its model and effort: an axis still
+#   empty (or "default") after every source above gets the Firstmate-owned
+#   fallback from bin/fm-codex-launch-lib.sh, never the operator's ~/.codex
+#   default, and task meta records the value actually launched.
 #   A --secondmate spawn also propagates the primary's declared inherited local
 #   material, so the secondmate's OWN crewmates inherit primary config and the
 #   secondmate receives the primary's read-only shared captain-preference file
@@ -298,6 +302,7 @@
 #   Launch templates live in launch_template() below; placeholders replaced before launch:
 #     __BRIEF__    absolute path to data/<task-id>/brief.md
 #     __CLAUDEPERMFLAG__ the claude permission flag selected by config/claude-permission-mode
+#     __CODEXDOCMAX__ the per-launch Codex project_doc_max_bytes (bin/fm-codex-launch-lib.sh)
 #     __PIBIN__    quoted concrete Pi-family executable path resolved from PATH
 #     __PITUIMODE__ optional --tui-mode regular when that executable advertises it
 #     __TURNEND__  absolute path to state/<task-id>.turn-ended (for harnesses whose
@@ -535,6 +540,8 @@ if [ -e "$STATE" ] || [ -L "$STATE" ]; then
 fi
 # shellcheck source=bin/fm-ff-lib.sh
 . "$SCRIPT_DIR/fm-ff-lib.sh"
+# shellcheck source=bin/fm-codex-launch-lib.sh
+. "$SCRIPT_DIR/fm-codex-launch-lib.sh"
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
 # shellcheck source=bin/fm-classify-lib.sh
@@ -1893,11 +1900,14 @@ launch_template() {
   # session-start digest, and cd/arm seatbelts are exactly those project hooks
   # (docs/turnend-guard.md, docs/sessionstart-nudge.md, docs/cd-guard.md), so the
   # secondmate launch deliberately keeps hooks on.
+  # Both Codex launches also raise project_doc_max_bytes so a Codex agent reads
+  # the whole AGENTS.md chain instead of its first 32 KiB; the value and its
+  # stopgap status live in bin/fm-codex-launch-lib.sh.
   codex)
     if [ "$kind" = secondmate ]; then
-      printf '%s' 'codex __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+      printf '%s' 'codex __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox -c project_doc_max_bytes=__CODEXDOCMAX__ "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     else
-      printf '%s' 'codex __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox --disable hooks -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
+      printf '%s' 'codex __MODELFLAG____EFFORTFLAG__--dangerously-bypass-approvals-and-sandbox -c project_doc_max_bytes=__CODEXDOCMAX__ --disable hooks -c "notify=[\"bash\",\"-c\",\"touch __TURNEND__\"]" "$(__OPINPUT__ encode launch-brief < __BRIEF__)"'
     fi
     ;;
   opencode) printf '%s' 'OPENCODE_CONFIG_CONTENT='\''{"permission":{"*":"allow"}}'\'' opencode __MODELFLAG__--prompt "$(__OPINPUT__ encode launch-brief < __BRIEF__)"' ;;
@@ -2225,6 +2235,14 @@ if [ "$KIND" = secondmate ] && [ -z "$ARG3" ]; then
       esac
     fi
   fi
+fi
+# A canonical Codex launch always names its model and effort, so no route falls
+# back to the operator's own ~/.codex default; bin/fm-codex-launch-lib.sh owns
+# the fallback values. Filling them here records the real profile in task meta,
+# so a later relaunch carries it forward.
+if [ "$HARNESS" = codex ] && [ "$RAW_LAUNCH" = 0 ]; then
+  [ -n "$MODEL" ] && [ "$MODEL" != default ] || MODEL=$FM_CODEX_FALLBACK_MODEL
+  [ -n "$EFFORT" ] && [ "$EFFORT" != default ] || EFFORT=$FM_CODEX_FALLBACK_EFFORT
 fi
 # Ultra is an explicit native capability, never a Pi thinking-level alias.
 # Validate the fully resolved profile before worktree or endpoint provisioning.
@@ -4746,6 +4764,7 @@ EFFORTFLAG=$(effort_flag_for_harness "$HARNESS" "$EFFORT" "$MODEL") || exit 1
 LAUNCH=${LAUNCH//__MODELFLAG__/$MODELFLAG}
 LAUNCH=${LAUNCH//__EFFORTFLAG__/$EFFORTFLAG}
 LAUNCH=${LAUNCH//__CLAUDEPERMFLAG__/$CLAUDE_PERM_FLAG}
+LAUNCH=${LAUNCH//__CODEXDOCMAX__/$FM_CODEX_PROJECT_DOC_MAX_BYTES}
 if [ "$HARNESS" = rovo ]; then
   ROVOCONFIGOVERRIDE=$(rovo_config_override_flag "$EFFORT" "$DATA" "$STATE" "$ID") || {
     echo "error: could not resolve this task's home paths for rovo's allowedExternalPaths grant" >&2
