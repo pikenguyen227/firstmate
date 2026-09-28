@@ -1,0 +1,23 @@
+AGENTS.md
+  s_818a8481b0164c::t_9801d81a0965c0 75
+docs/configuration.md
+  s_818a8481b0164c::t_7b9387d1bb397d 302,651
+docs/scripts.md
+  s_818a8481b0164c::t_b85c265e722e98 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cd36d0862a86d58a3bb2d00dea9edb3c54f702b0",
+  "prompts": {},
+  "sessions": {
+    "s_818a8481b0164c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7f03172-9f06-470f-942b-7b35f6583df4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
