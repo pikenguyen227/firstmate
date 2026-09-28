@@ -1,0 +1,29 @@
+### Teardown with fork lifecycle library REMOVED from the install
+exit=1
+stderr: error: teardown refused: required source fm-lifecycle-lib.sh is missing or unreadable; nothing was changed
+stdout: 
+state/data/worktree/branches byte-identical before vs after: nothing changed
+external calls made (tmux/treehouse/herdr/gh): 0
+
+### Control: identical fixture with the library present
+exit=3
+stderr: error: no-mistakes gate agent must not drive the fleet (NO_MISTAKES_GATE set)
+lifecycle feed:
+
+### Control rerun (disposable FM_HOME, fake tmux/treehouse; NO_MISTAKES_GATE cleared only for this isolated fixture)
+exit=0
+stdout tail:
+teardown task-x1 complete (window firstmate:fm-task-x1, worktree /tmp/fm-td-live.MFMQ/control/wt)
+Backlog: task-x1 just finished (config/backlog-backend selects manual editing). Update /private/tmp/fm-td-live.MFMQ/control/data/backlog.md - move task-x1 to Done, keep Done to the 10 most recent, then re-scan Queued and dispatch only work whose blockers are gone and date is due.
+stderr tail:
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+task meta present after? no
+external calls:
+treehouse return --force /tmp/fm-td-live.MFMQ/control/wt
+tmux kill-window -t =firstmate:=fm-task-x1
+lifecycle feed:
+{"schema":"fm-lifecycle.v1","home":{"id":"fmh_d83ed7b6ae2f","path":"/private/tmp/fm-td-live.MFMQ/control","host":null},"seq":1,"key":"started","type":"feed.started","at":1790608047,"at_source":"firstmate","recorded_at":1790608047,"task":null,"backfill":false,"data":{"firstmate_rev":null}}
+{"schema":"fm-lifecycle.v1","home":{"id":"fmh_d83ed7b6ae2f","path":"/private/tmp/fm-td-live.MFMQ/control","host":null},"seq":2,"key":"torn_down/task-x1/live-td-x1","type":"task.torn_down","at":1790608047,"at_source":"firstmate","recorded_at":1790608047,"task":{"id":"task-x1","spawn_gen":"live-td-x1"},"backfill":false,"data":{"transition":"remove","outcome":"unknown","forced":true,"kind":"ship","report":null,"pr":null}}

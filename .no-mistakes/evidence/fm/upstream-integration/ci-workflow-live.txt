@@ -1,0 +1,35 @@
+### Parsed ci.yml semantics (python yaml loader)
+concurrency.group = ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+cancel-in-progress = ${{ github.event_name == 'pull_request' }}
+pull_request pr 42 run 1001 -> group/cancel ('ci-CI-pull_request-42', True)
+pull_request pr 42 run 1002 -> group/cancel ('ci-CI-pull_request-42', True)
+push pr None run 2001 -> group/cancel ('ci-CI-push-2001', False)
+push pr None run 2002 -> group/cancel ('ci-CI-push-2002', False)
+jobs/timeouts:
+  lint: timeout-minutes=30 matrix={'partition': [1, 2, 3, 4]}
+  test-coverage: timeout-minutes=5 matrix={}
+  tests-portable-parallel-1: timeout-minutes=30 matrix={}
+  tests-portable-parallel-2: timeout-minutes=30 matrix={}
+  tests-portable-serial: timeout-minutes=30 matrix={'shard': [1, 2, 3, 4, 5, 6, 7, 8, 9]}
+  tests-herdr: timeout-minutes=75 matrix={}
+  tests-timing-aggregate: timeout-minutes=5 matrix={}
+  macos-stock-bash: timeout-minutes=30 matrix={}
+  invariants: timeout-minutes=5 matrix={}
+
+### actionlint via bin/fm-lint-workflows.sh on the real workflows
+fm-lint-workflows.sh: actionlint 1.7.12 (pinned 1.7.12)
+fm-lint-workflows.sh: 3 workflow files valid
+exit=0
+
+### Broken copy: ci.yml with an undefined 'needs' job and a bad expression
+fm-lint-workflows.sh: actionlint 1.7.12 (pinned 1.7.12)
+../../../../../../tmp/fm-wf-live.AmID/.github/workflows/ci.yml:23:27: property "event_nme" is not defined in object type {action: string; action_path: string; action_ref: string; action_repository: string; action_status: string; actor: string; actor_id: string; api_url: string; artifact_cache_size_limit: number; base_ref: string; env: string; event: object; event_name: string; event_path: string; graphql_url: string; head_ref: string; job: string; output: string; path: string; ref: string; ref_name: string; ref_protected: bool; ref_type: string; repository: string; repository_id: string; repository_owner: string; repository_owner_id: string; repository_visibility: string; repositoryurl: string; retention_days: number; run_attempt: string; run_id: string; run_number: string; secret_source: string; server_url: string; sha: string; state: string; step_summary: string; token: string; triggering_actor: string; workflow: string; workflow_ref: string; workflow_sha: string; workspace: string} [expression]
+   |
+23 |   cancel-in-progress: ${{ github.event_nme == 'pull_request' }}
+   |                           ^~~~~~~~~~~~~~~~
+../../../../../../tmp/fm-wf-live.AmID/.github/workflows/ci.yml:30:3: job "broken" needs job "does-not-exist" which does not exist in this workflow [job-needs]
+   |
+30 |   broken:
+   |   ^~~~~~~
+exit=
+broken-copy fm-lint-workflows exit=1

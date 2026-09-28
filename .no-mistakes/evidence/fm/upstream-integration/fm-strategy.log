@@ -1,0 +1,13 @@
+ok - every mode resolves every route explicitly for Claude plus Codex, Claude only, and Codex only
+ok - mode contents follow the captain's decisions
+ok - set merges an older file, keeps custom material, and is idempotent
+ok - set confirms before writing and pushes routing changes to second mates
+ok - status reports the selection, drift, and what it could not apply
+ok - set refuses a second mate home, malformed routing, and bad input
+ok - the provider set is detected when undeclared and then reused
+ok - a model from a missing provider matches no requested-model rule and falls to the tier rules
+ok - all autonomy levels apply, preserve tuning and running work, and report drift
+ok - autonomy writes require confirmation and failed application can be retried
+ok - strategy uses real fresh-start registration without restarting agents
+# all fm-strategy tests passed
+exit=0

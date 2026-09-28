@@ -1,0 +1,12 @@
+ok - absent config: automatic fresh starts are off
+ok - idle trigger fires after the idle period and the offer is deduplicated
+ok - context trigger measures the latest main-thread turn against the model window
+ok - nightly trigger fires once per night at the first idle moment
+ok - cooldown allows at most one fresh start per window
+ok - mid-turn refuses every trigger; in-flight work refuses idle and nightly but not context
+ok - runtimes and placements without a verified reader are never fresh-started
+ok - run re-decides, restarts through the persist gate, and reports on the status channel
+ok - the primary is suggested a fresh start once per cooldown and never restarted
+ok - invalid config is reported once and arming follows the config file
+# all fm-fresh-start tests passed
+exit=0

@@ -1,0 +1,132 @@
+### S1 clean Task section -> only Task text sent, no boilerplate/scout tag
+run: no matches found: log/*
+dispatch-resolve:
+  status: clear
+  model: jev-1.13.0   latency_ms: 0   tokens: 1/1
+  rule: rule_1 (A simple bug fix with a stated root cause.)   confidence: 0.95
+  probabilities: rule_1=0.96 rule_2=0.02 default=0.02
+  note: rule matched
+  candidate: claude:sonnet  provider=claude  scope=all_models  remaining=80%  spendPriority=0.5  runway=through_reset  -> eligible
+  profile: --harness 'claude' --model 'sonnet'
+exit=0 stderr=
+SENT body:
+{"model":"jev-latest","state":{"task":{"project":"pager","brief":"## Captain's intent\nFix off-by-one in pager.sh line 40; see https://github.com/o/pager/issues/4."}},"questions":{"rule":{"type":"choice","instructions":"Which ONE dispatch rule best fits `task` (read `task.brief` and `task.project`)? Each option is the rule's own matching condition; pick `default` when no rule's condition is met, including when a rule's own exemption text excludes this task.","criteria":{"rule_1":"A simple bug fix with a stated root cause.","rule_2":"Risky migration work.","default":"No listed rule applies to this task."}}}}
+quota read
+
+### S1b body leak check
+absent: BOILERPLATE-SETUP
+absent: 10.1.2.3
+absent: /Users/someone
+absent: SCOUT-TAG-MARKER
+absent: scout
+
+### S2 secret in Task -> nothing sent
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible provider key
+exit=0 stderr=
+NOTHING SENT (no curl call)
+quota not read
+
+### S3 internal host in Task -> nothing sent
+run: no matches found: log/*
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: possible internal hostname
+exit=0 stderr=
+NOTHING SENT (no curl call)
+quota not read
+
+### S4 missing Task section -> nothing sent, no whole-brief fallback
+run: no matches found: log/*
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: no Task section in the brief
+exit=0 stderr=
+NOTHING SENT (no curl call)
+quota not read
+
+### S5 empty Task section -> nothing sent
+run: no matches found: log/*
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: no Task section in the brief
+exit=0 stderr=
+NOTHING SENT (no curl call)
+quota not read
+
+### S6 never-send list match -> off, nothing sent
+run: no matches found: log/*
+dispatch-resolve:
+  status: clear
+  model: jev-1.13.0   latency_ms: 0   tokens: 1/1
+  rule: rule_1 (A simple bug fix with a stated root cause.)   confidence: 0.95
+  probabilities: rule_1=0.96 rule_2=0.02 default=0.02
+  note: rule matched
+  candidate: claude:sonnet  provider=claude  scope=all_models  remaining=80%  spendPriority=0.5  runway=through_reset  -> eligible
+  profile: --harness 'claude' --model 'sonnet'
+exit=0 stderr=
+SENT body:
+{"model":"jev-latest","state":{"task":{"project":"pager","brief":"Fix the ProjectFalcon pager off-by-one."}},"questions":{"rule":{"type":"choice","instructions":"Which ONE dispatch rule best fits `task` (read `task.brief` and `task.project`)? Each option is the rule's own matching condition; pick `default` when no rule's condition is met, including when a rule's own exemption text excludes this task.","criteria":{"rule_1":"A simple bug fix with a stated root cause.","rule_2":"Risky migration work.","default":"No listed rule applies to this task."}}}}
+quota read
+
+### S7 per-rule min_confidence: rule_2 picked at p=0.85 < its 0.9 floor -> falls back to rule_1
+dispatch-resolve:
+  status: ambiguous
+  model: jev-1.13.0   latency_ms: 0   tokens: 1/1
+  rule: rule_2 (Risky migration work.)   confidence: 0.85
+  probabilities: rule_1=0.12 rule_2=0.85 default=0.02
+  reason: rule_2 probability 0.85 below its floor 0.9; no other option clears its own floor
+  candidate: codex:gpt-5.6-sol  provider=codex  scope=all_models  remaining=80%  spendPriority=0.5  runway=through_reset  -> eligible
+exit=0 stderr=
+SENT body:
+{"model":"jev-latest","state":{"task":{"project":"pager","brief":"Fix the pager off-by-one in pager.sh."}},"questions":{"rule":{"type":"choice","instructions":"Which ONE dispatch rule best fits `task` (read `task.brief` and `task.project`)? Each option is the rule's own matching condition; pick `default` when no rule's condition is met, including when a rule's own exemption text excludes this task.","criteria":{"rule_1":"A simple bug fix with a stated root cause.","rule_2":"Risky migration work.","default":"No listed rule applies to this task."}}}}
+quota read
+
+### S8 answer confidence below 0.6 -> ambiguous
+dispatch-resolve:
+  status: error
+  reason: response is not a rule Choice answer
+exit=0 stderr=dispatch-resolve: error (response is not a rule Choice answer)
+SENT body:
+{"model":"jev-latest","state":{"task":{"project":"pager","brief":"Fix the pager off-by-one in pager.sh."}},"questions":{"rule":{"type":"choice","instructions":"Which ONE dispatch rule best fits `task` (read `task.brief` and `task.project`)? Each option is the rule's own matching condition; pick `default` when no rule's condition is met, including when a rule's own exemption text excludes this task.","criteria":{"rule_1":"A simple bug fix with a stated root cause.","rule_2":"Risky migration work.","default":"No listed rule applies to this task."}}}}
+quota not read
+### S6 (corrected fixture) never-send list line 'project   falcon' vs Task 'Project Falcon' -> off, nothing sent
+exit=0 stderr=dispatch-resolve: off (brief text matches /tmp/fm-dr-live.G2xU/home/config/dispatch-never-send line 2; nothing sent)
+NOTHING SENT (no curl call)
+quota not read
+
+### S6b never-send list is a directory (unreadable as file) -> off, nothing sent
+exit=0 stderr=dispatch-resolve: off (/tmp/fm-dr-live.G2xU/home/config/dispatch-never-send is not a readable regular file; nothing sent)
+NOTHING SENT (no curl call)
+quota not read
+
+### S7 per-rule floor fallback: rule_2 p=0.76 < its 0.9, rule_1 p=0.18 clears its 0.1 -> clear via fallback rule_1
+dispatch-resolve:
+  status: clear
+  model: jev-1.13.0   latency_ms: 0   tokens: 1/1
+  rule: rule_2 (Risky migration work.)   confidence: 0.76
+  probabilities: rule_1=0.18 rule_2=0.76 default=0.06
+  fallback: rule_1 (A simple bug fix with a stated root cause.) probability 0.18 clears its floor 0.1; rule_2 probability 0.76 is below its floor 0.9
+  note: rule matched
+  candidate: claude:sonnet  provider=claude  scope=all_models  remaining=80%  spendPriority=0.5  runway=through_reset  -> eligible
+  profile: --harness 'claude' --model 'sonnet'
+exit=0 stderr=
+SENT body:
+{"task":{"project":"pager","brief":"Fix the pager off-by-one in pager.sh."}}
+min_confidence not sent
+quota read
+
+### S8 fixed 0.6 answer-confidence floor: confidence 0.41 -> ambiguous, no profile
+dispatch-resolve:
+  status: ambiguous
+  model: jev-1.13.0   latency_ms: 0   tokens: 1/1
+  rule: rule_1 (A simple bug fix with a stated root cause.)   confidence: 0.41
+  probabilities: rule_1=0.5 rule_2=0.3 default=0.2
+  reason: confidence 0.41 below floor 0.6
+  candidate: claude:sonnet  provider=claude  scope=all_models  remaining=80%  spendPriority=0.5  runway=through_reset  -> eligible
+exit=0 stderr=
+SENT body:
+{"task":{"project":"pager","brief":"Fix the pager off-by-one in pager.sh."}}
+min_confidence not sent
+quota read

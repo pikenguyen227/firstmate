@@ -1,0 +1,35 @@
+### 1. Discovery: fm-lifecycle.sh path on this disposable home
+/private/tmp/fm-lc-live.MQAF/home/data/lifecycle/events.v1.jsonl
+exit=0
+
+### 2. A live task record, then backfill (identity from meta, backfill:true)
+fm-lifecycle: backfill recorded 4 event(s) into /private/tmp/fm-lc-live.MQAF/home/data/lifecycle/events.v1.jsonl
+backfill#1 exit=0
+fm-lifecycle: backfill recorded 0 event(s) into /private/tmp/fm-lc-live.MQAF/home/data/lifecycle/events.v1.jsonl
+backfill#2 exit=0
+events after backfill#1=6 after backfill#2=6 (idempotent if equal)
+{"seq":1,"type":"feed.started","key":"started","backfill":false,"task":null}
+{"seq":2,"type":"task.spawned","key":"spawned/t1/1790600000.1.1","backfill":true,"task":{"id":"t1","spawn_gen":"1790600000.1.1"}}
+{"seq":3,"type":"task.status","key":"status/t1/1790600000.1.1/@0","backfill":true,"task":{"id":"t1","spawn_gen":"1790600000.1.1"}}
+{"seq":4,"type":"task.status","key":"status/t1/1790600000.1.1/@18","backfill":true,"task":{"id":"t1","spawn_gen":"1790600000.1.1"}}
+{"seq":5,"type":"task.decision","key":"decision/t1/1790600000.1.1/@18/default","backfill":true,"task":{"id":"t1","spawn_gen":"1790600000.1.1"}}
+{"seq":6,"type":"feed.backfilled","key":"backfilled/1790608089","backfill":true,"task":null}
+
+### 3. Eight concurrent steers from separate processes
+task.steered count: 8
+seq gap-free 1..N: true
+keys unique: true
+single home id matching data/lifecycle/home-id: true
+steer bodies never in feed: 0
+
+### 4. Cursor: drain status appended after backfill transcribes only new line
+cursor file: .t1.lifecycle-cursor
+[{"seq":3,"key":"status/t1/1790600000.1.1/@0","note":"step one","backfill":true},{"seq":4,"key":"status/t1/1790600000.1.1/@18","note":"need input","backfill":true},{"seq":15,"key":"status/t1/1790600000.1.1/@38","note":"finished","backfill":false}]
+
+### 5. Discovery via fleet snapshot pointer
+{"schema":"fm-fleet-snapshot.v1","lifecycle":{"schema":"fm-lifecycle.v1","id":"fmh_23e932806c72","path":"/private/tmp/fm-lc-live.MQAF/home/data/lifecycle/events.v1.jsonl","present":true,"head_seq":17,"homes":[]}}
+actual head_seq: 17
+{
+  "gapfree": true,
+  "n": 17
+}
