@@ -299,6 +299,7 @@ The skill text owns the marker spelling, the tick order, and the reinforcement r
 
 `config/fresh-start.json` is an optional local, gitignored file that turns on automatic fresh starts for this home: its live second mates are restarted onto a new conversation that picks up from their where-I-left-off note and project map, and the primary is suggested one.
 No file means the feature is off, and the file is not inherited by secondmate homes, because each home decides for its own direct reports.
+A selected [token strategy](#token-strategies-binfm-strategysh-configstrategy) sets `enabled` from its mode, keeps the other keys, and arms or disarms the check itself.
 Session start arms the check that evaluates it when the file exists and disarms it when the file is gone; [`bin/fm-fresh-start.sh`](../bin/fm-fresh-start.sh) owns the triggers, the in-flight and between-turns refusals, the primary's suggestion, and every record, and a second mate is only ever restarted through the persist gate of `bin/fm-secondmate-restart.sh`.
 
 This section is the single owner of the schema.
@@ -647,11 +648,10 @@ There is no automatic step-up to a stronger model.
 `set` preserves fresh-start trigger tuning and changes only `enabled`, validates through `fm-fresh-start.sh validate`, and arms or disarms the existing check after confirmation without restarting any agent.
 Reapplying an unchanged mode with `--yes` also reconciles that check, so a failed application can be retried without rewriting settings.
 Fresh starts keep the [existing owner's runtime support and safeguards](#automatic-fresh-starts-configfresh-startjson), including suggestions rather than restarts for the primary.
-The command preserves running second mates and never retires them to achieve lean's one-coordinator target; `status` reports those remaining.
+The command preserves running second mates and never retires them to achieve lean's one-coordinator target; under lean no new second mate is created unless the captain asks, and `status` reports those remaining.
 Fable and Astra otherwise run only when the captain names them for a job, which the requested-model rules honor: one rule per provider in the home, a Claude-model rule on claude and a Codex-model rule on codex, each a single profile whose pin firstmate replaces with the named model, so no quota ranking crosses harnesses.
 A home without a provider has no rule for its models, so a brief naming a model from a missing provider matches no requested-model rule and routing resolves it through the tier rules like any other brief.
 The only guard is `AGENTS.md` section 4 intake precedence: the captain's explicit per-task override wins over every rule, so firstmate must not silently dispatch a tier substitute for a model the home cannot run.
-Lean with second mates off means no new second mate is created unless the captain asks; recorded ones keep running until the captain retires them, and `status` lists them.
 
 Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.
 The script never edits the user's global Claude, Codex, or no-mistakes settings or any launcher.
