@@ -1,0 +1,11 @@
+base: resolved_history=140; watcher armed and quiet for 20s
+base: worker appended done: at t=0, turn-ended at t=2
+base: watcher surfaced wake after 43.3s
+--- watcher stdout ---
+signal: <state>/scout.status <state>/scout.turn-ended
+--- durable wake queue ---
+1790576135	3	signal	scout.status	signal: <state>/scout.status <state>/scout.turn-ended
+1790576135	4	signal	scout.turn-ended	signal: <state>/scout.status <state>/scout.turn-ended
+wake annotation: latest wake-EVENT observed at drain, not current state: scout.status: done: scout report ready
+STATUS OUTCOME BACKSTOP (newest captain-facing task event has no covering branch outcome):
+scout done: scout report ready

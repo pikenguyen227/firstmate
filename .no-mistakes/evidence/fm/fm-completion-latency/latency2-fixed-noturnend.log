@@ -1,0 +1,10 @@
+fixed-noturnend: resolved_history=2; watcher armed and quiet for 20s
+fixed-noturnend: worker appended done: at t=0, turn-ended at t=none
+fixed-noturnend: watcher surfaced wake after 46.6s
+--- watcher stdout ---
+signal: <state>/scout.status
+--- durable wake queue ---
+1790576224	2	signal	scout.status	signal: <state>/scout.status
+wake annotation: latest wake-EVENT observed at drain, not current state: scout.status: done: scout report ready
+STATUS OUTCOME BACKSTOP (newest captain-facing task event has no covering branch outcome):
+scout done: scout report ready

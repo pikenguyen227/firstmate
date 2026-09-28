@@ -1,0 +1,11 @@
+fixed-gap12: resolved_history=2; watcher armed and quiet for 20s
+fixed-gap12: worker appended done: at t=0, turn-ended at t=12
+fixed-gap12: watcher surfaced wake after 17.4s
+--- watcher stdout ---
+signal: <state>/scout.status <state>/scout.turn-ended
+--- durable wake queue ---
+1790576192	3	signal	scout.status	signal: <state>/scout.status <state>/scout.turn-ended
+1790576194	4	signal	scout.turn-ended	signal: <state>/scout.status <state>/scout.turn-ended
+wake annotation: latest wake-EVENT observed at drain, not current state: scout.status: done: scout report ready
+STATUS OUTCOME BACKSTOP (newest captain-facing task event has no covering branch outcome):
+scout done: scout report ready
