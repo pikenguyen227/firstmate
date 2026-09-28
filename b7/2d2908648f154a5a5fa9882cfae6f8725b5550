@@ -1,0 +1,19 @@
+bin/fm-strategy.sh
+  s_df5b50a1a6609f::t_cad94c06a9b566 20-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b72d2908648f154a5a5fa9882cfae6f8725b5550",
+  "prompts": {},
+  "sessions": {
+    "s_df5b50a1a6609f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "efb80132-c505-457a-aa08-b84effa84525",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
