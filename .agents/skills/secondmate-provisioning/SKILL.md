@@ -43,6 +43,8 @@ The `projects:` field is a non-exclusive clone list, not ownership.
 
 ## Charter and seed
 
+Before proposing or creating a new secondmate, check `bin/fm-strategy.sh status`: when the selected token strategy turns second mates off, create one only when the captain explicitly asks; `docs/configuration.md` "Token strategies" owns that setting.
+
 Scaffold a secondmate charter with:
 
 ```sh

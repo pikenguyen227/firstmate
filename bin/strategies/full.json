@@ -1,0 +1,131 @@
+{
+  "mode": "full",
+  "summary": "Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.",
+  "coordinator": {
+    "claude": {
+      "model": "claude-opus-5-5",
+      "effort": "high"
+    },
+    "codex": {
+      "model": "gpt-6-sol",
+      "effort": "high"
+    }
+  },
+  "secondmates": {
+    "allowed": true,
+    "claude": {
+      "model": "claude-opus-5-5",
+      "effort": "medium"
+    },
+    "codex": {
+      "model": "gpt-6-sol",
+      "effort": "high"
+    }
+  },
+  "validation": {
+    "claude": {
+      "model": "claude-opus-5-5",
+      "effort": "high"
+    },
+    "codex": {
+      "model": "gpt-6-sol",
+      "effort": "high"
+    }
+  },
+  "present_mode": "normal",
+  "dispatch": {
+    "rules": [
+      {
+        "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
+        "use": {
+          "harness": "codex",
+          "model": "gpt-6-sol",
+          "effort": "high"
+        },
+        "why": "Honor the requested worker. A requested worker skips tier routing, so it gets Sol at high effort rather than the local Codex default model.",
+        "strategy": "codex-requested"
+      },
+      {
+        "when": "The instructions require Claude as this worker or name the exact model this worker must run on, for example 'this worker is the Claude worker'. Not for instructions that mention Claude or model names only as a subject of the work, such as research about models.",
+        "use": {
+          "harness": "claude",
+          "model": "claude-opus-5-5",
+          "effort": "high"
+        },
+        "why": "Honor the requested worker; firstmate passes any named model instead of this pin.",
+        "strategy": "claude-requested"
+      },
+      {
+        "when": "Light: a small, fully specified job where the instructions already say exactly what to produce and nothing is left to investigate or design, such as a smoke test or toy example, a typo or documentation-only edit, a config value or version bump, starting or running something locally, or one small fix whose exact change is given. Not for changes that span several source files or need a design decision.",
+        "use": [
+          {
+            "harness": "claude",
+            "model": "claude-sonnet-5",
+            "effort": "low",
+            "floor": {
+              "scope": "all_models",
+              "min_percent": 20
+            }
+          },
+          {
+            "harness": "codex",
+            "model": "gpt-6-luna",
+            "effort": "medium"
+          }
+        ],
+        "why": "Tier 1. Mechanical work; the cheapest capable model at low effort. The Claude floor keeps the last 20% of the Claude week for harder work.",
+        "strategy": "light"
+      },
+      {
+        "when": "Standard: everyday implementation whose cause or design the instructions already settle, such as a bug fix with a stated cause, a small feature with a described approach, added tests, or replaying existing commits unchanged onto a new base, touching a few files, where the worker mainly writes, tests, and ships code. Not for work that asks the worker to find or confirm an unknown cause, measure, compare options, reconcile conflicting changes, or choose a design, and not for changes that delete data, migrate existing state, or touch concurrency or security.",
+        "use": [
+          {
+            "harness": "claude",
+            "model": "claude-opus-5-5",
+            "effort": "medium",
+            "floor": {
+              "scope": "all_models",
+              "min_percent": 10
+            }
+          },
+          {
+            "harness": "codex",
+            "model": "gpt-6-sol",
+            "effort": "medium"
+          }
+        ],
+        "why": "Tier 2. Most everyday work; strong model at medium effort, which costs less per finished job than a weaker model at high effort on long, cache-heavy sessions.",
+        "strategy": "standard"
+      },
+      {
+        "when": "Hard: an open-ended or high-stakes job where the worker must diagnose an unexplained or unconfirmed bug or measure to find a cause, investigate and write a report or recommendation, choose between designs the instructions leave open, reconcile conflicting changes, or build a feature with several separate parts or new components across many files or subsystems; also any change that deletes data, migrates existing state, or touches concurrency or security.",
+        "use": [
+          {
+            "harness": "claude",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "harness": "codex",
+            "model": "gpt-6-astra",
+            "effort": "high"
+          }
+        ],
+        "why": "Tier 3. Keep the strongest reasoning where mistakes are expensive; never floored, so hard work is not silently downgraded.",
+        "strategy": "hard"
+      }
+    ],
+    "default": [
+      {
+        "harness": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "medium"
+      },
+      {
+        "harness": "codex",
+        "model": "gpt-6-sol",
+        "effort": "medium"
+      }
+    ]
+  }
+}
