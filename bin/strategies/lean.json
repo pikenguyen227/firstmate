@@ -1,6 +1,6 @@
 {
   "mode": "lean",
-  "summary": "Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.",
+  "summary": "Manual starts and retries with unchanged validation; Sol on Codex, Opus on Claude, one coordinator by default, quiet while present.",
   "coordinator": {
     "claude": {
       "model": "claude-opus-5-5",
@@ -147,5 +147,12 @@
         "effort": "medium"
       }
     ]
+  },
+  "autonomy": {
+    "level": "lean",
+    "dispatch": "confirm",
+    "automatic_fix_rounds": 0,
+    "fresh_starts": false,
+    "fleet_reviews": false
   }
 }

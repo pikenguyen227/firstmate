@@ -1,6 +1,6 @@
 {
   "mode": "full",
-  "summary": "Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.",
+  "summary": "Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed.",
   "coordinator": {
     "claude": {
       "model": "claude-opus-5-5",
@@ -147,5 +147,12 @@
         "effort": "medium"
       }
     ]
+  },
+  "autonomy": {
+    "level": "full",
+    "dispatch": "automatic",
+    "automatic_fix_rounds": null,
+    "fresh_starts": true,
+    "fleet_reviews": true
   }
 }

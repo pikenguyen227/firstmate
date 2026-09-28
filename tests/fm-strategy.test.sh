@@ -11,7 +11,7 @@
 #      single-profile requested-model rule per declared provider and none for a
 #      missing one, and pins new second mates on an available provider.
 #   2. Mode contents: full keeps today's tiers, balanced and lean move the hard
-#      Codex tier from Astra to Sol, lean turns second mates off and recommends
+#      Codex tier from Astra to Sol, lean turns second mates off and requests
 #      /quiet, and every Codex coordinator runs Sol at high effort.
 #   3. set on an older unmarked file pins the requested-worker rules, adds the
 #      requested-model rules, keeps custom rules, custom top-level keys, and
@@ -24,7 +24,10 @@
 #   6. Refusals: a second mate home, malformed routing, an unknown mode or
 #      provider set.
 #   7. The provider set is detected from PATH when undeclared and then reused.
-#   8. In a Codex-only home a brief naming a Claude model is offered no
+#   8. Autonomy transitions preserve trigger tuning, running second mates, and
+#      unrelated settings; configuration drift and application failures surface.
+#      The real fresh-start owner arms/disarms without restarting an agent.
+#   9. In a Codex-only home a brief naming a Claude model is offered no
 #      requested-model rule, so bin/fm-dispatch-resolve.sh (with Jev and
 #      quota-axi stubbed) resolves it through the tier rules.
 set -u
@@ -45,14 +48,19 @@ echo "push ran" >> "$FM_HOME/push.log"
 [ ! -e "$FM_HOME/push.fail" ] || { echo "push failed"; exit 1; }
 echo "config-push: stub"
 SH
-  chmod +x "$home/bin/push"
+  cat > "$home/bin/fresh-start" <<'SH'
+#!/usr/bin/env bash
+echo "$1" >> "$FM_HOME/fresh-start.log"
+[ ! -e "$FM_HOME/fresh-start.fail" ] || { echo "fresh-start failed"; exit 1; }
+SH
+  chmod +x "$home/bin/push" "$home/bin/fresh-start"
   printf '%s\n' "$home"
 }
 
 strat() {  # <home> <args...>
   local home=$1
   shift
-  FM_HOME="$home" FM_STRATEGY_PUSH_BIN="$home/bin/push" "$STRATEGY" "$@" </dev/null 2>&1
+  FM_HOME="$home" FM_STRATEGY_FRESH_START_BIN="$home/bin/fresh-start" FM_STRATEGY_PUSH_BIN="$home/bin/push" "$STRATEGY" "$@" </dev/null 2>&1
 }
 
 # All profiles of the home's routing as "slot harness model effort" lines.
@@ -142,7 +150,7 @@ test_mode_contents() {
   assert_contains "$out" "light: codex gpt-6-luna medium" "lean's light Codex tier is Luna"
   assert_contains "$out" "standard: codex gpt-6-sol medium" "lean's standard Codex tier is Sol medium"
   assert_contains "$out" "second mates: off by default" "lean turns second mates off"
-  assert_contains "$out" "/quiet recommended" "lean recommends /quiet while present"
+  assert_contains "$out" "/quiet requested" "lean requests /quiet while present"
   assert_not_contains "$out" "  claude:" "a Codex-only show prints no Claude coordinator or validation"
   out=$(strat "$home" show balanced --providers claude)
   assert_contains "$out" "second mates: allowed" "balanced allows second mates"
@@ -313,6 +321,89 @@ SH
   pass "a model from a missing provider matches no requested-model rule and falls to the tier rules"
 }
 
+
+test_autonomy_transitions() {
+  local home mode out expected rounds dispatch reviews
+  home=$(new_home autonomy)
+  printf '%s\n' '{"enabled":false,"idle_minutes":180,"nightly_at":null,"context_windows":{"custom":200000}}' > "$home/config/fresh-start.json"
+  printf 'unchanged approval settings\n' > "$home/config/safety-sentinel"
+  printf 'kind=secondmate\n' > "$home/state/mate.meta"
+  for mode in full balanced lean full; do
+    case "$mode" in
+      full) expected=true; rounds='within existing pipeline limits'; dispatch=automatic; reviews=true ;;
+      balanced) expected=true; rounds=1; dispatch=light-standard; reviews=false ;;
+      lean) expected=false; rounds=0; dispatch=confirm; reviews=false ;;
+    esac
+    out=$(strat "$home" set "$mode" --providers codex --yes) || fail "$mode apply failed: $out"
+    assert_contains "$(cat "$home/config/strategy")" "autonomy=$mode" "persist $mode autonomy"
+    assert_equals "$expected" "$(jq -r .enabled "$home/config/fresh-start.json")" "$mode fresh starts"
+    assert_equals '180 null 200000' "$(jq -r '[.idle_minutes,.nightly_at,.context_windows.custom] | map(tostring) | join(" ")' "$home/config/fresh-start.json")" 'trigger tuning survives switches'
+    out=$(strat "$home" status)
+    assert_contains "$out" "autonomy: $mode" "$mode status shows autonomy"
+    assert_contains "$out" "dispatch: $dispatch" "$mode dispatch policy"
+    assert_contains "$out" "automatic fix rounds: $rounds" "$mode fix policy"
+    assert_contains "$out" "automatic fleet reviews: $reviews" "$mode review policy"
+    assert_contains "$out" $'drift:\n  none' "$mode converges"
+    out=$(strat "$home" show)
+    assert_contains "$out" "automatic fresh starts: $expected" "$mode preview"
+  done
+  assert_equals $'arm\narm\ndisarm\narm' "$(cat "$home/fresh-start.log")" 'fresh starts use existing lifecycle owner'
+  assert_equals 'kind=secondmate' "$(cat "$home/state/mate.meta")" 'no running second mate is retired'
+  assert_equals 'unchanged approval settings' "$(cat "$home/config/safety-sentinel")" 'unrelated settings preserved'
+  printf 'mode=full\nproviders=codex\nautonomy=lean\n' > "$home/config/strategy"
+  printf '{"enabled":false}\n' > "$home/config/fresh-start.json"
+  out=$(strat "$home" status)
+  assert_contains "$out" 'config/strategy differs from full (autonomy selection)' 'autonomy drift detected'
+  assert_contains "$out" 'config/fresh-start.json enabled differs from full' 'fresh-start drift detected'
+  pass 'all autonomy levels apply, preserve tuning and running work, and report drift'
+}
+
+test_autonomy_refusal_and_recovery() {
+  local home out before
+  home=$(new_home autonomy-recovery)
+  out=$(strat "$home" set full --providers codex --dry-run)
+  assert_contains "$out" 'a/config/fresh-start.json' 'fresh-start diff is reviewable'
+  assert_absent "$home/config/fresh-start.json" 'dry run does not enable fresh starts'
+  assert_absent "$home/fresh-start.log" 'dry run does not arm a check'
+  out=$(strat "$home" set full --providers codex)
+  expect_code 1 "$?" 'unconfirmed autonomy selection'
+  assert_absent "$home/fresh-start.log" 'unconfirmed selection does not arm a check'
+  printf '{"idle_minutes":1}\n' > "$home/config/fresh-start.json"
+  out=$(strat "$home" set full --providers codex --yes)
+  expect_code 1 "$?" 'invalid tuning refuses selection'
+  assert_absent "$home/config/strategy" 'invalid tuning publishes nothing'
+  printf '{}\n' > "$home/config/fresh-start.json"
+  : > "$home/fresh-start.fail"
+  out=$(strat "$home" set balanced --providers codex --yes)
+  expect_code 1 "$?" 'fresh-start application failure'
+  assert_contains "$out" 'rerun bin/fm-strategy.sh set balanced --yes' 'failure names retry'
+  before=$(cat "$home/config/strategy")
+  rm "$home/fresh-start.fail"
+  out=$(strat "$home" set balanced --yes)
+  expect_code 0 "$?" 'unchanged selection retries runtime application'
+  assert_equals "$before" "$(cat "$home/config/strategy")" 'retry preserves selected config'
+  assert_equals $'arm\narm' "$(cat "$home/fresh-start.log")" 'retry reaches owner again'
+  pass 'autonomy writes require confirmation and failed application can be retried'
+}
+
+test_real_fresh_start_owner() {
+  local home mode out
+  home=$(new_home real-fresh-start)
+  for mode in full balanced lean; do
+    out=$(FM_HOME="$home" FM_STRATEGY_PUSH_BIN="$home/bin/push" "$STRATEGY" set "$mode" --providers codex --yes 2>&1) || fail "real owner $mode failed: $out"
+    if [ "$mode" = lean ]; then
+      assert_absent "$home/state/fresh-start.check.sh" 'lean disarms the check'
+      out=$(FM_HOME="$home" "$ROOT/bin/fm-fresh-start.sh" status)
+      assert_contains "$out" 'enabled is false' 'real owner recognizes lean disablement'
+    else
+      [ -f "$home/state/fresh-start.check.sh" ] || fail "$mode did not arm the check"
+      [ -f "$home/state/fresh-start.check-trust" ] || fail "$mode did not register check trust"
+    fi
+  done
+  pass 'strategy uses real fresh-start registration without restarting agents'
+}
+
+
 test_every_mode_and_shape_is_explicit
 test_mode_contents
 test_set_merges_legacy_file
@@ -321,4 +412,7 @@ test_status_reports
 test_refusals
 test_provider_detection
 test_missing_provider_model_falls_to_tiers
+test_autonomy_transitions
+test_autonomy_refusal_and_recovery
+test_real_fresh_start_owner
 echo "# all fm-strategy tests passed"

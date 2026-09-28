@@ -2,6 +2,7 @@
 # fm-fresh-start.sh - automatic fresh starts for long-running agents.
 #
 # Usage:
+#   fm-fresh-start.sh validate               validate configuration only; no state or agent reads
 #   fm-fresh-start.sh check                  watcher poll: one line when something is due, silent otherwise
 #   fm-fresh-start.sh status [<mate-id>...]  print the current decision for this home and its second mates
 #   fm-fresh-start.sh run <mate-id>...       re-decide, then fresh-start each named mate that is still due
@@ -707,6 +708,10 @@ cmd_arm() {
 action=$1
 shift
 case "$action" in
+  validate)
+    [ "$#" -eq 0 ] || die "validate takes no arguments" 2
+    config_load || die "${CFG_PROBLEM:-no fresh-start configuration}"
+    ;;
   check) [ "$#" -eq 0 ] || die "check takes no arguments" 2; cmd_check ;;
   status) cmd_status "$@" ;;
   run) cmd_run "$@" ;;

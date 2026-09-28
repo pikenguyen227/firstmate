@@ -610,8 +610,8 @@ The live rule-match evidence is recorded in [`verification/dispatch-resolve.md`]
 
 ## Token strategies (bin/fm-strategy.sh, config/strategy)
 
-A token strategy is a named bundle of the settings above, chosen per home to match the subscriptions it runs on: `full`, `balanced`, or `lean`.
-Each mode is a tracked template in [`bin/strategies/`](../bin/strategies/), and [`bin/fm-strategy.sh`](../bin/fm-strategy.sh) renders it into this home's gitignored config: `config/crew-dispatch.json` for worker routing, `config/secondmate-harness` for new second mates, and the selection itself in `config/strategy`, which is local and not inherited.
+A token strategy bundles model routing and autonomy, chosen per home to match the subscriptions it runs on and how much work it should start automatically: `full`, `balanced`, or `lean`.
+Each mode is a tracked template in [`bin/strategies/`](../bin/strategies/), and [`bin/fm-strategy.sh`](../bin/fm-strategy.sh) renders it into this home's gitignored config: `config/crew-dispatch.json` for worker routing, `config/secondmate-harness` for new second mates, `config/fresh-start.json` for automatic fresh starts, and the selection itself in `config/strategy`, which is local and not inherited.
 Run `bin/fm-strategy.sh list` to compare the modes, `show <mode>` to print the exact result for each role, `set <mode>` to see the diff and apply it, and `status` for the selected mode, any drift from it, and what it could not apply; the script header owns flags, merge rules, and output.
 
 The provider set - Claude plus Codex, Claude only, or Codex only - is an input to every mode, declared with `--providers` or detected from the `claude` and `codex` executables on `PATH`, then recorded.
@@ -622,21 +622,38 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 |---|---|---|---|
 | Primary coordinator on Claude | Opus 5.5, high effort | same | same |
 | Primary coordinator on Codex | Sol, high effort | same | same |
-| Second mates | allowed | allowed | off by default |
+| Second mates | allowed | optional | off by default; one coordinator |
 | Light / standard / hard workers on Claude | Sonnet 5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
 | Light / standard / hard workers on Codex | Luna medium / Sol medium / Astra high | Luna medium / Sol medium / Sol high | same as balanced |
 | A requested Claude or Codex worker | Opus 5.5 high or Sol high | same | same |
 | A requested exact Claude or Codex model | that model on claude or codex, high effort | same | same |
 | Validation (no-mistakes) | Opus 5.5 high, Sol high | same | same |
-| While the captain is present | normal supervision | normal supervision | `/quiet` recommended |
+| Autonomy level (`autonomy=`) | full | balanced | lean |
+| Dispatch of authorized work, including queued work | automatic | light/standard automatic; hard or expensive needs a plan, rough cost and approval | every dispatch needs a plan and confirmation |
+| Automatic fix rounds per task | existing pipeline limits | one, then ask | none; ask before fixes or retries |
+| Automatic fresh starts | enabled | enabled | disabled |
+| Extra discretionary fleet reviews | enabled | disabled | disabled |
+| While the captain is present | normal supervision | `/quiet`, with bounded batching | `/quiet`, routine turns suppressed |
 
-`full` is today's behavior with every route pinned; `balanced` removes Astra from routine routing; `lean` also drops the standing cost of second mates and routine coordinator turns.
+`full` keeps the strongest hard-work routing and automatic starts; `balanced` removes Astra from routine routing and asks before costly starts; `lean` makes starts and retries manual while retaining the same quality requirements.
+`config/strategy` records `mode=`, `providers=`, and `autonomy=`; autonomy matches the selected mode, and legacy selections without that key keep existing behavior until `set` applies it.
+The templates' `autonomy` object owns the rendered level, dispatch policy, automatic fix-round allowance (`null` means existing pipeline limits), fresh-start enablement, and discretionary fleet-review choice.
+[`strategy-autonomy`](../.agents/skills/strategy-autonomy/SKILL.md) owns coordinator application, approval reuse, round accounting, and session transitions, using the existing quiet lifecycle instead of new notification filtering.
+A confirmed selection requests that posture; the command records it but does not itself launch or stop quiet supervision, and later explicit session choices win.
+Quiet batches only within its existing bound and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
+Fix-round limits pause for approval rather than bypassing validation, and indivisible tool-internal retry boundaries must be disclosed rather than represented as enforceable caps.
+There is no automatic step-up to a stronger model.
+
+`set` preserves fresh-start trigger tuning and changes only `enabled`, validates through `fm-fresh-start.sh validate`, and arms or disarms the existing check after confirmation without restarting any agent.
+Reapplying an unchanged mode with `--yes` also reconciles that check, so a failed application can be retried without rewriting settings.
+Fresh starts keep the [existing owner's runtime support and safeguards](#automatic-fresh-starts-configfresh-startjson), including suggestions rather than restarts for the primary.
+The command preserves running second mates and never retires them to achieve lean's one-coordinator target; `status` reports those remaining.
 Fable and Astra otherwise run only when the captain names them for a job, which the requested-model rules honor: one rule per provider in the home, a Claude-model rule on claude and a Codex-model rule on codex, each a single profile whose pin firstmate replaces with the named model, so no quota ranking crosses harnesses.
 A home without a provider has no rule for its models, so a brief naming a model from a missing provider matches no requested-model rule and routing resolves it through the tier rules like any other brief.
 The only guard is `AGENTS.md` section 4 intake precedence: the captain's explicit per-task override wins over every rule, so firstmate must not silently dispatch a tier substitute for a model the home cannot run.
 Lean with second mates off means no new second mate is created unless the captain asks; recorded ones keep running until the captain retires them, and `status` lists them.
 
-Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.
+Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.
 The script never edits the user's global Claude, Codex, or no-mistakes settings or any launcher.
 The primary coordinator's launch flags and the no-mistakes `agent_config` live there, so `show` prints the exact value to apply by hand instead.
 `set` refuses in a second mate home, keeps custom rules and fields in `config/crew-dispatch.json`, writes atomically, and runs `bin/fm-config-push.sh` after a routing change so live second mates inherit it.
