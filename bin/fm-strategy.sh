@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Select a token strategy (full, balanced, or lean) for this firstmate home.
+# Select a token and autonomy strategy (full, balanced, or lean) for this firstmate home.
 # Usage: fm-strategy.sh list
 #        fm-strategy.sh show [<mode>] [--providers <set>]
 #        fm-strategy.sh set <mode> [--providers <set>] [--dry-run] [--yes]
@@ -33,7 +33,13 @@
 #   config/secondmate-harness  "<harness> <model> <effort>" for new second mates:
 #                              the Claude pin when claude is in the provider set,
 #                              else the Codex pin; comment lines are kept.
-#   config/strategy            mode= and providers= lines (not inherited).
+#   config/strategy            mode=, providers=, autonomy= lines (not inherited).
+#   config/fresh-start.json    enabled from the mode; all trigger tuning is kept.
+# The coordinator applies the session policy through the strategy-autonomy skill;
+# this command never launches or stops quiet supervision or second mates.
+# After confirmed writes (also an unchanged --yes retry), reconcile the fresh-
+# start check through fm-fresh-start.sh arm/disarm. A failure leaves the selected
+# config in place, exits 1, and names the retry; no agent is restarted here.
 # set prints a unified diff of every file first. It writes only with --yes, or
 # after a y answer when stdin is a terminal; --dry-run prints the diff and stops.
 # After a write that changed config/crew-dispatch.json it runs
@@ -51,6 +57,7 @@
 # explicit model and effort, recorded second mates a mode without second mates
 # leaves running, and the manual settings above.
 #
+# FM_STRATEGY_FRESH_START_BIN replaces the fresh-start arm/disarm command in tests.
 # FM_STRATEGY_PUSH_BIN replaces bin/fm-config-push.sh; tests use it to observe
 # and fail the push without live second mates.
 #
@@ -71,6 +78,7 @@ MODES="full balanced lean"
 DISPATCH="$CONFIG/crew-dispatch.json"
 SM_HARNESS="$CONFIG/secondmate-harness"
 SELECTION="$CONFIG/strategy"
+FRESH_START="$CONFIG/fresh-start.json"
 
 usage() {
   cat <<'EOF'
@@ -213,7 +221,38 @@ render_secondmate_harness() {
 
 render_selection() {
   printf '# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".\n'
-  printf 'mode=%s\nproviders=%s\n' "$1" "$2"
+  printf 'mode=%s\nproviders=%s\nautonomy=%s\n' "$1" "$2" "$(jq -r .autonomy.level "$(template "$1")")"
+}
+
+# Preserve the fresh-start owner's optional trigger settings; it validates the
+# staged result before any configuration is published.
+render_fresh_start() {
+  local current='{}' enabled
+  if [ -f "$FRESH_START" ]; then
+    current=$(cat "$FRESH_START")
+  fi
+  enabled=$(jq -r .autonomy.fresh_starts "$(template "$1")")
+  jq --argjson enabled "$enabled" 'if type != "object" then error("fresh-start config must be an object") else . + {enabled: $enabled} end' <<<"$current"
+}
+
+apply_fresh_start() {
+  local action=disarm
+  [ "$(jq -r .autonomy.fresh_starts "$(template "$1")")" != true ] || action=arm
+  if ! FM_HOME="$FM_HOME" FM_CONFIG_OVERRIDE="$CONFIG" FM_STATE_OVERRIDE="$STATE" \
+    "${FM_STRATEGY_FRESH_START_BIN:-$SCRIPT_DIR/fm-fresh-start.sh}" "$action"; then
+    echo "fresh-start check was not updated; rerun bin/fm-strategy.sh set $1 --yes" >&2
+    return 1
+  fi
+}
+
+print_autonomy() {
+  jq -r '.autonomy |
+    "autonomy: \(.level)",
+    "  dispatch: \(.dispatch)",
+    "  automatic fix rounds: \(if .automatic_fix_rounds == null then "within existing pipeline limits" else .automatic_fix_rounds end)",
+    "  automatic fresh starts: \(.fresh_starts)",
+    "  automatic fleet reviews: \(.fleet_reviews)"' "$(template "$1")"
+  echo "  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up"
 }
 
 # print_resolved <mode> <providers>: the per-role result.
@@ -234,9 +273,10 @@ print_resolved() {
         ;;
     esac
   done
+  print_autonomy "$mode"
   mate_h=$(mate_harness "$providers")
   if [ "$(jq -r .secondmates.allowed "$tpl")" = true ]; then
-    printf 'second mates: allowed; new ones launch as %s (config/secondmate-harness)\n' \
+    printf 'second mates: allowed (optional in balanced); new ones launch as %s (config/secondmate-harness)\n' \
       "$(jq -r --arg h "$mate_h" '.secondmates[$h] | "\($h) \(.model) \(.effort)"' "$tpl")"
   else
     printf 'second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as %s (config/secondmate-harness)\n' \
@@ -256,10 +296,10 @@ print_resolved() {
     jq -r --arg p "$p" '.validation[$p] | "    \($p):\n      model: \(.model)\n      effort: \(.effort)"' "$tpl"
   done
   case "$(jq -r .present_mode "$tpl")" in
-    quiet) echo "while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)" ;;
+    quiet) echo "while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)" ;;
     *) echo "while the captain is present: normal supervision" ;;
   esac
-  echo "unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem"
+  echo "unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem"
 }
 
 cmd_list() {
@@ -333,7 +373,7 @@ cmd_set() {
   fi
   resolve_providers "$PROVIDERS_ARG"
   mkdir -p "$CONFIG" || die "cannot create $CONFIG"
-  for f in "$DISPATCH" "$SM_HARNESS" "$SELECTION"; do check_target "$f"; done
+  for f in "$DISPATCH" "$SM_HARNESS" "$SELECTION" "$FRESH_START"; do check_target "$f"; done
 
   tmpdir=$(mktemp -d "$CONFIG/.fm-strategy.XXXXXX") || die "cannot create a temporary directory in $CONFIG"
   # shellcheck disable=SC2064 # Expand now: the path is fixed for this run.
@@ -342,9 +382,12 @@ cmd_set() {
   render_secondmate_harness "$mode" "$PROVIDERS" > "$tmpdir/secondmate-harness" || exit 1
   render_selection "$mode" "$PROVIDERS" > "$tmpdir/strategy" || exit 1
 
+  render_fresh_start "$mode" > "$tmpdir/fresh-start.json" || exit 1
+  FM_HOME="$FM_HOME" FM_CONFIG_OVERRIDE="$tmpdir" "$SCRIPT_DIR/fm-fresh-start.sh" validate || exit 1
+
   print_resolved "$mode" "$PROVIDERS"
   echo
-  for base in crew-dispatch.json secondmate-harness strategy; do
+  for base in crew-dispatch.json secondmate-harness strategy fresh-start.json; do
     if ! cmp -s "$CONFIG/$base" "$tmpdir/$base"; then
       changed+=("$base")
       show_diff "config/$base" "$CONFIG/$base" "$tmpdir/$base"
@@ -352,6 +395,7 @@ cmd_set() {
   done
   if [ "${#changed[@]}" -eq 0 ]; then
     echo "no change: this home already matches $mode"
+    if [ "$ASSUME_YES" -eq 1 ] && [ "$DRY_RUN" -eq 0 ]; then apply_fresh_start "$mode" || return 1; fi
     return 0
   fi
   if [ "$DRY_RUN" -eq 1 ]; then
@@ -391,6 +435,8 @@ cmd_set() {
     [ "$base" = crew-dispatch.json ] && dispatch_changed=1
   done
   echo "written: ${changed[*]}"
+  local apply_failed=0
+  apply_fresh_start "$mode" || apply_failed=1
 
   if [ "$dispatch_changed" -eq 1 ]; then
     if push_out=$(FM_HOME="$FM_HOME" "${FM_STRATEGY_PUSH_BIN:-$SCRIPT_DIR/fm-config-push.sh}" 2>&1); then
@@ -401,6 +447,7 @@ cmd_set() {
       return 1
     fi
   fi
+  [ "$apply_failed" -eq 0 ]
 }
 
 cmd_status() {
@@ -416,7 +463,16 @@ cmd_status() {
   printf 'strategy: %s (providers: %s)\n' "$mode" "$PROVIDERS"
   printf '  %s\n' "$(jq -r .summary "$(template "$mode")")"
 
+  print_autonomy "$mode"
   echo "drift:"
+  if ! cmp -s "$SELECTION" <(render_selection "$mode" "$PROVIDERS"); then
+    echo "  config/strategy differs from $mode (autonomy selection)"; drift=1
+  fi
+  if [ ! -f "$FRESH_START" ] || ! FM_HOME="$FM_HOME" FM_CONFIG_OVERRIDE="$CONFIG" "$SCRIPT_DIR/fm-fresh-start.sh" validate >/dev/null 2>&1; then
+    echo "  config/fresh-start.json is missing or invalid"; drift=1
+  elif [ "$(jq -r 'if has("enabled") then .enabled else true end' "$FRESH_START")" != "$(jq -r .autonomy.fresh_starts "$(template "$mode")")" ]; then
+    echo "  config/fresh-start.json enabled differs from $mode"; drift=1
+  fi
   if [ ! -f "$DISPATCH" ]; then
     echo "  config/crew-dispatch.json is missing"; drift=1
   elif ! jq -e . "$DISPATCH" >/dev/null 2>&1; then
@@ -436,6 +492,17 @@ cmd_status() {
     echo "  none"
   fi
 
+  printf 'recorded autonomy: %s\n' "$(selection_get autonomy | sed '/^$/d')"
+  [ -n "$(selection_get autonomy)" ] || echo "  legacy selection: autonomy not applied; existing supervision behavior remains"
+  if [ "$(jq -r .autonomy.fresh_starts "$(template "$mode")")" = true ]; then
+    if [ -f "$STATE/fresh-start.check.sh" ] && [ -f "$STATE/fresh-start.check-trust" ]; then
+      echo "fresh-start check: present (config validation above; runtime support is reported by fm-fresh-start.sh status)"
+    else
+      echo "fresh-start check: missing; rerun bin/fm-strategy.sh set $mode --yes"
+    fi
+  else
+    echo "fresh-start check: disabled by selected policy"
+  fi
   echo "not applied by this tool:"
   if [ -f "$DISPATCH" ] && jq -e . "$DISPATCH" >/dev/null 2>&1; then
     jq -r '
@@ -455,7 +522,7 @@ cmd_status() {
   fi
   echo "  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show $mode"
   if [ "$(jq -r .present_mode "$(template "$mode")")" = quiet ]; then
-    echo "  /quiet is recommended while the captain is present; it is a session choice, not a file"
+    echo "  /quiet is requested; the coordinator applies it through strategy-autonomy"
   fi
 }
 

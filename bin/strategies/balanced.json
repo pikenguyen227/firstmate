@@ -1,6 +1,6 @@
 {
   "mode": "balanced",
-  "summary": "Full's Claude models with the hard Codex tier on Sol at high effort instead of Astra; second mates allowed.",
+  "summary": "Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.",
   "coordinator": {
     "claude": {
       "model": "claude-opus-5-5",
@@ -32,7 +32,7 @@
       "effort": "high"
     }
   },
-  "present_mode": "normal",
+  "present_mode": "quiet",
   "dispatch": {
     "rules": [
       {
@@ -147,5 +147,12 @@
         "effort": "medium"
       }
     ]
+  },
+  "autonomy": {
+    "level": "balanced",
+    "dispatch": "light-standard",
+    "automatic_fix_rounds": 1,
+    "fresh_starts": true,
+    "fleet_reviews": false
   }
 }

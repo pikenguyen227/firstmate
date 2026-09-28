@@ -48,7 +48,7 @@ Unlike `/afk`, ordinary chat is never the exit signal - that is the entire
 point of this mode (AGENTS.md section 8's away-mode stub, quiet branch).
 
 - Only an explicit `/quiet off` (or the captain plainly asking to leave quiet
-  mode / resume normal supervision) exits it: run `bin/fm-afk-return.sh`
+  mode / resume normal supervision, including a confirmed full strategy selection) exits it: run `bin/fm-afk-return.sh`
   unchanged, exactly the procedure `/afk`'s "How to exit afk" section
   documents for its own return path (correct-ordered daemon shutdown,
   durable wake presentation and acknowledgement, escalation/wedge evidence,
@@ -74,5 +74,5 @@ Per the issue's own author triage: quiet mode is presentation only.
 Progress, retries, and internal mechanics stay below deck exactly as in away
 mode, but review-ready work, findings, decisions, failures, and credentials
 escalate every time, through the same classification policy `/afk` owns.
-Quiet mode is opt-in and never the unconsented default; only an explicit
-`/quiet` invocation enters it.
+Quiet mode is opt-in and never the unconsented default; an explicit
+`/quiet` invocation or a confirmed strategy selection through `strategy-autonomy` enters it.
