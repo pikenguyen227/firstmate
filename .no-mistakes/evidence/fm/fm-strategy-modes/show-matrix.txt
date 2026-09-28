@@ -1,0 +1,232 @@
+$ bin/fm-strategy.sh list
+full      Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.
+balanced  Full's Claude models with the hard Codex tier on Sol at high effort instead of Astra; second mates allowed.
+lean      Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+
+$ bin/fm-strategy.sh show full --providers claude,codex
+strategy: full (providers: claude,codex, declared)
+  Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5 low
+  light: codex gpt-6-luna medium
+  standard: claude claude-opus-5-5 medium
+  standard: codex gpt-6-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6-astra high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show balanced --providers claude,codex
+strategy: balanced (providers: claude,codex, declared)
+  Full's Claude models with the hard Codex tier on Sol at high effort instead of Astra; second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5 low
+  light: codex gpt-6-luna medium
+  standard: claude claude-opus-5-5 medium
+  standard: codex gpt-6-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6-sol high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show lean --providers claude,codex
+strategy: lean (providers: claude,codex, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5 low
+  light: codex gpt-6-luna medium
+  standard: claude claude-opus-5-5 medium
+  standard: codex gpt-6-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6-sol high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show full --providers claude
+strategy: full (providers: claude, declared)
+  Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5 low
+  standard: claude claude-opus-5-5 medium
+  hard: claude claude-opus-5-5 high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show balanced --providers claude
+strategy: balanced (providers: claude, declared)
+  Full's Claude models with the hard Codex tier on Sol at high effort instead of Astra; second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5 low
+  standard: claude claude-opus-5-5 medium
+  hard: claude claude-opus-5-5 high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show lean --providers claude
+strategy: lean (providers: claude, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5 low
+  standard: claude claude-opus-5-5 medium
+  hard: claude claude-opus-5-5 high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show full --providers codex
+strategy: full (providers: codex, declared)
+  Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: allowed; new ones launch as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-astra high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show balanced --providers codex
+strategy: balanced (providers: codex, declared)
+  Full's Claude models with the hard Codex tier on Sol at high effort instead of Astra; second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: allowed; new ones launch as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-sol high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]
+
+$ bin/fm-strategy.sh show lean --providers codex
+strategy: lean (providers: codex, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-sol high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+[exit 0]

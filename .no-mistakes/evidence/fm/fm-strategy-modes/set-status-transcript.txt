@@ -1,0 +1,492 @@
+# initial custom crew-dispatch.json:
+{"default":"claude","customKey":1,"rules":[{"when":"docs-only change","use":{"harness":"claude","model":"claude-sonnet-5","effort":"low"},"notes":"mine"}]}
+
+$ bin/fm-strategy.sh set lean --providers codex --dry-run
+strategy: lean (providers: codex, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-sol high
+  custom: claude claude-sonnet-5 low
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+--- a/config/crew-dispatch.json
++++ b/config/crew-dispatch.json
+@@ -1 +1,77 @@
+-{"default":"claude","customKey":1,"rules":[{"when":"docs-only change","use":{"harness":"claude","model":"claude-sonnet-5","effort":"low"},"notes":"mine"}]}
++{
++  "default": [
++    {
++      "harness": "codex",
++      "model": "gpt-6-sol",
++      "effort": "medium"
++    }
++  ],
++  "customKey": 1,
++  "rules": [
++    {
++      "when": "The instructions name the exact Codex model this worker must run on, for example 'run this on gpt-6-astra'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin.",
++      "strategy": "codex-model-requested"
++    },
++    {
++      "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets Sol at high effort rather than the local Codex default model.",
++      "strategy": "codex-requested"
++    },
++    {
++      "when": "Light: a small, fully specified job where the instructions already say exactly what to produce and nothing is left to investigate or design, such as a smoke test or toy example, a typo or documentation-only edit, a config value or version bump, starting or running something locally, or one small fix whose exact change is given. Not for changes that span several source files or need a design decision.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-luna",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 1. Mechanical work; the cheapest capable model at low effort. The Claude floor keeps the last 20% of the Claude week for harder work.",
++      "strategy": "light"
++    },
++    {
++      "when": "Standard: everyday implementation whose cause or design the instructions already settle, such as a bug fix with a stated cause, a small feature with a described approach, added tests, or replaying existing commits unchanged onto a new base, touching a few files, where the worker mainly writes, tests, and ships code. Not for work that asks the worker to find or confirm an unknown cause, measure, compare options, reconcile conflicting changes, or choose a design, and not for changes that delete data, migrate existing state, or touch concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-sol",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 2. Most everyday work; strong model at medium effort, which costs less per finished job than a weaker model at high effort on long, cache-heavy sessions.",
++      "strategy": "standard"
++    },
++    {
++      "when": "Hard: an open-ended or high-stakes job where the worker must diagnose an unexplained or unconfirmed bug or measure to find a cause, investigate and write a report or recommendation, choose between designs the instructions leave open, reconcile conflicting changes, or build a feature with several separate parts or new components across many files or subsystems; also any change that deletes data, migrates existing state, or touches concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-sol",
++          "effort": "high"
++        }
++      ],
++      "why": "Tier 3. Keep the strongest Claude reasoning where mistakes are expensive and use Sol at high effort on Codex; never floored, so hard work is not silently downgraded.",
++      "strategy": "hard"
++    },
++    {
++      "when": "docs-only change",
++      "use": {
++        "harness": "claude",
++        "model": "claude-sonnet-5",
++        "effort": "low"
++      },
++      "notes": "mine"
++    }
++  ]
++}
+--- a/config/secondmate-harness
++++ b/config/secondmate-harness
+@@ -0,0 +1 @@
++codex gpt-6-sol high
+--- a/config/strategy
++++ b/config/strategy
+@@ -0,0 +1,3 @@
++# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
++mode=lean
++providers=codex
+dry run: nothing written
+[exit 0]
+files after dry-run:
+crew-dispatch.json
+
+$ bin/fm-strategy.sh set lean --providers codex
+strategy: lean (providers: codex, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-sol high
+  custom: claude claude-sonnet-5 low
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+--- a/config/crew-dispatch.json
++++ b/config/crew-dispatch.json
+@@ -1 +1,77 @@
+-{"default":"claude","customKey":1,"rules":[{"when":"docs-only change","use":{"harness":"claude","model":"claude-sonnet-5","effort":"low"},"notes":"mine"}]}
++{
++  "default": [
++    {
++      "harness": "codex",
++      "model": "gpt-6-sol",
++      "effort": "medium"
++    }
++  ],
++  "customKey": 1,
++  "rules": [
++    {
++      "when": "The instructions name the exact Codex model this worker must run on, for example 'run this on gpt-6-astra'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin.",
++      "strategy": "codex-model-requested"
++    },
++    {
++      "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets Sol at high effort rather than the local Codex default model.",
++      "strategy": "codex-requested"
++    },
++    {
++      "when": "Light: a small, fully specified job where the instructions already say exactly what to produce and nothing is left to investigate or design, such as a smoke test or toy example, a typo or documentation-only edit, a config value or version bump, starting or running something locally, or one small fix whose exact change is given. Not for changes that span several source files or need a design decision.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-luna",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 1. Mechanical work; the cheapest capable model at low effort. The Claude floor keeps the last 20% of the Claude week for harder work.",
++      "strategy": "light"
++    },
++    {
++      "when": "Standard: everyday implementation whose cause or design the instructions already settle, such as a bug fix with a stated cause, a small feature with a described approach, added tests, or replaying existing commits unchanged onto a new base, touching a few files, where the worker mainly writes, tests, and ships code. Not for work that asks the worker to find or confirm an unknown cause, measure, compare options, reconcile conflicting changes, or choose a design, and not for changes that delete data, migrate existing state, or touch concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-sol",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 2. Most everyday work; strong model at medium effort, which costs less per finished job than a weaker model at high effort on long, cache-heavy sessions.",
++      "strategy": "standard"
++    },
++    {
++      "when": "Hard: an open-ended or high-stakes job where the worker must diagnose an unexplained or unconfirmed bug or measure to find a cause, investigate and write a report or recommendation, choose between designs the instructions leave open, reconcile conflicting changes, or build a feature with several separate parts or new components across many files or subsystems; also any change that deletes data, migrates existing state, or touches concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-sol",
++          "effort": "high"
++        }
++      ],
++      "why": "Tier 3. Keep the strongest Claude reasoning where mistakes are expensive and use Sol at high effort on Codex; never floored, so hard work is not silently downgraded.",
++      "strategy": "hard"
++    },
++    {
++      "when": "docs-only change",
++      "use": {
++        "harness": "claude",
++        "model": "claude-sonnet-5",
++        "effort": "low"
++      },
++      "notes": "mine"
++    }
++  ]
++}
+--- a/config/secondmate-harness
++++ b/config/secondmate-harness
+@@ -0,0 +1 @@
++codex gpt-6-sol high
+--- a/config/strategy
++++ b/config/strategy
+@@ -0,0 +1,3 @@
++# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
++mode=lean
++providers=codex
+not applied: rerun with --yes to write these changes
+[exit 1]
+files after no --yes on non-tty:
+crew-dispatch.json
+
+$ bin/fm-strategy.sh set lean --providers codex --yes
+strategy: lean (providers: codex, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-sol high
+  custom: claude claude-sonnet-5 low
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+--- a/config/crew-dispatch.json
++++ b/config/crew-dispatch.json
+@@ -1 +1,77 @@
+-{"default":"claude","customKey":1,"rules":[{"when":"docs-only change","use":{"harness":"claude","model":"claude-sonnet-5","effort":"low"},"notes":"mine"}]}
++{
++  "default": [
++    {
++      "harness": "codex",
++      "model": "gpt-6-sol",
++      "effort": "medium"
++    }
++  ],
++  "customKey": 1,
++  "rules": [
++    {
++      "when": "The instructions name the exact Codex model this worker must run on, for example 'run this on gpt-6-astra'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin.",
++      "strategy": "codex-model-requested"
++    },
++    {
++      "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets Sol at high effort rather than the local Codex default model.",
++      "strategy": "codex-requested"
++    },
++    {
++      "when": "Light: a small, fully specified job where the instructions already say exactly what to produce and nothing is left to investigate or design, such as a smoke test or toy example, a typo or documentation-only edit, a config value or version bump, starting or running something locally, or one small fix whose exact change is given. Not for changes that span several source files or need a design decision.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-luna",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 1. Mechanical work; the cheapest capable model at low effort. The Claude floor keeps the last 20% of the Claude week for harder work.",
++      "strategy": "light"
++    },
++    {
++      "when": "Standard: everyday implementation whose cause or design the instructions already settle, such as a bug fix with a stated cause, a small feature with a described approach, added tests, or replaying existing commits unchanged onto a new base, touching a few files, where the worker mainly writes, tests, and ships code. Not for work that asks the worker to find or confirm an unknown cause, measure, compare options, reconcile conflicting changes, or choose a design, and not for changes that delete data, migrate existing state, or touch concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-sol",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 2. Most everyday work; strong model at medium effort, which costs less per finished job than a weaker model at high effort on long, cache-heavy sessions.",
++      "strategy": "standard"
++    },
++    {
++      "when": "Hard: an open-ended or high-stakes job where the worker must diagnose an unexplained or unconfirmed bug or measure to find a cause, investigate and write a report or recommendation, choose between designs the instructions leave open, reconcile conflicting changes, or build a feature with several separate parts or new components across many files or subsystems; also any change that deletes data, migrates existing state, or touches concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-sol",
++          "effort": "high"
++        }
++      ],
++      "why": "Tier 3. Keep the strongest Claude reasoning where mistakes are expensive and use Sol at high effort on Codex; never floored, so hard work is not silently downgraded.",
++      "strategy": "hard"
++    },
++    {
++      "when": "docs-only change",
++      "use": {
++        "harness": "claude",
++        "model": "claude-sonnet-5",
++        "effort": "low"
++      },
++      "notes": "mine"
++    }
++  ]
++}
+--- a/config/secondmate-harness
++++ b/config/secondmate-harness
+@@ -0,0 +1 @@
++codex gpt-6-sol high
+--- a/config/strategy
++++ b/config/strategy
+@@ -0,0 +1,3 @@
++# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
++mode=lean
++providers=codex
+written: crew-dispatch.json secondmate-harness strategy
+  config-push: stub ok
+[exit 0]
+push log:
+push ran
+# config/strategy:
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=lean
+providers=codex
+# config/secondmate-harness:
+codex gpt-6-sol high
+# rules in crew-dispatch.json:
+[{"harness":"codex","model":"gpt-6-sol","effort":"medium"}]
+1
+{"strategy":"codex-model-requested","when":"The instructions name the exact Codex model this worker must run on, f","use":{"harness":"codex","model":"gpt-6-sol","effort":"high"}}
+{"strategy":"codex-requested","when":"The instructions require Codex as this worker: they ask for a Codex wo","use":{"harness":"codex","model":"gpt-6-sol","effort":"high"}}
+{"strategy":"light","when":"Light: a small, fully specified job where the instructions already say","use":[{"harness":"codex","model":"gpt-6-luna","effort":"medium"}]}
+{"strategy":"standard","when":"Standard: everyday implementation whose cause or design the instructio","use":[{"harness":"codex","model":"gpt-6-sol","effort":"medium"}]}
+{"strategy":"hard","when":"Hard: an open-ended or high-stakes job where the worker must diagnose ","use":[{"harness":"codex","model":"gpt-6-sol","effort":"high"}]}
+{"strategy":null,"when":"docs-only change","use":{"harness":"claude","model":"claude-sonnet-5","effort":"low"}}
+
+$ bin/fm-strategy.sh set lean --providers codex --yes
+strategy: lean (providers: codex, declared)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-sol high
+  custom: claude claude-sonnet-5 low
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet recommended (routine notifications are handled without a coordinator turn; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+no change: this home already matches lean
+[exit 0]
+push log lines (idempotent re-set should not push again):
+       1
+
+$ bin/fm-strategy.sh status
+strategy: lean (providers: codex)
+  Fewest tokens that still ship quality work: Sol on Codex, Opus kept on Claude, no second mates by default, /quiet while present.
+drift:
+  none
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show lean
+  /quiet is recommended while the captain is present; it is a session choice, not a file
+[exit 0]
+
+$ bin/fm-strategy.sh set full --yes
+strategy: full (providers: codex, recorded in config/strategy)
+  Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+second mates: allowed; new ones launch as codex gpt-6-sol high (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna medium
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-astra high
+  custom: claude claude-sonnet-5 low
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+--- a/config/crew-dispatch.json
++++ b/config/crew-dispatch.json
+@@ -57,11 +57,11 @@
+       "use": [
+         {
+           "harness": "codex",
+-          "model": "gpt-6-sol",
++          "model": "gpt-6-astra",
+           "effort": "high"
+         }
+       ],
+-      "why": "Tier 3. Keep the strongest Claude reasoning where mistakes are expensive and use Sol at high effort on Codex; never floored, so hard work is not silently downgraded.",
++      "why": "Tier 3. Keep the strongest reasoning where mistakes are expensive; never floored, so hard work is not silently downgraded.",
+       "strategy": "hard"
+     },
+     {
+--- a/config/strategy
++++ b/config/strategy
+@@ -1,3 +1,3 @@
+ # Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+-mode=lean
++mode=full
+ providers=codex
+written: crew-dispatch.json strategy
+  push failed
+second mates were not all updated; run bin/fm-config-push.sh again
+[exit 1]
+
+$ bin/fm-strategy.sh status
+strategy: full (providers: codex)
+  Today's setup: Opus coordinator, today's worker tiers with Astra kept for hard Codex work, second mates allowed.
+drift:
+  none
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show full
+[exit 0]
+
+$ bin/fm-strategy.sh set turbo
+fm-strategy: unknown mode 'turbo' (choose full, balanced, or lean)
+Usage: fm-strategy.sh list
+       fm-strategy.sh show [<mode>] [--providers claude|codex|claude,codex]
+       fm-strategy.sh set <mode> [--providers claude|codex|claude,codex] [--dry-run] [--yes]
+       fm-strategy.sh status
+
+Modes: full, balanced, lean. See docs/configuration.md "Token strategies".
+[exit 2]
+
+$ bin/fm-strategy.sh set lean --providers gemini
+fm-strategy: --providers must be claude, codex, or claude,codex (got 'gemini')
+Usage: fm-strategy.sh list
+       fm-strategy.sh show [<mode>] [--providers claude|codex|claude,codex]
+       fm-strategy.sh set <mode> [--providers claude|codex|claude,codex] [--dry-run] [--yes]
+       fm-strategy.sh status
+
+Modes: full, balanced, lean. See docs/configuration.md "Token strategies".
+[exit 2]
+
+$ bin/fm-strategy.sh set full --yes
+fm-strategy: config/crew-dispatch.json is not valid JSON; fix or remove it before selecting a strategy
+[exit 1]

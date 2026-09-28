@@ -1,0 +1,27 @@
+## fm-spawn cap-nomodel <project> --mode no-mistakes --yolo off (config/crew-harness=codex, no dispatch profile)
+launch: export COMPACT_ADVISER_DISABLE=1; env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI codex --model 'gpt-6-sol' -c 'model_reasoning_effort="high"' --dangerously-bypass-approvals-and-sandbox -c project_doc_max_bytes=131072 --disable hooks -c "notify=[\"bash\",\"-c\",\"touch '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-cap.byjkxm/nomodel/home/state/cap-nomodel.turn-ended'\"]" "$('/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3K96CTC1ZVQPS3SWF3DZM1F/bin/fm-operational-input.sh' encode launch-brief < '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-cap.byjkxm/nomodel/home/data/cap-nomodel/launch-brief.md')"
+task meta:
+harness=codex
+model=gpt-6-sol
+effort=high
+
+real codex accepts these flags (codex --model 'gpt-6-sol' -c 'model_reasoning_effort="high"' --dangerously-bypass-approvals-and-sandbox -c project_doc_max_bytes=131072 --disable hooks -c "notify=[\"bash\",\"-c\",\"touch '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-cap.byjkxm/nomodel/home/state/cap-nomodel.turn-ended'\"]"  features list | hooks):
+hooks                                    stable             false
+exit 0
+
+## fm-spawn cap-explicit <project> --mode no-mistakes --yolo off --model gpt-6-luna --effort low (config/crew-harness=codex, no dispatch profile)
+launch: export COMPACT_ADVISER_DISABLE=1; env -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u GEMINI_CLI codex --model 'gpt-6-luna' -c 'model_reasoning_effort="low"' --dangerously-bypass-approvals-and-sandbox -c project_doc_max_bytes=131072 --disable hooks -c "notify=[\"bash\",\"-c\",\"touch '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-cap.byjkxm/explicit/home/state/cap-explicit.turn-ended'\"]" "$('/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3K96CTC1ZVQPS3SWF3DZM1F/bin/fm-operational-input.sh' encode launch-brief < '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-cap.byjkxm/explicit/home/data/cap-explicit/launch-brief.md')"
+task meta:
+harness=codex
+model=gpt-6-luna
+effort=low
+
+real codex accepts these flags (codex --model 'gpt-6-luna' -c 'model_reasoning_effort="low"' --dangerously-bypass-approvals-and-sandbox -c project_doc_max_bytes=131072 --disable hooks -c "notify=[\"bash\",\"-c\",\"touch '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-cap.byjkxm/explicit/home/state/cap-explicit.turn-ended'\"]"  features list | hooks):
+hooks                                    stable             false
+exit 0
+
+## fm-spawn cap-literaldefault <project> --mode no-mistakes --yolo off --model default
+codex flags: --model 'gpt-6-sol' -c 'model_reasoning_effort="high"' ... -c project_doc_max_bytes=131072 --disable hooks -c "notify=[\"bash\",\"-c\",\"touch '/private/var/folders/kb/v4dnb5gj6nl8pm3yy31
+harness=codex
+model=gpt-6-sol
+effort=high
