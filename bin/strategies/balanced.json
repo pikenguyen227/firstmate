@@ -36,6 +36,23 @@
   "dispatch": {
     "rules": [
       {
+        "when": "The instructions name the exact model this worker must run on, for example 'run this on gpt-6-astra' or 'use claude-fable-5-1 for this worker'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
+        "use": [
+          {
+            "harness": "claude",
+            "model": "claude-opus-5-5",
+            "effort": "high"
+          },
+          {
+            "harness": "codex",
+            "model": "gpt-6-sol",
+            "effort": "high"
+          }
+        ],
+        "why": "Honor the requested model. Firstmate launches the named model on the candidate whose harness serves it, a Claude model on claude and a Codex model on codex, in place of that candidate's pin, and never pairs a model with the other harness; when no candidate here serves the named model, firstmate tells the captain instead of substituting one.",
+        "strategy": "model-requested"
+      },
+      {
         "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
         "use": {
           "harness": "codex",
@@ -46,13 +63,13 @@
         "strategy": "codex-requested"
       },
       {
-        "when": "The instructions require Claude as this worker or name the exact model this worker must run on, for example 'this worker is the Claude worker'. Not for instructions that mention Claude or model names only as a subject of the work, such as research about models.",
+        "when": "The instructions require Claude as this worker: they ask for a Claude worker or a Claude-only run, or say this worker is the Claude worker. Not for instructions that mention Claude only as a subject of the work.",
         "use": {
           "harness": "claude",
           "model": "claude-opus-5-5",
           "effort": "high"
         },
-        "why": "Honor the requested worker; firstmate passes any named model instead of this pin.",
+        "why": "Honor the requested worker. A requested worker skips tier routing, so it gets Opus at high effort.",
         "strategy": "claude-requested"
       },
       {

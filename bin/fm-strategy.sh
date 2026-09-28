@@ -38,9 +38,8 @@
 # after a y answer when stdin is a terminal; --dry-run prints the diff and stops.
 # After a write that changed config/crew-dispatch.json it runs
 # bin/fm-config-push.sh so live second mates inherit the new routing; a failed
-# push leaves state/.strategy-push-failed, which status reports until a later
-# push succeeds. set refuses in a second mate home, whose routing is inherited
-# from its primary.
+# push exits 1 and names bin/fm-config-push.sh to rerun. set refuses in a
+# second mate home, whose routing is inherited from its primary.
 #
 # Settings that live outside this home - the primary coordinator's launch flags
 # and the no-mistakes pipeline's agent_config - are printed as the exact value
@@ -50,7 +49,7 @@
 # status prints the selected mode and provider set, drift of each managed file
 # from what that mode renders today, custom rules whose routes do not name an
 # explicit model and effort, recorded second mates a mode without second mates
-# leaves running, a pending push failure, and the manual settings above.
+# leaves running, and the manual settings above.
 #
 # FM_STRATEGY_PUSH_BIN replaces bin/fm-config-push.sh; tests use it to observe
 # and fail the push without live second mates.
@@ -72,7 +71,6 @@ MODES="full balanced lean"
 DISPATCH="$CONFIG/crew-dispatch.json"
 SM_HARNESS="$CONFIG/secondmate-harness"
 SELECTION="$CONFIG/strategy"
-PUSH_FAILED="$STATE/.strategy-push-failed"
 
 usage() {
   cat <<'EOF'
@@ -400,11 +398,9 @@ cmd_set() {
 
   if [ "$dispatch_changed" -eq 1 ]; then
     if push_out=$(FM_HOME="$FM_HOME" "${FM_STRATEGY_PUSH_BIN:-$SCRIPT_DIR/fm-config-push.sh}" 2>&1); then
-      rm -f "$PUSH_FAILED"
       printf '%s\n' "$push_out" | sed 's/^/  /'
     else
       printf '%s\n' "$push_out" | sed 's/^/  /'
-      mkdir -p "$STATE" && : > "$PUSH_FAILED"
       echo "second mates were not all updated; run bin/fm-config-push.sh again" >&2
       return 1
     fi
@@ -456,9 +452,6 @@ cmd_status() {
   for h in ${PROVIDERS//,/ }; do
     command -v "$h" >/dev/null 2>&1 || echo "  $h is in the provider set but not on PATH"
   done
-  if [ -e "$PUSH_FAILED" ]; then
-    echo "  live second mates have not received the last routing change; run bin/fm-config-push.sh"
-  fi
   if [ "$(jq -r .secondmates.allowed "$(template "$mode")")" != true ]; then
     recorded_mates=$(grep -l '^kind=secondmate$' "$STATE"/*.meta 2>/dev/null | wc -l | tr -d ' ')
     [ "$recorded_mates" = 0 ] \

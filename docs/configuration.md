@@ -626,11 +626,12 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Light / standard / hard workers on Claude | Sonnet 5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
 | Light / standard / hard workers on Codex | Luna medium / Sol medium / Astra high | Luna medium / Sol medium / Sol high | same as balanced |
 | A requested Claude or Codex worker | Opus 5.5 high or Sol high | same | same |
+| A requested exact model | that model on the harness that serves it | same | same |
 | Validation (no-mistakes) | Opus 5.5 high, Sol high | same | same |
 | While the captain is present | normal supervision | normal supervision | `/quiet` recommended |
 
 `full` is today's behavior with every route pinned; `balanced` removes Astra from routine routing; `lean` also drops the standing cost of second mates and routine coordinator turns.
-Fable and Astra otherwise run only when the captain names them for a job, which the requested-worker rule honors.
+Fable and Astra otherwise run only when the captain names them for a job, which the requested-model rule honors in every provider shape: a Claude model runs on claude and a Codex model on codex, never on the other harness, and a model whose harness the home lacks goes back to the captain.
 Lean with second mates off means no new second mate is created unless the captain asks; recorded ones keep running until the captain retires them, and `status` lists them.
 
 Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which events wake the coordinator, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.

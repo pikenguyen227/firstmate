@@ -7,17 +7,19 @@
 #
 #   1. Every mode, for each of the three subscription shapes (Claude plus Codex,
 #      Claude only, Codex only), resolves every worker route to an explicit
-#      harness, model, and effort from the declared providers only, and pins new
-#      second mates on an available provider.
+#      harness, model, and effort from the declared providers only, keeps the
+#      requested-model rule with a candidate for each declared provider, and pins
+#      new second mates on an available provider.
 #   2. Mode contents: full keeps today's tiers, balanced and lean move the hard
 #      Codex tier from Astra to Sol, lean turns second mates off and recommends
 #      /quiet, and every Codex coordinator runs Sol at high effort.
-#   3. set on an older unmarked file pins the requested-worker rules, keeps
+#   3. set on an older unmarked file pins the requested-worker rules, adds the
+#      requested-model rule, keeps
 #      custom rules, custom top-level keys, and extra keys on managed rules, and
 #      is idempotent.
 #   4. set shows the diff and writes nothing without --yes on a non-terminal or
-#      with --dry-run; it pushes only when routing changed, and a failed push is
-#      reported by status until a later push succeeds.
+#      with --dry-run; it pushes only when routing changed, and a failed push
+#      exits 1 and names the push to rerun.
 #   5. status reports drift, unpinned custom routes, and second mates a mode
 #      without them leaves running.
 #   6. Refusals: a second mate home, malformed routing, an unknown mode or
@@ -60,13 +62,13 @@ profiles() {
   ' "$1/config/crew-dispatch.json"
 }
 
-# An older routing file with no strategy markers: today's tiers, unpinned
-# requested-worker rules, one custom rule, a custom top-level key, and an
+# An older routing file with no strategy markers: today's tiers, no
+# requested-model rule, unpinned requested-worker rules, one custom rule, a custom top-level key, and an
 # approval key on the hard tier.
 write_legacy_dispatch() {
   jq '
     .dispatch
-    | .rules |= map(del(.strategy))
+    | .rules |= map(select(.strategy != "model-requested") | del(.strategy))
     | .rules[0].use = {harness: "codex"}
     | .rules[1].use = {harness: "claude"}
     | .rules[4].approval = "captain"
@@ -76,7 +78,7 @@ write_legacy_dispatch() {
 }
 
 test_every_mode_and_shape_is_explicit() {
-  local mode shape home out bad expected_mate _slot harness model _effort
+  local mode shape home out bad expected_mate expected_named _slot harness model _effort
   for mode in full balanced lean; do
     for shape in claude,codex claude codex; do
       home=$(new_home "shape-$mode-${shape/,/-}")
@@ -92,15 +94,20 @@ test_every_mode_and_shape_is_explicit() {
         codex)
           assert_not_contains "$(profiles "$home")" "claude-requested" "$mode: a Codex-only home keeps no Claude-requested rule"
           expected_mate="codex gpt-6-sol high"
+          expected_named="model-requested codex gpt-6-sol high"
           ;;
         claude)
           assert_not_contains "$(profiles "$home")" "codex-requested" "$mode: a Claude-only home keeps no Codex-requested rule"
           expected_mate="claude claude-opus-5-5 medium"
+          expected_named="model-requested claude claude-opus-5-5 high"
           ;;
         *)
           expected_mate="claude claude-opus-5-5 medium"
+          expected_named="model-requested claude claude-opus-5-5 high"$'\n'"model-requested codex gpt-6-sol high"
           ;;
       esac
+      assert_equals "$expected_named" "$(profiles "$home" | grep '^model-requested ')" \
+        "$mode/$shape honors a named model on each declared harness only"
       assert_equals "$expected_mate" "$(grep -v '^#' "$home/config/secondmate-harness")" "$mode/$shape second mate pin"
       assert_contains "$(cat "$home/config/strategy")" "mode=$mode"$'\n'"providers=$shape" "$mode/$shape selection record"
     done
@@ -160,7 +167,7 @@ test_set_merges_legacy_file() {
     "an extra key on a managed rule is kept"
   assert_equals "Anything about the design system." "$(jq -r '.rules[-1].when' "$home/config/crew-dispatch.json")" \
     "the custom rule is kept after the managed rules"
-  assert_equals 6 "$(jq '.rules | length' "$home/config/crew-dispatch.json")" "legacy rules are replaced, not duplicated"
+  assert_equals 7 "$(jq '.rules | length' "$home/config/crew-dispatch.json")" "legacy rules are replaced, not duplicated"
   assert_equals "codex gpt-6-sol high" \
     "$(jq -r '.rules[] | select(.strategy == "codex-requested") | .use | "\(.harness) \(.model) \(.effort)"' "$home/config/crew-dispatch.json")" \
     "the requested Codex rule is pinned"
@@ -202,12 +209,6 @@ test_set_confirmation_and_push() {
   expect_code 1 "$status" "set with a failed push"
   assert_contains "$out" "run bin/fm-config-push.sh again" "a failed push is reported"
   assert_equals "mode=full" "$(grep '^mode=' "$home/config/strategy")" "the local write stands after a failed push"
-  out=$(strat "$home" status)
-  assert_contains "$out" "have not received the last routing change" "status reports the pending push"
-  rm -f "$home/push.fail"
-  strat "$home" set balanced --yes >/dev/null || fail "set balanced after the push recovered failed"
-  out=$(strat "$home" status)
-  assert_not_contains "$out" "have not received the last routing change" "a later successful push clears the report"
   pass "set confirms before writing and pushes routing changes to second mates"
 }
 
@@ -223,7 +224,7 @@ test_status_reports() {
   assert_contains "$out" "primary coordinator launch flags and no-mistakes agent_config: set by hand" \
     "status lists the settings this tool cannot apply"
 
-  jq '.rules[0].use.model = "gpt-6-astra" | .rules += [{when: "custom", use: {harness: "codex"}}]' \
+  jq '(.rules[] | select(.strategy == "codex-requested") | .use.model) = "gpt-6-astra" | .rules += [{when: "custom", use: {harness: "codex"}}]' \
     "$home/config/crew-dispatch.json" > "$home/dispatch.tmp" && mv "$home/dispatch.tmp" "$home/config/crew-dispatch.json"
   printf 'kind=secondmate\nhome=/nowhere\n' > "$home/state/mate.meta"
   out=$(strat "$home" status)
