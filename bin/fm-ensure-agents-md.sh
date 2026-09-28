@@ -24,8 +24,9 @@
 # filesystem (issue #389). The real-file pointer also eliminates the old
 # uppercase-literal-target dangling-symlink hazard that a CLAUDE.md -> AGENTS.md
 # link would have carried for that same mismatch.
-# This is a worktree utility for crewmates, not a supervision script, so it does
-# not call fm-guard.sh.
+# This is a project-memory utility, not a supervision script, so it does not
+# call fm-guard.sh. Generated ship briefs invoke it under the project-vault
+# contract; AGENTS.md section 6 owns the project/fleet knowledge boundary.
 # Usage: fm-ensure-agents-md.sh [repo-or-worktree-dir]
 set -eu
 
