@@ -1,0 +1,3 @@
+no-mistakes: drive-line=1 nopoll=1 statusrule=1 respond-ban=1 only-when-bg=0
+direct-PR: drive-line=0 nopoll=0 statusrule=0 respond-ban=0 only-when-bg=0
+local-only: drive-line=0 nopoll=0 statusrule=0 respond-ban=0 only-when-bg=0
