@@ -1,0 +1,21 @@
+bin/fm-lifecycle-lib.sh
+  s_4750593b7563b3::t_6faed643c24223 533-537,549-550
+tests/fm-lifecycle.test.sh
+  s_4750593b7563b3::t_b767afe30b9103 438-450
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "baa3823bcc702b3d2f66128cf46e2422823b76df",
+  "prompts": {},
+  "sessions": {
+    "s_4750593b7563b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6b286e7-f113-4c3a-b771-8e552b569867",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
