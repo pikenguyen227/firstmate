@@ -1,0 +1,19 @@
+tests/fm-lifecycle.test.sh
+  s_c3791f235794aa::t_b1f6f3e58a5c7e 128,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a8066cbc826c1d2c0ab8ccc14f833e7dacc96e57",
+  "prompts": {},
+  "sessions": {
+    "s_c3791f235794aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e34a80b4-6859-4257-af6e-4674715c5820",
+        "model": "unknown"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
