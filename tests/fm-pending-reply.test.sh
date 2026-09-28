@@ -521,6 +521,64 @@ test_concurrent_resolution_closes_escalation_once() {
   pass "concurrent resolution closes one keyed escalation exactly once"
 }
 
+# Resolved records are retained forever and every watcher poll walks them, so
+# the tick must settle each one with a read: a settled record never waits on
+# its lock, while one that still owes an escalation close keeps the retry.
+test_tick_skips_settled_history_and_retries_owed_close() {
+  local home state settled owed rec release ready holder tick i
+  home=$(setup_parent settled-history)
+  state="$home/state"
+  export FM_PENDING_REPLY_NOW=4850
+  settled=$(fm_pending_reply_create "$home" "$state" "hibit" "settled history")
+  fm_pending_reply_mark_delivered "$state" "$settled"
+  printf 'done [corr=%s]: settled reply\n' "$settled" > "$state/hibit.status"
+  fm_pending_reply_try_resolve "$state" "$settled" || fail "settled reply should resolve"
+
+  owed=$(fm_pending_reply_create "$home" "$state" "hibit" "owed close")
+  fm_pending_reply_mark_delivered "$state" "$owed"
+  rec=$(fm_pending_reply_path "$state" "$owed")
+  printf 'blocked [key=pending-reply-%s]: pending-reply-missed: task=hibit pending-reply-id=%s request=owed close\n' \
+    "$owed" "$owed" >> "$state/hibit.status"
+  fm_pending_reply_set "$rec" escalated_epoch 4800
+  fm_pending_reply_set "$rec" resolved_epoch 4840
+  fm_pending_reply_set "$rec" resolved_via status
+  fm_pending_reply_set "$rec" phase resolved
+
+  # Hold the settled record's lock for the whole tick. A tick that still took
+  # it would wait here until the holder lets go.
+  release="$state/.test-release"
+  ready="$state/.test-ready"
+  : > "$release"
+  # shellcheck disable=SC2016  # expanded by the holder shell, not here
+  bash -c '. "$1"; fm_lock_acquire_wait "$2" || exit 1; : > "$3"
+    while [ -e "$4" ]; do sleep 0.1; done; fm_lock_release "$2"' _ \
+    "$ROOT/bin/fm-wake-lib.sh" "$state/.pending-reply-$settled.lock" "$ready" "$release" &
+  holder=$!
+  i=0
+  while [ ! -e "$ready" ] && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
+  [ -e "$ready" ] || { rm -f "$release"; wait "$holder"; fail "lock holder never took the settled lock"; }
+
+  fm_pending_reply_tick "$state" &
+  tick=$!
+  i=0
+  while kill -0 "$tick" 2>/dev/null && [ "$i" -lt 100 ]; do sleep 0.1; i=$((i + 1)); done
+  if kill -0 "$tick" 2>/dev/null; then
+    rm -f "$release"
+    wait "$tick" "$holder"
+    fail "tick waited on the lock of a resolved record that owes nothing"
+  fi
+  wait "$tick" || fail "tick over settled history failed"
+  rm -f "$release"
+  wait "$holder"
+
+  [ -n "$(fm_pending_reply_get "$rec" escalation_closed_epoch)" ] \
+    || fail "tick did not retry the close a resolved record still owed"
+  assert_not_contains "$(status_open_decisions "$state/hibit.status")" "pending-reply-$owed" \
+    "owed escalation stayed open after the tick retried its close"
+  unset FM_PENDING_REPLY_NOW
+  pass "tick settles resolved history without its lock and still retries an owed close"
+}
+
 test_concurrent_escalation_yields_to_late_reply() {
   local home state corr rec
   home=$(setup_parent concurrent-escalation)
@@ -1617,6 +1675,7 @@ test_legacy_escalation_closes_default_decision
 test_legacy_escalation_does_not_close_taken_default_decision
 test_foreign_blocker_is_not_selected_as_escalation
 test_concurrent_resolution_closes_escalation_once
+test_tick_skips_settled_history_and_retries_owed_close
 test_concurrent_escalation_yields_to_late_reply
 test_transport_success_is_not_reply_success
 test_undelivered_records_are_scan_immutable

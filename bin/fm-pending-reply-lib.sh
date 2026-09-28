@@ -1116,6 +1116,26 @@ fm_pending_reply_escalation_line() {  # <status-file> <record-path> <corr_id>
   printf '%s' "$found"
 }
 
+# True when a record is resolved and owes no escalation close, so a poll has
+# nothing left to do for it. Resolved records are retained forever, so this is
+# one builtin read per record instead of forked field reads, a library load, and
+# a lock on every poll. Safe without the lock: escalation never starts on a
+# resolved record, and a resolution writes its phase only after any earlier
+# escalation epoch, so both epochs are settled once the phase reads resolved.
+# A record that still owes a close answers false and takes the locked path.
+fm_pending_reply_resolved_settled() {  # <record-path>
+  local line phase='' escalated='' closed=''
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+      phase=*) phase=${line#phase=} ;;
+      escalated_epoch=*) escalated=${line#escalated_epoch=} ;;
+      escalation_closed_epoch=*) closed=${line#escalation_closed_epoch=} ;;
+    esac
+  done < "$1" || return 1
+  [ "$phase" = resolved ] || return 1
+  [ -z "$escalated" ] || [ -n "$closed" ]
+}
+
 # Close the durable status decision a previous escalation opened for <corr_id>.
 # Idempotent, and safe to retry until it succeeds: it appends the closing line
 # only while that exact keyed decision is still open in
@@ -1450,16 +1470,17 @@ fm_pending_reply_tick() {  # <state-dir>
   [ -d "$dir" ] || return 0
   for rec in "$dir"/*; do
     [ -f "$rec" ] || continue
-    case "$(basename "$rec")" in
+    case "${rec##*/}" in
       .*) continue ;;
     esac
+    ! fm_pending_reply_resolved_settled "$rec" || continue
     corr=$(fm_pending_reply_get "$rec" corr_id)
     [ -n "$corr" ] || corr=$(basename "$rec")
     task_id=$(fm_pending_reply_get "$rec" task_id)
     phase=$(fm_pending_reply_get "$rec" phase)
     if [ "$phase" = resolved ]; then
-      # Cheap no-op unless an escalation for this record is still open; this is
-      # the retry that makes the close converge after a transient write failure.
+      # Reached only while an escalation close is still owed; this is the
+      # retry that makes the close converge after a transient write failure.
       fm_pending_reply_close_escalation "$state" "$corr" || true
       continue
     fi
