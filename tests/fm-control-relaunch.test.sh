@@ -655,9 +655,13 @@ test_harness_switch_does_not_carry_the_old_profile_axes() {
   printf 'codex' > "$dir/fake/becomes"
   out=$(run_control "$dir" rl5 relaunch --harness codex --note "switching runtime"); rc=$?
   expect_code 0 "$rc" "a harness switch should succeed"$'\n'"$out"
-  [ "$(meta_field "$dir" rl5 model)" = default ] \
+  # The reset axes reach the Codex launch empty, which names Firstmate's Codex
+  # fallback profile rather than the old harness's model and effort.
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
+  [ "$(meta_field "$dir" rl5 model)" = "$FM_CODEX_FALLBACK_MODEL" ] \
     || fail "a model chosen for the old harness must not carry to a different one"
-  [ "$(meta_field "$dir" rl5 effort)" = default ] \
+  [ "$(meta_field "$dir" rl5 effort)" = "$FM_CODEX_FALLBACK_EFFORT" ] \
     || fail "an effort chosen for the old harness must not carry to a different one"
   pass "fm-control relaunch: a harness switch resets model and effort unless they are named too"
 }
@@ -990,9 +994,13 @@ test_explicit_secondmate_harness_ignores_configured_profile_axes() {
   printf 'codex' > "$dir/fake/becomes"
   out=$(run_control "$dir" sm4 relaunch --harness codex); rc=$?
   expect_code 0 "$rc" "an explicit secondmate harness should relaunch"$'\n'"$out"
-  [ "$(meta_field "$dir" sm4 model)" = default ] \
+  # The unnamed axes reach the Codex launch empty and get Firstmate's Codex
+  # fallback profile, never the configured Claude model and effort.
+  # shellcheck source=bin/fm-codex-launch-lib.sh
+  . "$ROOT/bin/fm-codex-launch-lib.sh"
+  [ "$(meta_field "$dir" sm4 model)" = "$FM_CODEX_FALLBACK_MODEL" ] \
     || fail "an explicit secondmate harness must not inherit the configured model"
-  [ "$(meta_field "$dir" sm4 effort)" = default ] \
+  [ "$(meta_field "$dir" sm4 effort)" = "$FM_CODEX_FALLBACK_EFFORT" ] \
     || fail "an explicit secondmate harness must not inherit the configured effort"
   pass "fm-control relaunch: explicit secondmate harness resets unnamed profile axes"
 }
