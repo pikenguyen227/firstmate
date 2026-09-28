@@ -242,9 +242,9 @@ HOME_SUMMARY_INTERVAL=${FM_HOME_SUMMARY_INTERVAL:-300}
 case "$HOME_SUMMARY_INTERVAL" in
   ''|*[!0-9]*|0) HOME_SUMMARY_INTERVAL=300 ;;
 esac
-SIGNAL_GRACE=${FM_SIGNAL_GRACE:-30}   # seconds to linger after a signal so trailing
-                                      # signals (a status write, then the same turn's
-                                      # turn-end hook) coalesce into one wake
+SIGNAL_GRACE=${FM_SIGNAL_GRACE:-30}   # longest seconds to linger after a signal so
+                                      # trailing signals (a status write, then the same
+                                      # turn's turn-end hook) coalesce into one wake
 TURNEND_CHURN_ABSORB_SECS=${FM_TURNEND_CHURN_ABSORB_SECS:-900}  # longest a task's
                                       # bare turn-ends may be deferred on pane-churn
                                       # evidence alone (signal_turnend_panes_churned)
