@@ -125,12 +125,10 @@ test_writer_envelope_and_gap_free_seq() {
   lc "$home" fm_lifecycle_task_spawned "$state" t1 0
   lc "$home" fm_lifecycle_task_reclassified "$state" t1 scout ship local-only off
   # Eight concurrent writers, each a separate process writing a steer for its
-  # own task, must interleave into one gap-free sequence. They queue on one
-  # lock, so on a loaded host the last can wait past the default 2s bound and
-  # drop its event by design; a wider bound keeps this about ordering, not load.
+  # own task, must interleave into one gap-free sequence.
   for i in 1 2 3 4 5 6 7 8; do
     fm_write_meta "$state/w$i.meta" "kind=ship" "spawn_gen=s1790000000.$i.1"
-    FM_LIFECYCLE_LOCK_WAIT=30 lc "$home" fm_task_inbox_write "$state" "w$i" "steer $i" >/dev/null &
+    lc "$home" fm_task_inbox_write "$state" "w$i" "steer $i" >/dev/null &
     pids+=("$!")
   done
   for pid in "${pids[@]}"; do wait "$pid" || fail "a concurrent inbox write failed"; done
