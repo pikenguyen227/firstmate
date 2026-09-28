@@ -1,0 +1,34 @@
+bin/strategies/balanced.json
+  s_6adcd1dc627bae::t_9b9bf8a72d1422 39-54,66,72
+  s_6adcd1dc627bae::t_90c150c7118de5 38
+bin/strategies/full.json
+  s_6adcd1dc627bae::t_9b9bf8a72d1422 39-54,66,72
+  s_6adcd1dc627bae::t_dee9abca4fe943 38
+tests/fm-strategy.test.sh
+  s_6adcd1dc627bae::t_8203592f629508 10-12,16-17,21-22,65-66,71,81,97,102,106,109-110,170
+  s_6adcd1dc627bae::t_f2ed67005251de 227
+bin/strategies/lean.json
+  s_6adcd1dc627bae::t_9b9bf8a72d1422 39-54,66,72
+  s_6adcd1dc627bae::t_8f6bf0ae457f0a 38
+docs/configuration.md
+  s_6adcd1dc627bae::t_c20d1f7a4a6bca 629,634
+bin/fm-strategy.sh
+  s_6adcd1dc627bae::t_139cba2f0fbf64 41-42
+  s_6adcd1dc627bae::t_23296f3425b119 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4155900e790aba7fb9e82a7babd216fd524f19b8",
+  "prompts": {},
+  "sessions": {
+    "s_6adcd1dc627bae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "43660050-4503-42e8-b880-436ee643775b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
