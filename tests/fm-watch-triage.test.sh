@@ -1510,6 +1510,95 @@ test_turn_ended_surfaced_batch_opens_no_partial_deadline() {
   pass "a surfaced batch opens no partial pane-churn deadline"
 }
 
+# --- the signal coalescing grace ends once nothing is left to coalesce -------
+# The grace exists so a crew's final status write and the same turn's turn-end
+# surface as ONE wake. Every case here uses a grace far longer than its own wait
+# budget, so a watcher that sat out the whole grace fails the timing assertion.
+
+# Wait up to <limit> 0.1s ticks for <file> to exist.
+wait_file_present() {  # <file> <limit-ticks>
+  local i=0
+  while [ "$i" -lt "$2" ]; do
+    [ -e "$1" ] && return 0
+    sleep 0.1
+    i=$((i + 1))
+  done
+  return 1
+}
+
+# Wait up to <limit> 0.1s ticks for <pid> to exit cleanly, then set ELAPSED to
+# the seconds since <start>. Not a command substitution: wait needs this shell.
+exit_elapsed() {  # <pid> <start-epoch> <limit-ticks>
+  wait_for_exit "$1" "$3" || return 1
+  ELAPSED=$(( $(date +%s) - $2 ))
+}
+
+test_signal_grace_ends_once_turn_end_already_landed() {
+  local dir state fakebin out drain_out status_file pid start
+  dir=$(make_case grace-settled); state="$dir/state"; fakebin="$dir/fakebin"
+  out="$dir/watch.out"; drain_out="$dir/drain.out"
+  status_file="$state/task.status"
+  printf 'done: report ready\n' > "$status_file"
+  : > "$state/task.turn-ended"
+  start=$(date +%s)
+  watch_bg "$state" "$fakebin" "$out" env FM_SIGNAL_GRACE=60
+  pid=$!
+  exit_elapsed "$pid" "$start" 150 \
+    || { reap "$pid"; fail "watcher sat out the grace for a completion whose turn-end had already landed"; }
+  [ "$ELAPSED" -lt 15 ] || fail "settled completion took ${ELAPSED}s, not ended before the 60s grace"
+  assert_grep "$status_file" "$out" "settled completion did not name its status write"
+  assert_grep "$state/task.turn-ended" "$out" "settled completion did not carry its turn-end in the same wake"
+  FM_STATE_OVERRIDE="$state" "$DRAIN" > "$drain_out" 2>/dev/null || fail "drain after the settled completion failed"
+  [ "$(grep -c "$(printf '\tsignal\t')" "$drain_out")" -eq 2 ] \
+    || fail "settled completion did not queue exactly its two signal rows: $(cat "$drain_out")"
+  pass "a completion whose turn-end already landed surfaces without waiting out the grace"
+}
+
+test_signal_grace_still_coalesces_a_trailing_turn_end() {
+  local dir state fakebin out status_file turnend pid start
+  dir=$(make_case grace-coalesces); state="$dir/state"; fakebin="$dir/fakebin"; out="$dir/watch.out"
+  status_file="$state/task.status"
+  turnend="$state/task.turn-ended"
+  # The previous turn's marker is older than the new status write, so it does
+  # not settle the grace: the trailing turn-end of THIS turn is still owed.
+  : > "$turnend"
+  set_mtime "$(( $(date +%s) - 120 ))" "$turnend"
+  prime_turnend_seen "$turnend"
+  printf 'done: report ready\n' > "$status_file"
+  start=$(date +%s)
+  watch_bg "$state" "$fakebin" "$out" env FM_SIGNAL_GRACE=60
+  pid=$!
+  # The first beacon marks the cycle whose signal scan enters the grace; the
+  # grace is then the only thing that can keep this watcher alive with no wake.
+  wait_file_present "$state/.last-watcher-beat" 100 \
+    || { reap "$pid"; fail "watcher never started its first poll: $(cat "$out")"; }
+  wait_live "$pid" 40 || fail "watcher ended the grace before the trailing turn-end landed: $(cat "$out")"
+  [ ! -s "$state/.wake-queue" ] || fail "status write queued a wake before its trailing turn-end"
+  touch "$turnend"
+  exit_elapsed "$pid" "$start" 200 \
+    || { reap "$pid"; fail "watcher did not end the grace once the trailing turn-end landed"; }
+  [ "$ELAPSED" -lt 30 ] || fail "coalesced completion took ${ELAPSED}s, not ended before the 60s grace"
+  [ "$(grep -c '^signal:' "$out")" -eq 1 ] || fail "coalesced completion printed more than one wake: $(cat "$out")"
+  assert_grep "$status_file" "$out" "coalesced wake did not name the status write"
+  assert_grep "$turnend" "$out" "coalesced wake did not carry the trailing turn-end"
+  pass "a status write still coalesces with its trailing turn-end into one wake, ending as it lands"
+}
+
+test_signal_grace_without_turn_end_marker_keeps_full_grace() {
+  local dir state fakebin out status_file pid start
+  dir=$(make_case grace-no-marker); state="$dir/state"; fakebin="$dir/fakebin"; out="$dir/watch.out"
+  status_file="$state/task.status"
+  printf 'done: report ready\n' > "$status_file"
+  start=$(date +%s)
+  watch_bg "$state" "$fakebin" "$out" env FM_SIGNAL_GRACE=4
+  pid=$!
+  exit_elapsed "$pid" "$start" 200 \
+    || { reap "$pid"; fail "watcher did not surface a completion after its full grace"; }
+  [ "$ELAPSED" -ge 4 ] || fail "a task with no turn-end marker ended its grace early after ${ELAPSED}s"
+  assert_grep "$status_file" "$out" "full-grace completion did not surface its status write"
+  pass "a status write whose task has no turn-end marker keeps the full coalescing grace"
+}
+
 test_working_note_not_working_surfaced() {
   local dir state fakebin out drain_out status_file pid
   dir=$(make_case working-note-stopped); state="$dir/state"; fakebin="$dir/fakebin"
@@ -6166,6 +6255,9 @@ test_turn_ended_invalid_churn_bound_surfaced
 test_turn_ended_oversized_churn_bound_surfaced
 test_turn_ended_invalid_churn_deadline_surfaced
 test_turn_ended_surfaced_batch_opens_no_partial_deadline
+test_signal_grace_ends_once_turn_end_already_landed
+test_signal_grace_still_coalesces_a_trailing_turn_end
+test_signal_grace_without_turn_end_marker_keeps_full_grace
 test_working_note_not_working_surfaced
 test_secondmate_status_note_surfaced_despite_busy_agent
 test_secondmate_buried_block_wakes_despite_busy_agent

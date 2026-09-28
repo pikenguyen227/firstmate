@@ -242,9 +242,9 @@ HOME_SUMMARY_INTERVAL=${FM_HOME_SUMMARY_INTERVAL:-300}
 case "$HOME_SUMMARY_INTERVAL" in
   ''|*[!0-9]*|0) HOME_SUMMARY_INTERVAL=300 ;;
 esac
-SIGNAL_GRACE=${FM_SIGNAL_GRACE:-30}   # seconds to linger after a signal so trailing
-                                      # signals (a status write, then the same turn's
-                                      # turn-end hook) coalesce into one wake
+SIGNAL_GRACE=${FM_SIGNAL_GRACE:-30}   # longest seconds to linger after a signal so
+                                      # trailing signals (a status write, then the same
+                                      # turn's turn-end hook) coalesce into one wake
 TURNEND_CHURN_ABSORB_SECS=${FM_TURNEND_CHURN_ABSORB_SECS:-900}  # longest a task's
                                       # bare turn-ends may be deferred on pane-churn
                                       # evidence alone (signal_turnend_panes_churned)
@@ -1817,6 +1817,47 @@ scan_signals() {
   return 0
 }
 
+# True when the pending scan output has nothing left to coalesce: every pending
+# status file's task already has a turn-end marker at least as new as that
+# status write, so the same turn's trailing turn-end is already in. A task with
+# no turn-end marker, or one older than its status write, answers false and
+# keeps the full grace. Marker times compare at the shell's -nt resolution; a
+# same-second next-turn write can only cost the separate turn-end wake that a
+# turn-end landing after the grace costs anyway, never lose one.
+signal_grace_settled() {  # <pending-scan-output>
+  local sf sig f id te
+  while IFS=$(printf '\t') read -r sf sig f; do
+    [ -n "$f" ] || continue
+    case "$f" in
+      *.status)
+        id=${f##*/}
+        te="$STATE/${id%.status}.turn-ended"
+        [ -e "$te" ] || return 1
+        if [ "$f" -nt "$te" ]; then return 1; fi
+        ;;
+    esac
+  done <<EOF
+$1
+EOF
+  return 0
+}
+
+# The signal coalescing linger: at most SIGNAL_GRACE seconds, ending early once
+# signal_grace_settled holds, which it may already do before the first sleep.
+# A non-integer SIGNAL_GRACE keeps the single fixed sleep.
+signal_grace_wait() {  # <pending-scan-output>
+  local waited=0
+  case "$SIGNAL_GRACE" in
+    ''|*[!0-9]*) sleep "$SIGNAL_GRACE"; return 0 ;;
+  esac
+  while [ "$waited" -lt "$SIGNAL_GRACE" ]; do
+    signal_grace_settled "$1" && return 0
+    sleep 1
+    waited=$((waited + 1))
+  done
+  return 0
+}
+
 # Deliver a durably queued process-event result to firstmate. Publication is
 # owned by bin/fm-procevent.sh - by the runner at capture time and by reconcile's
 # re-announcement - so this decides only whether a queued check record has been
@@ -2592,14 +2633,15 @@ EOF
     fi
   fi
 
-  # On the first changed signal, linger one grace period and re-scan before
+  # On the first changed signal, linger up to one grace period and re-scan before
   # classifying: a crewmate's final status write and the same turn's turn-end
   # hook land seconds apart, and reporting them as separate actionable wakes
-  # costs a full firstmate turn each. The re-scan also picks up a newer
+  # costs a full firstmate turn each. signal_grace_wait ends the linger as soon
+  # as that trailing turn-end has landed. The re-scan also picks up a newer
   # signature for an already-pending file (last write wins below).
   pending=$(scan_signals)
   if [ -n "$pending" ]; then
-    sleep "$SIGNAL_GRACE"
+    signal_grace_wait "$pending"
     pending=$(printf '%s\n%s' "$pending" "$(scan_signals)")
     # The final coalesced signal set is the watcher-carried status-change
     # trigger for this home's published summary. Start it before either
