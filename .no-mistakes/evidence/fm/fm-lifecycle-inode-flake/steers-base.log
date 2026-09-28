@@ -1,0 +1,21 @@
+[steers #1] PASS steers=8 gapfree=true
+[steers #2] PASS steers=8 gapfree=true
+[steers #3] PASS steers=8 gapfree=true
+[steers #4] FAIL steers=3 gapfree=true
+[steers #5] FAIL steers=5 gapfree=true
+[steers #6] FAIL steers=7 gapfree=true
+[steers #7] PASS steers=8 gapfree=true
+[steers #8] PASS steers=8 gapfree=true
+[steers #9] PASS steers=8 gapfree=true
+[steers #10] PASS steers=8 gapfree=true
+[steers #11] FAIL steers=6 gapfree=true
+[steers #12] FAIL steers=7 gapfree=true
+[steers #13] FAIL steers=5 gapfree=true
+[steers #14] PASS steers=8 gapfree=true
+[steers #15] FAIL steers=6 gapfree=true
+[steers #16] FAIL steers=4 gapfree=true
+[steers #17] FAIL steers=5 gapfree=true
+[steers #18] FAIL steers=3 gapfree=true
+[steers #19] PASS steers=8 gapfree=true
+[steers #20] PASS steers=8 gapfree=true
+== steers on /tmp/fmbase.Xxfa: 10 pass, 10 fail of 20

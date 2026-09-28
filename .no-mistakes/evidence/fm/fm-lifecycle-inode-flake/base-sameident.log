@@ -1,0 +1,11 @@
+[sameident #1] FAIL notes=["log1 a","log2 b","log2 c","log4 b"] streams=1 keys=["status/t1/s1790000500.2.2/@0","status/t1/s1790000500.2.2/@32","status/t1/s1790000500.2.2/@64","status/t1/s1790000500.2.2/@32"]
+  emit-errors: 
+[sameident #2] FAIL notes=["log1 a","log2 b","log2 c","log4 b"] streams=1 keys=["status/t1/s1790000500.2.2/@0","status/t1/s1790000500.2.2/@32","status/t1/s1790000500.2.2/@64","status/t1/s1790000500.2.2/@32"]
+  emit-errors: 
+[sameident #3] FAIL notes=["log1 a","log2 b","log2 c","log4 b"] streams=1 keys=["status/t1/s1790000500.2.2/@0","status/t1/s1790000500.2.2/@32","status/t1/s1790000500.2.2/@64","status/t1/s1790000500.2.2/@32"]
+  emit-errors: 
+[sameident #4] FAIL notes=["log1 a","log2 b","log2 c","log4 b"] streams=1 keys=["status/t1/s1790000500.2.2/@0","status/t1/s1790000500.2.2/@32","status/t1/s1790000500.2.2/@64","status/t1/s1790000500.2.2/@32"]
+  emit-errors: 
+[sameident #5] FAIL notes=["log1 a","log2 b","log2 c","log4 b"] streams=1 keys=["status/t1/s1790000500.2.2/@0","status/t1/s1790000500.2.2/@32","status/t1/s1790000500.2.2/@64","status/t1/s1790000500.2.2/@32"]
+  emit-errors: 
+== sameident on /tmp/fmbase.x0pJ: 0 pass, 5 fail of 5

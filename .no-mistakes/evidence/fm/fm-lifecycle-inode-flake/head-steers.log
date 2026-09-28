@@ -1,0 +1,6 @@
+[steers #1] PASS steers=8 gapfree=true
+[steers #2] PASS steers=8 gapfree=true
+[steers #3] PASS steers=8 gapfree=true
+[steers #4] PASS steers=8 gapfree=true
+[steers #5] PASS steers=8 gapfree=true
+== steers on /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M3KK83PYY8PR3JGVAZSYVD3D: 5 pass, 0 fail of 5

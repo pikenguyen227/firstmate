@@ -1,0 +1,9 @@
+[steers #1] FAIL steers=7 gapfree=true
+  emit-errors: 2026-09-28T09:26:09Z dropped 1 event(s): lock not acquired within 2s|
+[steers #2] PASS steers=8 gapfree=true
+[steers #3] FAIL steers=6 gapfree=true
+  emit-errors: 2026-09-28T09:26:13Z dropped 1 event(s): lock not acquired within 2s|2026-09-28T09:26:13Z dropped 1 event(s): lock not acquired within 2s|
+[steers #4] FAIL steers=7 gapfree=true
+  emit-errors: 2026-09-28T09:26:16Z dropped 1 event(s): lock not acquired within 2s|
+[steers #5] PASS steers=8 gapfree=true
+== steers on /tmp/fmbase.x0pJ: 2 pass, 3 fail of 5

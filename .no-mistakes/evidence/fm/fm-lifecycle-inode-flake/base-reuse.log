@@ -1,0 +1,6 @@
+[reuse #1] PASS last={"key":"status/t1/s1790000500.2.2/@0","note":"second life"}
+[reuse #2] PASS last={"key":"status/t1/s1790000500.2.2/@0","note":"second life"}
+[reuse #3] PASS last={"key":"status/t1/s1790000500.2.2/@0","note":"second life"}
+[reuse #4] PASS last={"key":"status/t1/s1790000500.2.2/@0","note":"second life"}
+[reuse #5] PASS last={"key":"status/t1/s1790000500.2.2/@0","note":"second life"}
+== reuse on /tmp/fmbase.x0pJ: 5 pass, 0 fail of 5
