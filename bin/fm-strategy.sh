@@ -216,10 +216,6 @@ render_selection() {
   printf 'mode=%s\nproviders=%s\n' "$1" "$2"
 }
 
-profile_text() {
-  jq -r '"\(.harness) \(.model // "(harness default model)") \(.effort // "(harness default effort)")"'
-}
-
 # print_resolved <mode> <providers>: the per-role result.
 print_resolved() {
   local mode=$1 providers=$2 tpl dispatch p mate_h

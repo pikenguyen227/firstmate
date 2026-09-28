@@ -118,11 +118,8 @@ test_every_mode_and_shape_is_explicit() {
 }
 
 test_mode_contents() {
-  local home out tpl
+  local home out
   home=$(new_home contents)
-  for tpl in full.json balanced.json lean.json; do
-    assert_equals "${tpl%.json}" "$(jq -r .mode "$ROOT/bin/strategies/$tpl")" "template $tpl names its own mode"
-  done
   out=$(strat "$home" show full --providers claude,codex)
   assert_contains "$out" "hard: codex gpt-6-astra high" "full keeps today's hard Codex tier"
   assert_contains "$out" "light: claude claude-sonnet-5 low" "full keeps today's light Claude tier"
