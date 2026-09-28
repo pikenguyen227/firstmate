@@ -17,8 +17,8 @@
 # recorded in config/strategy, else detect it from the claude and codex
 # executables on PATH. Every rendered route names an explicit harness, model,
 # and effort from that set only; a profile for a provider outside it is dropped,
-# and a rule left with no profile (the other provider's requested-worker rule)
-# is dropped with it.
+# and a rule left with no profile (the other provider's requested-worker or
+# requested-model rule) is dropped with it.
 #
 # Files set writes, each atomically (temp file in config/ then rename, with the
 # earlier renames restored if a later one fails):
