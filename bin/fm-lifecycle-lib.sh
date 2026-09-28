@@ -8,7 +8,8 @@
 #
 # Best-effort by construction. Every public fm_lifecycle_* entry point runs its
 # body in a subshell with errexit and nounset off, discards stdout and stderr,
-# waits at most FM_LIFECYCLE_LOCK_WAIT seconds for the home lock, and returns 0
+# waits FM_LIFECYCLE_LOCK_WAIT seconds (never a second more) for the home lock
+# (_fm_lifecycle_lock owns how), and returns 0
 # whatever happens, so an emit can never fail, abort, or print into the spawn,
 # teardown, promote, steer, wake-drain, or watcher path that calls it. A failure
 # after the feed directory resolves is appended to <feed-dir>/emit-errors.log
@@ -35,17 +36,19 @@
 # Status transcription keeps its own per-task cursor,
 # state/.<task>.lifecycle-cursor: `version`, `stream` (fixed when this status
 # file is first transcribed by _fm_lifecycle_stream_pick, which anchors every
-# key read from it), `offset`, `ident` (the status file identity from
-# bin/fm-classify-lib.sh), `spawned` (the last spawn_gen recorded as
-# task.spawned), then the folded open-decision set in that library's
-# "<key>\t<verb>\t<note>" form. Each pass reads only bytes past `offset`, and
+# key read from it), `offset`, `ident` (the status file's device, inode, and
+# birth time from _fm_lifecycle_stat), `spawned` (the last spawn_gen recorded
+# as task.spawned), `head` (the log's first line, _fm_lifecycle_head), then the
+# folded open-decision set in bin/fm-classify-lib.sh's "<key>\t<verb>\t<note>"
+# form. Each pass reads only bytes past `offset`, and
 # only through the last complete line unless it is the teardown flush, folds
 # decision lines through the same _fm_decision_fold_line the wake drain uses,
 # and replaces the cursor atomically after the batch lands; the span is read
 # through the lock holder's scratch file <feed-dir>/.span. A pass handles at
 # most FM_LIFECYCLE_TRANSCRIBE_CHUNK lines per lock hold. A replaced status
-# file (new identity) starts a new stream, suffixed with its identity, and a
-# truncated one re-reads from byte 0; both are "once" batches, so a re-read
+# file - a new identity, or the same identity with another first line
+# (_fm_lifecycle_replaced) - starts a new stream, suffixed with its identity,
+# and a truncated one re-reads from byte 0; both are "once" batches, so a re-read
 # never duplicates a key. The wake drain transcribes every task; teardown
 # flushes the tail and pending acknowledgements and records task.torn_down
 # before the task's status, metadata, and inbox are deleted, leaving the cursor
@@ -61,7 +64,7 @@
 # Tunables (env):
 #   FM_LIFECYCLE                    off|0|false|no disables the feed (default on)
 #   FM_LIFECYCLE_DIR                explicit feed directory
-#   FM_LIFECYCLE_LOCK_WAIT          whole seconds to wait for the lock (default 2)
+#   FM_LIFECYCLE_LOCK_WAIT          seconds to wait for the lock (default 2)
 #   FM_LIFECYCLE_ROTATE_BYTES       active-file rotation size (default 16777216)
 #   FM_LIFECYCLE_TRANSCRIBE_CHUNK   status lines per lock hold (default 64)
 #
@@ -75,7 +78,7 @@ _FM_LIFECYCLE_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _FM_LIFECYCLE_DEFAULT_ROOT="$(cd "$_FM_LIFECYCLE_LIB_DIR/.." && pwd)"
 
 FM_LIFECYCLE_SCHEMA='fm-lifecycle.v1'
-FM_LIFECYCLE_CURSOR_VERSION=1
+FM_LIFECYCLE_CURSOR_VERSION=2
 FM_LIFECYCLE_NOTE_MAX=200
 _FM_LIFECYCLE_US=$'\037'
 _FM_LIFECYCLE_CTRL=$'[\001\002\003\004\005\006\007\010\013\014\016\017\020\021\022\023\024\025\026\027\030\031\032\033\034\035\036\037]'
@@ -262,19 +265,28 @@ _fm_lifecycle_queue() {  # <type> <task> <spawn-gen> <key> <at> <at-source> <bac
   _FM_LIFECYCLE_BATCH+=("$__rec")
 }
 
+# The wait is measured in 50 ms polls, so it lasts the whole bound wherever in a
+# wall-clock second it starts; the clock only caps it at one second more when
+# the polls themselves run slow. A held lock is polled with builtin tests, and
+# the full acquire runs only once it is free, or every half second so a dead
+# holder is still recovered, so a freed lock is retried within one poll.
 _fm_lifecycle_lock() {  # <dir>
-  local wait=${FM_LIFECYCLE_LOCK_WAIT:-2} deadline now
+  local wait=${FM_LIFECYCLE_LOCK_WAIT:-2} polls=0 start
   case "$wait" in ''|*[!0-9]*) wait=2 ;; esac
   _fm_lifecycle_require_locks || return 1
   mkdir -p "$1" 2>/dev/null || return 1
   fm_lock_try_acquire "$1/.lock" && return 0
-  deadline=$(( $(date +%s) + wait ))
-  while :; do
+  start=$(date +%s)
+  while [ "$polls" -lt $((wait * 20)) ]; do
     sleep 0.05
+    polls=$((polls + 1))
+    if [ -L "$1/.lock" ] || [ -e "$1/.lock" ]; then
+      [ $((polls % 10)) -eq 0 ] || continue
+    fi
     fm_lock_try_acquire "$1/.lock" && return 0
-    now=$(date +%s)
-    [ "$now" -lt "$deadline" ] || return 1
+    [ $(( $(date +%s) - start )) -le "$wait" ] || return 1
   done
+  return 1
 }
 
 _fm_lifecycle_unlock() {  # <dir>
@@ -445,36 +457,63 @@ _fm_lifecycle_cursor_path() {  # <state> <task> <outvar>
   printf -v "$3" '%s/.%s.lifecycle-cursor' "$1" "$2"
 }
 
-# Globals filled by _fm_lifecycle_cursor_read.
-_FM_LC_VALID=0 _FM_LC_STREAM='' _FM_LC_OFFSET=0 _FM_LC_IDENT='' _FM_LC_SPAWNED='' _FM_LC_OPEN=''
+# Globals filled by _fm_lifecycle_cursor_read. A version 1 cursor, written
+# before `head` existed, reads with its head unknown.
+_FM_LC_VALID=0 _FM_LC_STREAM='' _FM_LC_OFFSET=0 _FM_LC_IDENT='' _FM_LC_SPAWNED='' _FM_LC_HEAD='' _FM_LC_OPEN=''
 _fm_lifecycle_cursor_read() {  # <cursor>
-  local line n=0
-  _FM_LC_VALID=0 _FM_LC_STREAM='' _FM_LC_OFFSET=0 _FM_LC_IDENT='' _FM_LC_SPAWNED='' _FM_LC_OPEN=''
+  local line n=0 fixed=5
+  _FM_LC_VALID=0 _FM_LC_STREAM='' _FM_LC_OFFSET=0 _FM_LC_IDENT='' _FM_LC_SPAWNED='' _FM_LC_HEAD='' _FM_LC_OPEN=''
   [ -f "$1" ] && [ ! -L "$1" ] || return 1
   while IFS= read -r line || [ -n "$line" ]; do
     n=$((n + 1))
     case "$n:$line" in
-      1:version=*) [ "${line#version=}" = "$FM_LIFECYCLE_CURSOR_VERSION" ] || return 1 ;;
+      1:version=1) ;;
+      1:version="$FM_LIFECYCLE_CURSOR_VERSION") fixed=6 ;;
       2:stream=*) _FM_LC_STREAM=${line#stream=} ;;
       3:offset=*) _FM_LC_OFFSET=${line#offset=} ;;
       4:ident=*) _FM_LC_IDENT=${line#ident=} ;;
       5:spawned=*) _FM_LC_SPAWNED=${line#spawned=} ;;
       [1-5]:*) return 1 ;;
-      *) [ -n "$line" ] && _FM_LC_OPEN="$_FM_LC_OPEN$line"$'\n' ;;
+      *)
+        if [ "$n" = "$fixed" ]; then
+          case "$line" in head=*) _FM_LC_HEAD=${line#head=} ;; *) return 1 ;; esac
+        elif [ -n "$line" ]; then
+          _FM_LC_OPEN="$_FM_LC_OPEN$line"$'\n'
+        fi
+        ;;
     esac
   done < "$1"
-  [ "$n" -ge 5 ] || return 1
+  [ "$n" -ge "$fixed" ] || return 1
   _fm_lifecycle_uint_ok "$_FM_LC_OFFSET" || return 1
   _FM_LC_VALID=1
 }
 
-_fm_lifecycle_cursor_write() {  # <cursor> <stream> <offset> <ident> <spawned> <open>
+_fm_lifecycle_cursor_write() {  # <cursor> <stream> <offset> <ident> <spawned> <head> <open>
   local tmp="$1.tmp.$$"
   {
-    printf 'version=%s\nstream=%s\noffset=%s\nident=%s\nspawned=%s\n' \
-      "$FM_LIFECYCLE_CURSOR_VERSION" "$2" "$3" "$4" "$5"
-    [ -z "$6" ] || printf '%s' "$6"
+    printf 'version=%s\nstream=%s\noffset=%s\nident=%s\nspawned=%s\nhead=%s\n' \
+      "$FM_LIFECYCLE_CURSOR_VERSION" "$2" "$3" "$4" "$5" "$6"
+    [ -z "$7" ] || printf '%s' "$7"
   } > "$tmp" 2>/dev/null && mv -f "$tmp" "$1"
+}
+
+# A status log's head: its first line, which an append-only log never changes
+# once written, as "+<line>" cut to 512 bytes, or empty until that line ends.
+# Returns 1 when the log cannot be opened.
+_fm_lifecycle_head() {  # <file> <outvar>
+  local __h='' __rc=1 LC_ALL=C
+  { IFS= read -r __h; __rc=$?; } < "$1" 2>/dev/null || return 1
+  if [ "$__rc" = 0 ]; then printf -v "$2" '+%s' "${__h:0:512}"; else printf -v "$2" '%s' ''; fi
+}
+
+# 0 when the cursor just read follows a status log and the log with this
+# identity and head is another one. A recreated log can keep the old one's
+# identity - Linux hands a just-freed inode to the next file, and birth time
+# is read in whole seconds - so a changed head marks it replaced as well.
+_fm_lifecycle_replaced() {  # <cur-ident> <cur-head>
+  [ -n "$_FM_LC_IDENT" ] || return 1
+  [ "$_FM_LC_IDENT" = "$1" ] || return 0
+  [ -n "$_FM_LC_HEAD" ] && [ "$_FM_LC_HEAD" != "$2" ]
 }
 
 # "<verb>\t<note>" for <key> in an open set, or 1 when the key is not open.
@@ -492,20 +531,26 @@ EOF
 # by _fm_lifecycle_cursor_read (_FM_LC_VALID=0 when there is none): the cursor's
 # stream while it follows the log; otherwise a new stream anchored on the last
 # recorded spawn_gen, else <gen>, suffixed with the log's identity when it
-# replaced the one the cursor followed. Anchoring on the recorded spawn_gen
+# replaced the one the cursor followed, plus its head's checksum when that
+# identity names the replaced stream again. Anchoring on the recorded spawn_gen
 # rather than the caller's <gen> is what lets a reader outside the writer
 # predict the stream before the first pass (fm_lifecycle_status_stream).
-_fm_lifecycle_stream_pick() {  # <cur-ident> <gen> <outvar>
-  local __base
+_fm_lifecycle_stream_pick() {  # <cur-ident> <cur-head> <gen> <outvar>
+  local __base __s __crc
   if [ "$_FM_LC_VALID" != 1 ]; then
-    printf -v "$3" '%s' "${2:-unknown}"
+    printf -v "$4" '%s' "${3:-unknown}"
     return 0
   fi
-  __base=${_FM_LC_SPAWNED:-${2:-unknown}}
-  if [ -n "$_FM_LC_IDENT" ] && [ "$_FM_LC_IDENT" != "$1" ]; then
-    printf -v "$3" '%s~%s' "$__base" "${1##*:}"
+  __base=${_FM_LC_SPAWNED:-${3:-unknown}}
+  if _fm_lifecycle_replaced "$1" "$2"; then
+    __s="$__base~${1##*:}"
+    if [ "$__s" = "$_FM_LC_STREAM" ]; then
+      __crc=$(printf '%s' "$2" | cksum) || return 1
+      __s="$__s.${__crc%% *}"
+    fi
+    printf -v "$4" '%s' "$__s"
   else
-    printf -v "$3" '%s' "${_FM_LC_STREAM:-$__base}"
+    printf -v "$4" '%s' "${_FM_LC_STREAM:-$__base}"
   fi
 }
 
@@ -557,7 +602,7 @@ EOF
 # <final>=1 also consumes a trailing partial line (teardown flush); <gen> overrides
 # the attributed spawn_gen (a relaunch flushing its predecessor's lines).
 _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> <backfill>
-  local state=$1 dir=$2 task=$3 final=$4 gen=$5 bf=$6 f cursor cur_ident size once=0 stream offset open spawned
+  local state=$1 dir=$2 task=$3 final=$4 gen=$5 bf=$6 f cursor cur_ident cur_head size once=0 stream offset open spawned
   local span chunk_max lines=0 line len off verb at src note dkey until data before kind resolve held unstamped
   local rest end status=0 chunk_file
   f="$state/$task.status"
@@ -565,11 +610,12 @@ _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> 
   [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] || return 0
   _fm_lifecycle_require_classify || return 1
   _fm_lifecycle_stat "$f" cur_ident size || return 1
+  _fm_lifecycle_head "$f" cur_head || return 1
   _fm_lifecycle_meta_load "$state/$task.meta"
   [ -n "$gen" ] || _fm_lifecycle_mget spawn_gen gen
   if _fm_lifecycle_cursor_read "$cursor"; then
     offset=$_FM_LC_OFFSET open=$_FM_LC_OPEN spawned=$_FM_LC_SPAWNED
-    if [ -n "$_FM_LC_IDENT" ] && [ "$_FM_LC_IDENT" != "$cur_ident" ]; then
+    if _fm_lifecycle_replaced "$cur_ident" "$cur_head"; then
       offset=0 open='' once=1
     elif [ "$offset" -gt "$size" ]; then
       offset=0 open='' once=1
@@ -578,11 +624,11 @@ _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> 
     [ -e "$cursor" ] && once=1
     offset=0 open='' spawned=''
   fi
-  _fm_lifecycle_stream_pick "$cur_ident" "$gen" stream
+  _fm_lifecycle_stream_pick "$cur_ident" "$cur_head" "$gen" stream || return 1
   [ "$bf" = true ] && once=1
   if [ "$offset" -ge "$size" ]; then
-    [ "$_FM_LC_IDENT" = "$cur_ident" ] && [ "$_FM_LC_VALID" = 1 ] && return 0
-    _fm_lifecycle_cursor_write "$cursor" "$stream" "$offset" "$cur_ident" "$spawned" "$open" || return 1
+    [ "$_FM_LC_IDENT" = "$cur_ident" ] && [ "$_FM_LC_HEAD" = "$cur_head" ] && [ "$_FM_LC_VALID" = 1 ] && return 0
+    _fm_lifecycle_cursor_write "$cursor" "$stream" "$offset" "$cur_ident" "$spawned" "$cur_head" "$open" || return 1
     return 0
   fi
   # One scratch file per home is enough: only the lock holder transcribes.
@@ -651,7 +697,7 @@ _fm_lifecycle_transcribe_chunk_locked() {  # <state> <dir> <task> <final> <gen> 
     off=$end
   done
   _fm_lifecycle_write_batch_locked "$dir" "$once" || { _FM_LIFECYCLE_BATCH=(); return 1; }
-  _fm_lifecycle_cursor_write "$cursor" "$stream" "$off" "$cur_ident" "$spawned" "$open" || return 1
+  _fm_lifecycle_cursor_write "$cursor" "$stream" "$off" "$cur_ident" "$spawned" "$cur_head" "$open" || return 1
   return "$status"
 }
 
@@ -684,20 +730,23 @@ _fm_lifecycle_transcribe() {  # <state> <dir> <task> <final> <gen> <backfill> [<
 # 0 when the cursor just read (_fm_lifecycle_cursor_read) is bound to the task's
 # current status log.
 _fm_lifecycle_cursor_follows() {  # <state> <task>
-  local ident size
+  local ident size head
   [ -n "$_FM_LC_IDENT" ] && [ -f "$1/$2.status" ] || return 1
   _fm_lifecycle_stat "$1/$2.status" ident size || return 1
-  [ "$ident" = "$_FM_LC_IDENT" ]
+  _fm_lifecycle_head "$1/$2.status" head || return 1
+  ! _fm_lifecycle_replaced "$ident" "$head"
 }
 
 # 0 when a status file has bytes past its lifecycle cursor (cheap pre-check).
 _fm_lifecycle_has_new_bytes() {  # <state> <task>
-  local f="$1/$2.status" cursor size ident
+  local f="$1/$2.status" cursor size ident head
   [ -f "$f" ] && [ ! -L "$f" ] || return 1
   _fm_lifecycle_cursor_path "$1" "$2" cursor
   _fm_lifecycle_cursor_read "$cursor" || return 0
   _fm_lifecycle_stat "$f" ident size || return 0
-  [ "$size" != "$_FM_LC_OFFSET" ] || [ "$ident" != "$_FM_LC_IDENT" ]
+  [ "$size" = "$_FM_LC_OFFSET" ] && [ "$ident" = "$_FM_LC_IDENT" ] || return 0
+  _fm_lifecycle_head "$f" head || return 0
+  _fm_lifecycle_replaced "$ident" "$head"
 }
 
 # --- steering -------------------------------------------------------------------------
@@ -835,9 +884,9 @@ _fm_lifecycle_task_spawned_body() {  # <state> <task> <relaunch>
     # current status log; one left by an earlier task of the same id restarts.
     if _fm_lifecycle_cursor_read "$cursor" \
       && { [ "$relaunch" = true ] || _fm_lifecycle_cursor_follows "$state" "$task"; }; then
-      _fm_lifecycle_cursor_write "$cursor" "$_FM_LC_STREAM" "$_FM_LC_OFFSET" "$_FM_LC_IDENT" "$gen" "$_FM_LC_OPEN"
+      _fm_lifecycle_cursor_write "$cursor" "$_FM_LC_STREAM" "$_FM_LC_OFFSET" "$_FM_LC_IDENT" "$gen" "$_FM_LC_HEAD" "$_FM_LC_OPEN"
     else
-      _fm_lifecycle_cursor_write "$cursor" "" 0 "" "$gen" ""
+      _fm_lifecycle_cursor_write "$cursor" "" 0 "" "$gen" "" ""
     fi
   else
     _FM_LIFECYCLE_BATCH=()
@@ -1036,12 +1085,13 @@ fm_lifecycle_snapshot_json() {  # <state>
 # log cannot be read; bin/fm-fleet-snapshot.sh samples it around its own copy
 # of the log to publish the feed key of the line it reports.
 fm_lifecycle_status_stream() {  # <state> <task> <gen>
-  local cursor ident size stream
+  local cursor ident size head stream
   [ -f "$1/$2.status" ] && [ ! -L "$1/$2.status" ] || return 1
   _fm_lifecycle_stat "$1/$2.status" ident size || return 1
+  _fm_lifecycle_head "$1/$2.status" head || return 1
   _fm_lifecycle_cursor_path "$1" "$2" cursor
   _fm_lifecycle_cursor_read "$cursor" 2>/dev/null || _FM_LC_VALID=0
-  _fm_lifecycle_stream_pick "$ident" "$3" stream
+  _fm_lifecycle_stream_pick "$ident" "$head" "$3" stream || return 1
   printf '%s\t%s\n' "$ident" "$stream"
 }
 
@@ -1092,9 +1142,9 @@ fm_lifecycle_backfill() {  # <state>
       if _fm_lifecycle_write_batch_locked "$dir" 1; then
         if _fm_lifecycle_cursor_read "$cursor"; then
           [ -n "$_FM_LC_SPAWNED" ] \
-            || _fm_lifecycle_cursor_write "$cursor" "$_FM_LC_STREAM" "$_FM_LC_OFFSET" "$_FM_LC_IDENT" "$gen" "$_FM_LC_OPEN"
+            || _fm_lifecycle_cursor_write "$cursor" "$_FM_LC_STREAM" "$_FM_LC_OFFSET" "$_FM_LC_IDENT" "$gen" "$_FM_LC_HEAD" "$_FM_LC_OPEN"
         else
-          _fm_lifecycle_cursor_write "$cursor" "" 0 "" "$gen" ""
+          _fm_lifecycle_cursor_write "$cursor" "" 0 "" "$gen" "" ""
         fi
       else
         _FM_LIFECYCLE_BATCH=()

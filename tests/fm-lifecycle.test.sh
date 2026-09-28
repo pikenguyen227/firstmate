@@ -251,6 +251,34 @@ test_emit_never_disturbs_the_caller() {
   pass "best effort: an unwritable feed or a held lock never fails, delays unboundedly, or prints into the caller"
 }
 
+# The lock wait lasts its whole bound wherever it starts within a second: an
+# emit that first finds the lock held late in a wall-clock second, by a holder
+# that lets go after 1.5 of its 2 seconds, still lands. Starting at .9 of a
+# second pins the case a whole-second deadline got wrong (giving up after ~1.1s).
+test_lock_wait_lasts_its_full_bound() {
+  local home state lock
+  home=$(new_home lockwait)
+  state="$home/state"
+  lock="$home/data/lifecycle/.lock"
+  fm_write_meta "$state/t1.meta" "kind=ship" "spawn_gen=s1790000000.3.3"
+  lc "$home" fm_lifecycle_task_spawned "$state" t1 0
+  mkdir -p "$lock"
+  printf '%s\n' "$$" > "$lock/pid"
+  FM_HOME="$home" FM_LIFECYCLE_LOCK_WAIT=2 bash -c '
+    set -eu
+    . "$1/bin/fm-wake-lib.sh"; . "$1/bin/fm-lifecycle-lib.sh"
+    perl -MTime::HiRes=time,sleep -e "my \$f = time - int(time); sleep(\$f < 0.9 ? 0.9 - \$f : 1.9 - \$f)"
+    ( sleep 1.5; rm -rf "$3" ) &
+    fm_lifecycle_task_reclassified "$2" t1 scout ship local-only off
+    wait
+  ' _ "$ROOT" "$state" "$lock"
+  assert_absent "$home/data/lifecycle/emit-errors.log" "an emit must not give up before its lock wait elapses"
+  assert_equals 1 "$(count_type "$home" task.reclassified t1)" \
+    "an emit whose lock is freed within its wait should be recorded"
+  assert_feed_valid "$home" "lock wait"
+  pass "best effort: the lock wait lasts its full bound wherever in a second it starts"
+}
+
 # --- 3. transcription through the real wake drain ------------------------------------
 
 run_drain() {  # <home>
@@ -355,6 +383,83 @@ test_reused_task_id_starts_fresh() {
     .key == "status/t1/s1790000500.2.2/@0" and .task.spawn_gen == "s1790000500.2.2" and .data.note == "second life"' >/dev/null \
     || fail "a reused task id should start a fresh stream: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,data}')"
   pass "drain: a task id reused after teardown starts a fresh stream"
+}
+
+# A recreated status log can keep the old one's device, inode, and birth time:
+# Linux hands a just-freed inode to the next file, and birth time is read in
+# whole seconds. Rewriting the log in place yields exactly that identity on every
+# platform, so these cases pin it deterministically: the new log must still be a
+# new stream, whether the task id was reused or the log was replaced mid-life,
+# and whether the new log is shorter or longer than the transcribed part.
+test_recreated_log_with_the_same_identity_is_a_new_stream() {
+  local home state status predicted key
+  home=$(new_home sameident)
+  state="$home/state"
+  status="$state/t1.status"
+  # A task id reused after teardown, before the old cursor was swept.
+  fm_write_meta "$state/t1.meta" "kind=ship" "spawn_gen=s1790000000.1.1"
+  lc "$home" fm_lifecycle_task_spawned "$state" t1 0
+  printf '%s\n' 'working [at=1790000010]: first life' 'working [at=1790000011]: still first' > "$status"
+  run_drain "$home" >/dev/null
+  lc "$home" fm_lifecycle_task_torn_down "$state" t1 0 remove "" ""
+  rm -f "$state/t1.meta"
+  fm_write_meta "$state/t1.meta" "kind=ship" "spawn_gen=s1790000500.2.2"
+  printf '%s\n' 'working [at=1790000510]: second life' > "$status"
+  lc "$home" fm_lifecycle_task_spawned "$state" t1 0
+  run_drain "$home" >/dev/null
+  assert_feed_valid "$home" "same identity, reused id"
+  feed_json "$home" | jq -e '[.[] | select(.type == "task.status")][-1] |
+    .key == "status/t1/s1790000500.2.2/@0" and .task.spawn_gen == "s1790000500.2.2" and .data.note == "second life"' >/dev/null \
+    || fail "a reused task id whose new log kept the old identity should start a fresh stream: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,data}')"
+  # Replaced mid-life by a longer log: every line of it is recorded, none is
+  # skipped as already read or read from the middle of a line.
+  printf '%s\n' 'working [at=1790000600]: replacement one' 'working [at=1790000601]: replacement two' \
+    'working [at=1790000602]: replacement three' > "$status"
+  predicted=$(lc "$home" fm_lifecycle_status_stream "$state" t1 s1790000500.2.2)
+  predicted=${predicted#*$'\t'}
+  run_drain "$home" >/dev/null
+  assert_feed_valid "$home" "same identity, longer replacement"
+  feed_json "$home" | jq -e '[.[] | select(.type == "task.status")][-3:] | map(.data.note) ==
+    ["replacement one","replacement two","replacement three"]' >/dev/null \
+    || fail "a longer log with the old identity should be transcribed whole: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,note:.data.note}')"
+  key=$(feed_json "$home" | jq -r '[.[] | select(.type == "task.status")][-3].key')
+  case "$key" in
+    status/t1/s1790000500.2.2~*/@0) ;;
+    *) fail "a replaced log with the old identity should be keyed under a new stream, got $key" ;;
+  esac
+  assert_equals "status/t1/$predicted/@0" "$key" "the published stream prediction should name the replacement's stream"
+  # Replaced again by a shorter log: a new stream again, distinct from the last.
+  printf '%s\n' 'working [at=1790000700]: third log' > "$status"
+  run_drain "$home" >/dev/null
+  assert_feed_valid "$home" "same identity, shorter replacement"
+  feed_json "$home" | jq -e --arg prev "$key" '[.[] | select(.type == "task.status")][-1] |
+    .data.note == "third log" and (.key | endswith("/@0")) and .key != $prev' >/dev/null \
+    || fail "a shorter log with the old identity should be recorded under yet another stream: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | {key,note:.data.note}')"
+  assert_equals 7 "$(count_type "$home" task.status t1)" "every line of every log should be recorded exactly once"
+  pass "drain: a recreated log that keeps the old identity still starts a new stream"
+}
+
+# A cursor written before the first-line check (version 1, no head line) is
+# still followed after an upgrade: the drain continues its stream from its
+# offset rather than re-reading the log.
+test_version_1_cursor_is_still_followed() {
+  local home state cursor
+  home=$(new_home v1cursor)
+  state="$home/state"
+  cursor="$state/.t1.lifecycle-cursor"
+  fm_write_meta "$state/t1.meta" "kind=ship" "spawn_gen=s1790000000.4.4"
+  printf '%s\n' 'working [at=1790000010]: before upgrade' > "$state/t1.status"
+  run_drain "$home" >/dev/null
+  assert_equals 1 "$(count_type "$home" task.status t1)" "the first line should be recorded"
+  { printf 'version=1\n'; sed -n '2,5p' "$cursor"; sed '1,6d' "$cursor"; } > "$cursor.v1"
+  mv -f "$cursor.v1" "$cursor"
+  printf '%s\n' 'working [at=1790000020]: after upgrade' >> "$state/t1.status"
+  run_drain "$home" >/dev/null
+  assert_feed_valid "$home" "version 1 cursor"
+  feed_json "$home" | jq -e '[.[] | select(.type == "task.status")] | map(.key) ==
+    ["status/t1/s1790000000.4.4/@0", "status/t1/s1790000000.4.4/@40"]' >/dev/null \
+    || fail "a version 1 cursor should keep its stream and offset: $(feed_json "$home" | jq -c '.[] | select(.type == "task.status") | .key')"
+  pass "drain: a cursor written before the first-line check is still followed after an upgrade"
 }
 
 # --- 4. the emit sites, end to end on one task ---------------------------------------------
@@ -737,9 +842,12 @@ test_writer_envelope_and_gap_free_seq
 test_writer_fences_a_torn_line_and_rotates
 test_disabled_or_foreign_state_emits_nothing
 test_emit_never_disturbs_the_caller
+test_lock_wait_lasts_its_full_bound
 test_drain_transcribes_status_and_decisions
 test_chunked_and_replaced_status_logs
 test_reused_task_id_starts_fresh
+test_recreated_log_with_the_same_identity_is_a_new_stream
+test_version_1_cursor_is_still_followed
 test_emit_sites_end_to_end
 test_snapshot_carries_the_lifecycle_pointer
 test_snapshot_status_line_matches_its_feed_event
