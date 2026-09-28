@@ -315,7 +315,7 @@ Do not hand-edit, commit, or fix findings yourself while a run is active - the p
 
 At each gate, drive it with one \`no-mistakes axi run\` or \`no-mistakes axi respond\` call and act on that call's return.
 While a drive call is outstanding, do not loop on \`no-mistakes axi status\`, \`no-mistakes axi logs\`, or \`sleep\`.
-Use status reads only for a stated diagnostic reason, such as investigating a daemon problem.
+Use status reads only for a stated diagnostic reason, such as investigating a daemon problem, or to read the finished outcome when a reattach refuses because no run is active.
 
 One drive call blocks until the next gate or outcome, which routinely outlives what your harness lets a single command run: Claude Code kills a command at ten minutes maximum, while one fix round is capped around thirty minutes and up to three rounds chain.
 So background the drive call instead of sitting in one blocking hold your harness will kill, and read its return when it finishes.
