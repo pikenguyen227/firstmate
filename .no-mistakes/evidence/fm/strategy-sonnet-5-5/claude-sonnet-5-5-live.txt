@@ -1,0 +1,4 @@
+$ claude --version
+2.1.285 (Claude Code)
+$ claude -p --model claude-sonnet-5-5 --output-format json "Reply with exactly: OK"
+{"is_error":false,"result":"OK","models":["claude-sonnet-5-5"]}

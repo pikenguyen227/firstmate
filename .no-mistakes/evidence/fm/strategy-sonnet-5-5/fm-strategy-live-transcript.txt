@@ -1,0 +1,103 @@
+### S1: show each mode (target commit templates), providers claude,codex
+$ bin/fm-strategy.sh show full --providers claude,codex | grep -E 'light|coordinator|claude:'
+  claude: claude-opus-5-5 effort high
+  light: claude claude-sonnet-5-5 low
+  light: codex gpt-6-luna medium
+    claude:
+$ bin/fm-strategy.sh show balanced --providers claude,codex | grep -E 'light|coordinator|claude:'
+  claude: claude-opus-5-5 effort high
+  light: claude claude-sonnet-5-5 low
+  light: codex gpt-6-luna medium
+    claude:
+$ bin/fm-strategy.sh show lean --providers claude,codex | grep -E 'light|coordinator|claude:'
+  claude: claude-opus-5-5 effort high
+  light: claude claude-sonnet-5-5 low
+  light: codex gpt-6-luna medium
+    claude:
+
+### S1b: Claude-only provider set
+$ show full --providers claude
+  light: claude claude-sonnet-5-5 low
+$ show balanced --providers claude
+  light: claude claude-sonnet-5-5 low
+$ show lean --providers claude
+  light: claude claude-sonnet-5-5 low
+
+### S2 reproduce: home set with OLD templates (base 736e4fd), then operator moves light tier to claude-sonnet-5-5
+written: crew-dispatch.json secondmate-harness strategy fresh-start.json
+stub arm
+  stub 
+light rule now:
+[{"harness":"claude","model":"claude-sonnet-5-5","effort":"low","floor":{"scope":"all_models","min_percent":20}},{"harness":"codex","model":"gpt-6-luna","effort":"medium"}]
+
+$ <base 736e4fd> fm-strategy.sh status   (before the change)
+strategy: balanced (providers: claude,codex)
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+drift:
+  config/crew-dispatch.json differs from balanced
+  run bin/fm-strategy.sh set balanced to see and apply the difference
+recorded autonomy: balanced
+fresh-start check: missing; rerun bin/fm-strategy.sh set balanced --yes
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show balanced
+  /quiet is requested; the coordinator applies it through strategy-autonomy
+exit=0
+
+$ bin/fm-strategy.sh status   (target 68ce093, after the change)
+strategy: balanced (providers: claude,codex)
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+drift:
+  none
+recorded autonomy: balanced
+fresh-start check: missing; rerun bin/fm-strategy.sh set balanced --yes
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show balanced
+  /quiet is requested; the coordinator applies it through strategy-autonomy
+exit=0
+
+### S3 adversarial: home still on claude-sonnet-5 light tier must now report drift
+strategy: balanced (providers: claude,codex)
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+drift:
+  config/crew-dispatch.json differs from balanced
+  run bin/fm-strategy.sh set balanced to see and apply the difference
+recorded autonomy: balanced
+fresh-start check: missing; rerun bin/fm-strategy.sh set balanced --yes
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show balanced
+  /quiet is requested; the coordinator applies it through strategy-autonomy
+exit=0
+
+### S4: set balanced --dry-run shows the upgrade diff, then --yes applies and status is clean
+20:  light: claude claude-sonnet-5-5 low
+43:-          "model": "claude-sonnet-5",
+44:+          "model": "claude-sonnet-5-5",
+stub arm
+  stub 
+strategy: balanced (providers: claude,codex)
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up
+[{"harness":"claude","model":"claude-sonnet-5-5","effort":"low","floor":{"scope":"all_models","min_percent":20}},{"harness":"codex","model":"gpt-6-luna","effort":"medium"}]
