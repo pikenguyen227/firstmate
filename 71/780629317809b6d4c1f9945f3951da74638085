@@ -1,0 +1,30 @@
+.agents/skills/quota-array-dispatch/SKILL.md
+  s_82064d4d4512e9::t_72e0b321046263 32
+bin/fm-quota-choose.sh
+  s_82064d4d4512e9::t_adc7d155efd4a5 37
+  s_82064d4d4512e9::t_3b5b9b6375d3bf 38
+docs/verification/agents-md-rule-map.md
+  s_82064d4d4512e9::t_ffe32a115d3870 244,249
+docs/verification/agents-md-scenario-answers.md
+  s_82064d4d4512e9::t_ffe32a115d3870 7
+docs/verification/agents-md-size.md
+  s_82064d4d4512e9::t_ffe32a115d3870 15-17
+AGENTS.md
+  s_82064d4d4512e9::t_72e0b321046263 213-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "71780629317809b6d4c1f9945f3951da74638085",
+  "prompts": {},
+  "sessions": {
+    "s_82064d4d4512e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82a58045-3aeb-4039-9176-87c3c058d5cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
