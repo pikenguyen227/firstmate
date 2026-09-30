@@ -1272,7 +1272,7 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Primary coordinator on Claude | Opus 5.5, high effort | same | same |
 | Primary coordinator on Codex | Sol, high effort | same | same |
 | Second mates | allowed | optional | off by default; one coordinator |
-| Light / standard / hard workers on Claude | Sonnet 5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
+| Light / standard / hard workers on Claude | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
 | Light / standard / hard workers on Codex | Luna medium / Sol medium / Astra high | Luna medium / Sol medium / Sol high | same as balanced |
 | A requested Claude or Codex worker | Opus 5.5 high or Sol high | same | same |
 | A requested exact Claude or Codex model | that model on claude or codex, high effort | same | same |
