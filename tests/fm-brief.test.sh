@@ -423,8 +423,14 @@ test_no_mistakes_dod_green_detection() {
     "no-mistakes DOD must say axi status cannot show a green PR in merge monitoring"
   assert_grep "never wait on a status poll for the next gate or outcome" "$brief" \
     "no-mistakes DOD must forbid waiting on a status poll"
-  assert_grep "reattach at once by re-running \`no-mistakes axi run\` without flags" "$brief" \
-    "no-mistakes DOD must reattach the drive call after a bounded return"
+  assert_grep "At each gate, drive it with one \`no-mistakes axi run\` or \`no-mistakes axi respond\` call and act on that call's return" "$brief" \
+    "no-mistakes DOD must make each run or respond call drive its gate"
+  assert_grep "While a drive call is outstanding, do not loop on \`no-mistakes axi status\`, \`no-mistakes axi logs\`, or \`sleep\`" "$brief" \
+    "no-mistakes DOD must forbid polling while a drive call is outstanding"
+  assert_grep "Before the run reaches its outcome, use status reads only for a stated diagnostic reason, such as investigating a daemon problem" "$brief" \
+    "no-mistakes DOD must limit status reads before the outcome to diagnostics"
+  assert_grep "reattach at once by re-running \`no-mistakes axi run\` without flags, never by repeating a \`respond\` call" "$brief" \
+    "no-mistakes DOD must reattach the drive call after a bounded return without repeating respond"
   assert_grep "once checks are green it returns \`checks-passed\` immediately" "$brief" \
     "no-mistakes DOD must say a reattach reports an already-green PR"
   assert_no_grep "poll \`no-mistakes axi status\` from a separate call" "$brief" \
