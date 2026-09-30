@@ -130,7 +130,7 @@ test_mode_contents() {
   home=$(new_home contents)
   out=$(strat "$home" show full --providers claude,codex)
   assert_contains "$out" "hard: codex gpt-6-astra high" "full keeps today's hard Codex tier"
-  assert_contains "$out" "light: claude claude-sonnet-5 low" "full keeps today's light Claude tier"
+  assert_contains "$out" "light: claude claude-sonnet-5-5 low" "full keeps today's light Claude tier"
   assert_contains "$out" "codex-requested: codex gpt-6-sol high" "a requested Codex worker is pinned to Sol high"
   assert_contains "$out" "claude: claude-opus-5-5 effort high" "the Claude coordinator stays on Opus"
   assert_contains "$out" "codex -m gpt-6-sol -c model_reasoning_effort=\"high\" -c project_doc_max_bytes=" \
@@ -144,7 +144,7 @@ test_mode_contents() {
     assert_contains "$out" "hard: claude claude-opus-5-5 high" "$mode keeps the hard Claude tier on Opus high"
     assert_contains "$out" "claude: claude-opus-5-5 effort high" "$mode keeps an Opus coordinator"
     assert_contains "$out" "codex: gpt-6-sol effort high" "$mode runs a Codex coordinator on Sol high"
-    assert_not_contains "$out" "claude-sonnet-5 effort" "$mode never runs a Sonnet coordinator"
+    assert_not_contains "$out" "claude-sonnet-5-5 effort" "$mode never runs a Sonnet coordinator"
   done
   out=$(strat "$home" show lean --providers codex)
   assert_contains "$out" "light: codex gpt-6-luna medium" "lean's light Codex tier is Luna"
