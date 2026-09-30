@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_4e82bfbc9e702b::t_fcf19e7d07ff2e 118,122,223,227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6522d94699ba4192419948dbb991182cdb1b2765",
+  "prompts": {},
+  "sessions": {
+    "s_4e82bfbc9e702b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6de46ef-6540-4652-bebb-94350dc93827",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
