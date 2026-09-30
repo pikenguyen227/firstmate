@@ -1,0 +1,8 @@
+== fm_tasks_axi (bounded backlog transition path) under /bin/bash -u, FM_TASKS_AXI_TIMEOUT=2, stub tasks-axi ==
+tasks-axi-stub args: move T-1 In flight
+rc_move=0
+rc_hang=124 elapsed=2s
+reported as timeout
+
+== direct exec (no subshell): script whose last command is fm_exec_timed ==
+rc_direct=124 elapsed=2s

@@ -1,0 +1,21 @@
+== /bin/bash 3.2: fm_backend_source tmux ==
+rc=0 functions=19
+PATH-intact
+== /bin/bash 3.2: fm_backend_source zellij ==
+rc=0 functions=31
+PATH-intact
+== /bin/bash 3.2: fm_backend_source herdr ==
+rc=0 functions=118
+PATH-intact
+== /bin/bash 3.2: fm_backend_source cmux ==
+rc=0 functions=31
+PATH-intact
+== /bin/bash 3.2: fm_backend_source orca ==
+rc=0 functions=21
+PATH-intact
+== zsh: fm_backend_source zellij (unsupported; expect clean non-zero) ==
+rc=1
+PATH-intact
+== zsh: fm_backend_source herdr (unsupported; expect clean non-zero) ==
+rc=1
+PATH-intact

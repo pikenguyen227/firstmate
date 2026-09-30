@@ -1,0 +1,12 @@
+== HEAD bin/fm-timeout-lib.sh under /bin/bash -u ==
+BASH_VERSION=3.2.57(1)-release BASHPID=<unset>
+ok-bounded
+rc_ok=0
+rc_timeout=124 elapsed=3s
+
+== pre-fix (b607a13) fm-timeout-lib.sh under /bin/bash -u ==
+BASH_VERSION=3.2.57(1)-release BASHPID=<unset>
+/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.pxWCsuCJEo/old-timeout-lib.sh: line 224: BASHPID: unbound variable
+rc_ok=127
+/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/tmp.pxWCsuCJEo/old-timeout-lib.sh: line 224: BASHPID: unbound variable
+rc_timeout=127 elapsed=0s
