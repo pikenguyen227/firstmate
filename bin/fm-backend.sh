@@ -622,7 +622,7 @@ fm_backend_source_readable() {  # <path>
 }
 
 fm_backend_source() {  # <name>
-  local name=$1 adapter rel path siblings
+  local name=$1 adapter rel path siblings rest
   fm_backend_validate "$name" || return 1
   adapter="$FM_BACKEND_LIB_DIR/backends/$name.sh"
   case "$name" in
@@ -646,8 +646,12 @@ fm_backend_source() {  # <name>
       ;;
   esac
   fm_backend_source_readable "$adapter" || return 1
-  # shellcheck disable=SC2086 # sibling names are a fixed space-separated list
-  for rel in $siblings; do
+  # Split by hand: zsh does not word-split an unquoted $siblings.
+  rest=$siblings
+  while [ -n "$rest" ]; do
+    rel=${rest%% *}
+    rest=${rest#"$rel"}
+    rest=${rest# }
     path="$FM_BACKEND_LIB_DIR/$rel"
     fm_backend_source_readable "$path" || return 1
   done

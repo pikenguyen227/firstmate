@@ -221,7 +221,9 @@ fm_exec_timed() {  # <seconds> <grace-seconds> <command...>
     exit 125
   fi
   owner=${FM_EXEC_TIMED_OWNER_PID:-$$}
-  [ "$owner" != "$BASHPID" ] || owner=$PPID
+  # Stock macOS bash 3.2 has no BASHPID; a child bash's PPID is this process.
+  # shellcheck disable=SC2016 # $PPID is expanded by the child bash
+  [ "$owner" != "${BASHPID:-$(exec "$BASH" -c 'echo "$PPID"')}" ] || owner=$PPID
   unset FM_EXEC_TIMED_OWNER_PID
   if command -v perl >/dev/null 2>&1; then
     exec perl -MPOSIX=WNOHANG,setpgid -MTime::HiRes=time -e '
