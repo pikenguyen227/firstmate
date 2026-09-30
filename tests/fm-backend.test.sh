@@ -502,17 +502,23 @@ test_backend_validate_refuses_unknown() {
 }
 
 test_backend_source_shell_portable() {
-  local out status
-  # zsh does not word-split unquoted expansions; sourcing fm-backend.sh from
-  # an interactive zsh session must still recognize known backend names.
+  local out status name
+  # zsh adapter loading is unsupported: fm_backend_source must refuse known
+  # backends under zsh rather than report a half-loaded adapter, and must
+  # still reject unknown backend names.
   if command -v zsh >/dev/null 2>&1; then
-    zsh -c "cd '$ROOT' && source bin/fm-backend.sh && fm_backend_source herdr && whence -w fm_backend_herdr_capture >/dev/null" 2>/dev/null \
-      || fail "zsh: fm_backend_source herdr should load the adapter when sourced"
+    for name in herdr zellij; do
+      out=$(zsh -c "cd '$ROOT' && source bin/fm-backend.sh && fm_backend_source $name; rc=\$?; whence -w fm_backend_${name}_session >/dev/null && echo half-loaded; exit \$rc" 2>&1) \
+        && fail "zsh: fm_backend_source $name should refuse instead of reporting a load (output: $out)"
+      case "$out" in
+        *half-loaded*|*"command not found"*) fail "zsh: fm_backend_source $name left a partial adapter behind (output: $out)" ;;
+      esac
+    done
     out=$(zsh -c "cd '$ROOT' && source bin/fm-backend.sh && fm_backend_source bogus" 2>&1) \
       && fail "zsh: fm_backend_source bogus should fail"
     assert_contains "$out" "unknown backend 'bogus'" \
       "zsh: fm_backend_source did not reject bogus with the expected error"
-    pass "zsh: fm_backend_source recognizes known backends and rejects unknown ones"
+    pass "zsh: fm_backend_source refuses adapters it cannot fully load and rejects unknown ones"
   else
     pass "zsh: shell-portable backend matching skipped (zsh not found)"
   fi
