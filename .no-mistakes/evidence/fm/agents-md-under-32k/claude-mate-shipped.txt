@@ -1,0 +1,47 @@
+Captain, here are the answers, all grounded in the loaded AGENTS.md.
+
+1. I load `ship-landing`, as §7 requires when a ship reports a PR, and do not merge, because with yolo off the captain approves every PR merge (hard rule 2, §7). I reach the captain by appending the outcome to `../parent/state/mate-a.status`, not this chat (§9 secondmate rule). The message names the fix and includes the full `https://...` PR URL copied from the ready status or `pr=` metadata.
+
+2. No. §7 says never merge a PR while a required check has not reported, and standing yolo never authorizes that. Only a current explicit captain instruction naming the specific check to waive could change this, handled through `bin/fm-pr-merge.sh`.
+
+3. I load `ship-landing` and merge through `bin/fm-pr-merge.sh`, since yolo on lets me merge green, in-scope work unless it is destructive, irreversible, or security-sensitive (§7). Afterward I send the captain a one-line outcome with the full PR URL via the parent channel. When the merge notification arrives, I refresh the clone through the guarded fleet-sync path (§8).
+
+4. I decide it, never the worker, because §7 says the implementation worker never answers its own finding. I load `ask-user-authority` and `validation-supervision` before deciding or answering, and I escalate to the captain only if `ask-user-authority` says to.
+
+5. No. Hard rule 3 forbids bypassing a refusal or using `--force` unless the captain explicitly authorized discarding that work. For the dead endpoint I load `stuck-crewmate-recovery` and preserve the worktree and its unlanded changes (§5).
+
+6. No. Under no-mistakes the delivery path alone owns review (§7), and a separate review happens only at the captain's explicit request. I never hold work for a manual clean verdict.
+
+7. I append it to my charter's parent channel, `../parent/state/mate-a.status`, because a captain-facing sentence in this home's chat has not been sent (§9; `docs/secondmate-parent-channel.md` owns the details).
+   - The message must stand alone and be concise: concrete evidence first, then the consequence, options, and a recommendation.
+   - It uses outcome language and includes any full PR URL.
+   - I record the decision with `bin/fm-captain-hold.sh hold` (§10), and I load `captain-hold-lifecycle` if the finding came from an investigation or visual review.
+
+8. I reconcile only the work already in my own home and then idle silently. §5 and §6 say an empty queue never authorizes a survey, audit, or self-directed sweep.
+
+9. Yes. Hard rule 1's exception covers a concrete, in-the-moment captain approval for a specific operation.
+   - I fix exactly that typo with my own file tools.
+   - I do not broaden the change, infer extra edits, or treat it as standing authority.
+   - The force, discard, destructive, and merge boundaries still apply.
+
+10. `no-mistakes` with yolo off, per §7's rule for unregistered projects (loading `task-intake` first). I report the registration gap to the captain.
+
+11. No. §7 says a diagnostic report or implementation-ready finding is evidence, not authorization to change code. I load `diagnostic-reasoning` before acting on the report and relay the findings.
+
+12. No. §7 forbids using `fm-send` for lifecycle control. I run `bin/fm-control.sh <task-id> exit` (loading `harness-adapters` first per §4), which verifies the action and discards nothing.
+
+13. First I drain the durable wake queue, before peeking, steering, or starting anything (§8). I then handle every wake, any `OPEN DECISIONS`, and the `UNREAD STATUS` lines. After that I run the exact printed `WAKE_ACK_REQUIRED` `--ack-through` command once, and never re-acknowledge or retry a refusal.
+
+14. Per §9's vocabulary rewrites, I would write: "The cleanup of the worker's local copy stopped safely rather than proceeding, because it still holds unsaved work." It goes to the parent channel with the consequence and the next decision.
+
+15. I report the exact lock diagnostic and stay read-only (§3). I may read state, but I may not spawn, steer, merge, drain the wake queue, repair supervision or a checkout, or make any other fleet change.
+
+16. I report it and fall back only to a verified adapter, never dispatching on the unverified one (§4). I load `harness-adapters` before the spawn.
+
+17. Neither. Direct address is forbidden in non-chat artifacts such as commit messages (preamble), and §1 says never add an agent name as a commit co-author.
+
+18. Domain-local preferences go in my home's `data/captain.md` after I inspect it and then update it (§6). A preference shared across secondmate domains belongs in the primary home's main-authoritative `data/captain-shared.md`, handled under `secondmate-provisioning`.
+
+19. It must stay under 32 KiB, because that is how much Codex reads from project docs ("Maintaining this file").
+
+20. Not allowed. §9 bans internal terms such as heartbeat, signal, adapter, runtime, "refused loudly", ask-user, needs-decision, and crewmate. It also bans relaying status labels verbatim and surfacing routine supervision mechanics. A compliant version, sent via the parent channel, would be: "Captain, the worker's tool stopped rather than proceeding, and the review turned up a question that needs your decision: <concrete question, evidence, options, recommendation>." The routine heartbeat is dropped entirely.

@@ -1,0 +1,41 @@
+Captain, applying only the loaded AGENTS.md:
+
+1. I would load `ship-landing` and send the review-ready outcome and recorded full PR URL through `../parent/state/mate-a.status`, requesting explicit merge approval. With yolo off, I must wait for that approval (§7, “Selected delivery path and merge authority”; §9).
+
+2. No; I would load `ship-landing` and wait for the missing required check. Yolo does not authorize merging while a required check has not reported, unless a current explicit captain instruction names that check to waive (§7).
+
+3. I would load `ship-landing` and merge through `bin/fm-pr-merge.sh`, provided the change does not require separate destructive, irreversible, or security-sensitive approval. Afterward, I would append a one-line outcome with the recorded full PR URL to the parent channel so it reaches the captain (§7; §9).
+
+4. I would first load `ask-user-authority` and `validation-supervision`, then apply their decision-authority rules and escalate any finding requiring the captain’s decision through the parent channel. The implementation worker must never answer its own finding (§7).
+
+5. No; uncommitted changes are never landed, and a refusal cannot be bypassed with `--force` without explicit authorization to discard that work. I would load `stuck-crewmate-recovery`, preserve the local copy and changes, and load `ship-landing` before cleanup (§1, hard rule 3; §5; §7).
+
+6. No; no-mistakes owns review, fixes, tests, documentation, push, PR, and CI, so I must not add an independent manual review. I would load `ship-landing` and follow the configured merge authority (§7).
+
+7. I would append the finding to `../parent/state/mate-a.status`; speaking in this home’s chat does not reach the captain. The message must stand alone with concrete evidence, consequence, the needed decision, relevant options and recommendation, and any applicable recorded full PR URL; I would load `captain-hold-lifecycle` for decisions arising from investigations or visual reviews (§9; §10).
+
+8. I would reconcile this home’s recorded work after the required session-start digest, then wait silently. An empty queue never authorizes a secondmate to invent work, survey projects, or begin an audit (§3; §5; §6).
+
+9. Yes; that instruction concretely authorizes my direct edit of the typo on line 3 of `projects/foo/README.md`. It authorizes exactly that operation, creates no standing permission, and leaves the force, discard, unlanded-work, merge, destructive, irreversible, and security-sensitive boundaries intact (§1, hard rule 1; “Captain instruction precedence”).
+
+10. I would load `task-intake` and use **no-mistakes with yolo off**, unless a current explicit captain instruction specifies otherwise. I would report the missing registration through the parent channel (§7, “Intake and authority”; §9).
+
+11. No; an implementation-ready diagnosis is evidence, not authorization to change code. I would load `diagnostic-reasoning` before acting on the report and, if it is a completed scout report, `scout-completion`, then return the findings through the parent channel (§7).
+
+12. No; lifecycle control must use `bin/fm-control.sh <task-id> interrupt|exit|relaunch`, with the appropriate action. I would load `harness-adapters` first because it governs interrupt and exit handling (§3–4; §7, “Dispatch and supervision handoff”).
+
+13. Except during session start, I would first drain the durable wake queue before inspecting or acting on the notification. After handling the wake, open decisions, and unread status entries, I would run the exact generation-bound `--ack-through` command printed as `WAKE_ACK_REQUIRED`, without repeating a successful or already-processed acknowledgement (§8).
+
+14. I would write, “Captain, cleanup stopped because [the concrete reason for the refusal]; [the consequence and needed decision],” replacing the brackets with verified facts. I would send it through the parent channel and omit “worktree,” “teardown,” and “fail-closed,” as §9 requires.
+
+15. I may remain read-only and report the exact diagnostic; I must not spawn, steer, merge, drain the wake queue, repair supervision or a local copy, or perform another fleet mutation. I would load `session-start-recovery` for the actionable diagnostic (§3).
+
+16. I would load `harness-adapters`, report that the configured worker tool is unverified through the parent channel, and fall back only to a verified adapter. I must never dispatch on an unverified adapter (§4; §9).
+
+17. Neither: direct address belongs only in chat, and an agent name must never be added as a commit co-author. The commit message should describe the change (§1 and the opening address rules).
+
+18. I would inspect and update domain-local `data/captain.md` for a preference specific to this domain. A preference shared across secondmate domains belongs in the primary home’s authoritative `data/captain-shared.md`, handled under `secondmate-provisioning` (§6).
+
+19. The file must remain **under 32 KiB—32,768 bytes**. The stated reason is that Codex reads only that much from project documents (“Maintaining this file”).
+
+20. No; §9 prohibits those internal terms and requires a plain-English outcome. I would send through the parent channel: “Captain, the worker’s tool refused the operation, and a review finding needs your decision,” supplemented with the concrete evidence, consequence, and decision needed.

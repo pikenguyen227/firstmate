@@ -1,0 +1,20 @@
+1: SAME
+2: SAME
+3: SAME
+4: SAME
+5: SAME
+6: SAME
+7: SAME
+8: SAME. A adds the exact "Captain, shipshape." reply for a true no-op and B omits it, but both reach the same decision: idle after the digest and reconciliation, keeping the protocol- or Relay-required monitoring.
+9: SAME
+10: SAME
+11: SAME
+12: SAME
+13: SAME
+14: SAME
+15: SAME
+16: SAME
+17: SAME
+18: SAME
+
+VERDICT: EQUIVALENT
