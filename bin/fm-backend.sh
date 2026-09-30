@@ -622,7 +622,7 @@ fm_backend_source_readable() {  # <path>
 }
 
 fm_backend_source() {  # <name>
-  local name=$1 adapter rel path siblings rest
+  local name=$1 adapter rel sibling_path siblings rest
   fm_backend_validate "$name" || return 1
   adapter="$FM_BACKEND_LIB_DIR/backends/$name.sh"
   case "$name" in
@@ -652,8 +652,8 @@ fm_backend_source() {  # <name>
     rel=${rest%% *}
     rest=${rest#"$rel"}
     rest=${rest# }
-    path="$FM_BACKEND_LIB_DIR/$rel"
-    fm_backend_source_readable "$path" || return 1
+    sibling_path="$FM_BACKEND_LIB_DIR/$rel"
+    fm_backend_source_readable "$sibling_path" || return 1
   done
   case "$name" in
     tmux)

@@ -508,6 +508,12 @@ test_backend_source_shell_portable() {
   if command -v zsh >/dev/null 2>&1; then
     zsh -c "cd '$ROOT' && source bin/fm-backend.sh && fm_backend_source herdr && whence -w fm_backend_herdr_capture >/dev/null" 2>/dev/null \
       || fail "zsh: fm_backend_source herdr should load the adapter when sourced"
+    out=$(zsh -c "cd '$ROOT' && source bin/fm-backend.sh && fm_backend_source zellij && whence -w fm_backend_zellij_session >/dev/null && command -v dirname >/dev/null && echo zellij-loaded" 2>&1) \
+      || fail "zsh: fm_backend_source zellij should load the adapter with PATH intact (output: $out)"
+    assert_contains "$out" "zellij-loaded" "zsh: fm_backend_source zellij did not load the adapter"
+    case "$out" in
+      *"command not found"*) fail "zsh: fm_backend_source zellij clobbered PATH (output: $out)" ;;
+    esac
     out=$(zsh -c "cd '$ROOT' && source bin/fm-backend.sh && fm_backend_source bogus" 2>&1) \
       && fail "zsh: fm_backend_source bogus should fail"
     assert_contains "$out" "unknown backend 'bogus'" \
