@@ -80,7 +80,7 @@
         "use": [
           {
             "harness": "claude",
-            "model": "claude-sonnet-5",
+            "model": "claude-sonnet-5-5",
             "effort": "low",
             "floor": {
               "scope": "all_models",
