@@ -4,7 +4,7 @@ Audience: maintainer verification.
 
 This record holds the raw answers behind the behavioral check in [`agents-md-size.md`](agents-md-size.md), captured on 2026-09-30.
 Each block is one fresh session's complete reply, unedited.
-"Current" is the pre-cut 48,441-byte `AGENTS.md`; "cut" is the 31,951-byte file this record ships with.
+"Current" is the pre-cut 48,441-byte `AGENTS.md`; "cut" is the 31,951-byte draft of the shipped file, which later restored only the full section 9 internal-label rewrite list (now 32,211 bytes).
 
 ## claude coordinator, current file
 

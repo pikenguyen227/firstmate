@@ -241,12 +241,12 @@ Every hard rule, safety boundary, and skill load trigger stays inline.
 | 321 | section 9 | - When evidence uses an internal label, rewrite it before sending: | AGENTS.md section 9 | kept as the rewrite line |
 | 323 | section 9 | - worktree, checkout, primary checkout, or local-main -> local copy, isolated copy, or local branch, only if the loca... | AGENTS.md section 9 rewrite line | condensed |
 | 324 | section 9 | - teardown -> cleanup. | AGENTS.md section 9 rewrite line | kept |
-| 325 | section 9 | - wake, watcher, heartbeat, stale, signal, or check -> notification, monitoring, waiting too long, or stopped respond... | AGENTS.md section 9 | kept, condensed wording |
+| 325 | section 9 | - wake, watcher, heartbeat, stale, signal, or check -> notification, monitoring, waiting too long, or stopped respond... | AGENTS.md section 9 rewrite line | kept |
 | 326 | section 9 | - hold, gate, ask-user, needs-decision, blocked, or paused -> the concrete decision, wait, approval, blocker, or exte... | AGENTS.md section 9 rewrite line | kept |
 | 327 | section 9 | - done, failed, fix-review, checks-passed, cancelled, validation step, or pipeline state -> the concrete result, revi... | AGENTS.md section 9 rewrite line | condensed |
 | 328 | section 9 | - brief -> instructions. | AGENTS.md section 9 rewrite line | kept |
 | 329 | section 9 | - crewmate -> worker, only when naming the helper matters. | AGENTS.md section 9 rewrite line | kept |
-| 330 | section 9 | - harness, backend, runtime, or adapter -> worker runtime or tool, only when the tool choice itself blocks work. | AGENTS.md section 9 rewrite line | kept |
+| 330 | section 9 | - harness, backend, runtime, or adapter -> worker runtime or tool, only when the tool choice itself blocks work. | AGENTS.md section 9 rewrite line + internal-terms list (runtime names) | kept |
 | 331 | section 9 | - status file, metadata, state, task id, or raw path -> durable record, local record, or omit it unless the captain n... | AGENTS.md section 9 rewrite line | kept |
 | 332 | section 9 | - fail-closed, fails closed, fail loudly, or refuses loudly -> stops safely when something goes wrong, refuses rather... | AGENTS.md section 9 rewrite line + internal-terms list | kept |
 | 333 | section 9 | - fail-open, fails open, passive fail-open, or degraded-open -> steps aside and lets work continue when the check can... | AGENTS.md section 9 rewrite line | kept |
