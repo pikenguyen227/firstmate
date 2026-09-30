@@ -1,0 +1,22 @@
+tests/fm-backend.test.sh
+  s_e700ad932881e2::t_b71d5a47d539df 510-516
+  s_e700ad932881e2::t_abdf844cbd7599 505-508,521
+bin/fm-backend.sh
+  s_e700ad932881e2::t_b71d5a47d539df 625,649-650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e9f05ae378b68741cff14340d6f2eda7e038d3ac",
+  "prompts": {},
+  "sessions": {
+    "s_e700ad932881e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cf6a8f3-73b6-44d3-8c2d-c57680a9da1d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
