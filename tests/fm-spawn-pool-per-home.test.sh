@@ -201,7 +201,9 @@ test_each_home_gets_a_worktree_of_its_own_clone() {
   [ "$(common_dir "$wt_primary")" = "$(common_dir "$PRIMARY/projects/app")" ] ||
     fail "primary worktree $wt_primary is not a worktree of the primary's clone"
   case "$wt_primary" in "$SHARED_ROOT"/*) ;; *) fail "primary did not keep the configured default pool: $wt_primary" ;; esac
-  [ "$(cat "$CASE/typed.pool-primary-z1")" = "treehouse get" ] ||
+  # Spawn follows allocation with an explicit cd into the validated worktree.
+  # The allocation itself must still use the configured default pool root.
+  [ "$(head -n 1 "$CASE/typed.pool-primary-z1")" = "treehouse get" ] ||
     fail "primary spawn should keep treehouse's configured default root, typed: $(cat "$CASE/typed.pool-primary-z1")"
 
   # The primary's slot is returned, so the shared pool now holds an available
@@ -453,7 +455,7 @@ retire_home() {  # <secondmate-id>
 # Retiring a secondmate home cleans its pools wherever they live, and refuses
 # while any slot still holds work, naming each such slot.
 test_retirement_cleans_the_home_pool() {
-  local out status home="$CASE/retiree-home" wt root legacy_slot
+  local out status home="$CASE/retiree-home" wt root legacy_slot artifact
   make_contract_home "$home" retiree
   out=$(run_pool_spawn "$home" pool-retiree-z1)
   status=$?
@@ -461,7 +463,10 @@ test_retirement_cleans_the_home_pool() {
   wt=$(meta_value "$home/state/pool-retiree-z1.meta" worktree)
   root=$(pool_root_of "$wt")
   FM_FAKE_RETURN_LOG=/dev/null "$FAKEBIN/treehouse" return --force "$wt"
-  rm -rf "$home/state/pool-retiree-z1."* "$home/data/pool-retiree-z1"
+  # The upstream spawn-owned hook directory is deliberately read-only.
+  for artifact in "$home/state/pool-retiree-z1."* "$home/data/pool-retiree-z1"; do
+    fm_test_remove_tree "$artifact"
+  done
   legacy_slot=$(cd "$home/projects/app" && TREEHOUSE_ROOT="$home/state/treehouse-pool" "$FAKEBIN/treehouse" get) ||
     fail "could not seed a legacy slot"
   printf 'unsaved\n' > "$wt/work.txt"
