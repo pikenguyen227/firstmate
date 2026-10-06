@@ -84,9 +84,10 @@ BASE=$(basename "$REL")
 RECORD_PARENT=$PARENT_REAL
 if [ "$REL" = "$FM_JEV_KEY_REL" ]; then
   RECORD_PARENT="$HOME_REAL/config"
-  shared_captain_dir_safe "$RECORD_PARENT" || die "TYPESAFE_API_KEY error"
-  destination_allows_inherited_item "$RECORD_PARENT" ".fm-inherit-$BASE.generation" \
-    || die "TYPESAFE_API_KEY error"
+  if ! shared_captain_dir_safe "$RECORD_PARENT" \
+    || ! destination_allows_inherited_item "$RECORD_PARENT" ".fm-inherit-$BASE.generation"; then
+    die "TYPESAFE_API_KEY not delivered: config/ staging is unsafe or not gitignored"
+  fi
 fi
 LOCK="$RECORD_PARENT/.fm-inherit-$BASE.lock"
 GENERATION_FILE="$RECORD_PARENT/.fm-inherit-$BASE.generation"
@@ -167,7 +168,7 @@ quarantine_shared() {
 
 case "$COMMAND" in
   put)
-    TMP=$(umask 077; mktemp "$PARENT_REAL/.inherit.XXXXXX") || die "cannot stage inherited material"
+    TMP=$(umask 077; mktemp "$RECORD_PARENT/.inherit.XXXXXX") || die "cannot stage inherited material"
     head -c "$((MAX_BYTES + 1))" > "$TMP" || die "cannot read inherited material"
     BYTES=$(LC_ALL=C wc -c < "$TMP" | tr -d ' ')
     [ "$BYTES" -le "$MAX_BYTES" ] || die "inherited material exceeds the byte bound"
@@ -176,7 +177,7 @@ case "$COMMAND" in
     [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || die "inherited material digest does not match its commitment"
     commit_generation
     if [ "$REL" = "$FM_JEV_KEY_REL" ]; then
-      ACTION=$(fm_jev_key_apply "$HOME_REAL" "$TMP") || die "TYPESAFE_API_KEY error"
+      ACTION=$(fm_jev_key_apply "$HOME_REAL" "$TMP") || die "TYPESAFE_API_KEY not delivered: $ACTION"
       printf '%s: %s\n' "$ACTION" "$REL"
       exit 0
     fi

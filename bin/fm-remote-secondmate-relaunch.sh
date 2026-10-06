@@ -51,8 +51,8 @@ REMOTE_HOST=$(fm_meta_get "$META" remote_host)
   || die "task $ID is not a remotely placed secondmate; use bin/fm-control.sh $ID relaunch instead"
 
 # The host-local relaunch has no access to the primary .env. Converge the
-# fork-local key before asking the host to restart; transfer failure stops here.
-fm_jev_key_push_remote "$SCRIPT_DIR" "$STATE" "$ID" >/dev/null
+# fork-local key before asking the host to restart; a failed transfer only warns.
+fm_jev_key_push_remote "$SCRIPT_DIR" "$STATE" "$ID" >/dev/null || true
 
 RELAUNCH_OUT=$("$SCRIPT_DIR/fm-on.sh" "$ID" fm-remote-secondmate-control.sh \
   relaunch "$ID" "$HARNESS" "$MODEL" "$EFFORT" </dev/null 2>&1) || {

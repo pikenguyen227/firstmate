@@ -250,14 +250,22 @@ SH
     fail "remote key receiver accepted a whole environment"
   fi
   [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "invalid remote payload changed destination"
-  printf '#!/usr/bin/env bash\nexit 1\n' > "$sender/fm-on.sh"
+  printf '#!/usr/bin/env bash\nprintf "error: path is not inherited material: .env/TYPESAFE_API_KEY\\n" >&2\nexit 1\n' > "$sender/fm-on.sh"
   printf 'TYPESAFE_API_KEY=fake-secret-remote\n' > "$primary/.env"
-  if FM_HOME="$primary" bash "$sender/fm-remote-inherit-push.sh" remote 4 --jev-key-only >> "$out" 2>&1; then
-    fail "unsupported remote key receiver silently succeeded"
-  fi
-  assert_grep 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered)' "$out" "remote failure missing diagnostic"
+  FM_HOME="$primary" bash "$sender/fm-remote-inherit-push.sh" remote 4 --jev-key-only >> "$out" 2>&1 \
+    || fail "an older remote key receiver must warn without failing the push"
+  assert_grep 'SECONDMATE_SYNC: secondmate remote: TYPESAFE_API_KEY not delivered: remote receiver predates the key item' \
+    "$out" "remote failure missing route and reason"
+  printf '#!/usr/bin/env bash\n[ "${1:-}" != --stdin ] || shift\nshift\ncommand=$1; shift\nexec env FM_HOME="$JEV_REMOTE_HOME" bash "$JEV_CODE_ROOT/bin/$command" "$@"\n' > "$sender/fm-on.sh"
+  : > "$second/.gitignore"
+  FM_HOME="$primary" JEV_REMOTE_HOME="$second" JEV_CODE_ROOT="$ROOT" \
+    bash "$sender/fm-remote-inherit-push.sh" remote 5 --jev-key-only >> "$out" 2>&1 \
+    || fail "an unignored remote destination must warn without failing the push"
+  assert_grep 'TYPESAFE_API_KEY not delivered: remote config/ staging is unsafe or not gitignored' \
+    "$out" "unignored remote destination missing reason"
+  [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "refused remote delivery changed destination"
   assert_jev_private "$second" "$out"
-  pass "remote Jev sender transfers only the key, receiver guards payload, and failed delivery is explicit"
+  pass "remote Jev sender transfers only the key, receiver guards payload, and failed delivery warns with a reason"
 }
 
 test_first_copy_readonly_and_local_files_preserved() {

@@ -117,7 +117,8 @@ For inherited config files, local propagation and the remote sender preserve the
 This fork also inherits only the last `TYPESAFE_API_KEY` assignment from the primary's `.env` at seed, launch/relaunch, bootstrap, and config push, through that same owner and its remote transfer path.
 Other destination `.env` lines remain intact; writes require a gitignored, ordinary, non-symlinked, non-hardlinked destination and publish it atomically with mode 600.
 Primary key absence preserves the destination key and warns; unsafe or unreadable sources and destinations report an error without replacing the destination.
-Only the assignment travels over the remote path, and an incompatible receiver or failed transfer reports `SECONDMATE_SYNC` with the key not delivered.
+Only the assignment travels over the remote path, staged only in gitignored `config/` on either end.
+A key-only delivery failure never refuses a launch, relaunch, seed, or prelaunch push: it emits a `SECONDMATE_SYNC` warning naming the secondmate and the reason (for example a receiver that predates the key item, or a remote `.env` that is not gitignored or is hardlinked), and the launch proceeds; other inherited items keep their own failure behavior.
 Credential values never enter diagnostics, reports, config reread instructions, or messages; the inherited item stays outside the literal-content config reread set.
 Inheritance copies the literal `config/crew-harness` file, so a secondmate's own crewmates use the primary's crewmate harness only when it names a concrete adapter such as `codex`; an unset or `default` value has nothing concrete to inherit, and the secondmate's own crewmates fall back to the secondmate's own or detected harness instead.
 Inherited `config/backend` becomes that secondmate home's local runtime-backend default for future spawns only; it never retargets, rewrites, migrates, stops, or restarts an already-live worker endpoint.

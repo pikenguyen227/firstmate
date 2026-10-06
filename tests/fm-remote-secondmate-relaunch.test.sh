@@ -82,7 +82,7 @@ if [ "$cmd" = fm-remote-inherit.sh ]; then
 fi
 [ "$cmd" = fm-remote-secondmate-control.sh ] || exit 93
 [ "$action" = relaunch ] || exit 94
-if [ -f "$FM_HOME/.env" ]; then
+if [ -f "$FM_HOME/.env" ] && [ "$FM_FAKE_RELAUNCH_MODE" != key-unreachable ]; then
   [ -f "$FM_HOME/state/key-delivered" ] || exit 97
 fi
 case "$FM_FAKE_RELAUNCH_MODE" in
@@ -182,16 +182,17 @@ expect_code 0 "$RC" "key convergence before remote relaunch failed"
 assert_present "$HOME_DIR/state/key-delivered" "remote relaunch skipped the key transfer"
 assert_not_contains "$OUT" 'fake-relaunch-secret' "remote relaunch leaked a key"
 rm "$HOME_DIR/state/key-delivered"
-cp "$HOME_DIR/state/ios.meta" "$TMP/before-key-failure.meta"
+reset_meta
 FM_FAKE_RELAUNCH_MODE=key-unreachable
 OUT=$(run_relaunch ios claude - -); RC=$?
 unset FM_FAKE_RELAUNCH_MODE
-expect_code 255 "$RC" "key transport uncertainty should preserve SSH exit status"
-assert_contains "$OUT" 'TYPESAFE_API_KEY error (not delivered)' "missing key delivery diagnostic"
-assert_not_contains "$OUT" 'relaunched ios' "relaunch continued after failed key transfer"
-cmp -s "$TMP/before-key-failure.meta" "$HOME_DIR/state/ios.meta" || fail "failed key transfer changed metadata"
+expect_code 0 "$RC" "an undelivered key must not refuse the relaunch"$'\n'"$OUT"
+assert_contains "$OUT" 'SECONDMATE_SYNC: secondmate ios: TYPESAFE_API_KEY not delivered: remote host unreachable' \
+  "missing key delivery warning naming the route and reason"
+assert_contains "$OUT" 'relaunched ios' "relaunch did not proceed after failed key transfer"
+assert_not_contains "$OUT" 'fake-relaunch-secret' "failed key delivery leaked a key"
 rm "$HOME_DIR/.env"
-pass "remote relaunch converges only the key first and stops on uncertain delivery"
+pass "remote relaunch converges only the key first and warns without blocking on failed delivery"
 
 # --- a relaunch keeps an already-armed PR poll authenticating ---------------
 # fm-pr-check.sh now refuses to arm a poll on a kind=secondmate record, but a

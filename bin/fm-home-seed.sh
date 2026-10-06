@@ -1066,7 +1066,7 @@ seed_home() {
     propagate_jev_key "$FM_HOME" "$home" || true
     fm_lock_release "$key_lock" || true
   else
-    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error\n' >&2
+    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered: home inheritance lock unavailable)\n' >&2
   fi
   printf 'home=%s\n' "$home"
 }

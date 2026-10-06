@@ -141,13 +141,20 @@ fm_jev_key_extract() {
 
 # Merge a validated, single-assignment payload into an ignored ordinary .env.
 # Preserve other lines byte-for-byte, collapse duplicate key assignments, and
-# publish atomically at 0600. The caller owns serialization for its home.
+# publish atomically at 0600 from a tempfile staged in the ignored config/.
+# Prints the action, or on failure a fixed value-free reason. The caller owns
+# serialization for its home.
 fm_jev_key_apply() {
   local home=$1 payload=$2 top
-  [ -d "$home" ] && [ ! -L "$home" ] || return 1
-  top=$(git -C "$home" rev-parse --show-toplevel 2>/dev/null) || return 1
-  [ "$top" = "$(cd "$home" && pwd -P)" ] || return 1
-  git -C "$home" check-ignore -q -- .env 2>/dev/null || return 1
+  [ -d "$home" ] && [ ! -L "$home" ] || { echo "home is unavailable"; return 1; }
+  top=$(git -C "$home" rev-parse --show-toplevel 2>/dev/null) \
+    && [ "$top" = "$(cd "$home" && pwd -P)" ] || { echo "home is not a git checkout root"; return 1; }
+  git -C "$home" check-ignore -q -- .env 2>/dev/null || { echo ".env is not gitignored"; return 1; }
+  if ! shared_captain_dir_safe "$home/config" \
+    || ! git -C "$home" check-ignore -q -- config/.env-inherit 2>/dev/null; then
+    echo "config/ staging is unsafe or not gitignored"
+    return 1
+  fi
   perl -MErrno=ENOENT -MFcntl=:DEFAULT,:mode -MFile::Temp=tempfile -e '
     my ($home, $payload) = @ARGV;
     open(my $in, "<", $payload) or exit 1;
@@ -176,11 +183,12 @@ fm_jev_key_apply() {
       print "unchanged\n";
       exit 0;
     }
-    my ($out, $tmp) = tempfile(".env-inherit.XXXXXX", DIR => $home, UNLINK => 1);
+    my ($out, $tmp) = tempfile(".env-inherit.XXXXXX", DIR => "$home/config", UNLINK => 1);
     chmod(0600, $tmp) && print($out $next) && close($out) or exit 1;
     rename($tmp, $dest) or exit 1;
     print "pushed\n";
-  ' -- "$home" "$payload" 2>/dev/null
+  ' -- "$home" "$payload" 2>/dev/null \
+    || { echo "payload or .env is unsafe (symlinked, hardlinked, or not a regular file)"; return 1; }
 }
 
 propagate_jev_key() (
@@ -194,28 +202,30 @@ propagate_jev_key() (
     printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped\n' >&2
     return 0
   fi
-  if [ "$rc" -eq 0 ] && status=$(fm_jev_key_apply "$dest_home" "$tmp"); then
+  if [ "$rc" -ne 0 ]; then
+    status="primary .env is unreadable or unsafe"
+  elif status=$(fm_jev_key_apply "$dest_home" "$tmp"); then
     record_inheritable_config_result "$FM_JEV_KEY_REL" "$status" ""
     return 0
   fi
   record_inheritable_config_result "$FM_JEV_KEY_REL" error ""
-  printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error\n' >&2
+  printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered: %s)\n' "$status" >&2
   return 1
 )
 
 # Key-only convergence after remote seed or before explicit remote relaunch.
 # Callers source fm-wake-lib.sh and fm-secondmate-nudge-lib.sh for the existing
-# transaction lock and monotonic remote generation owner.
+# transaction lock and monotonic remote generation owner. Delivery failure only
+# warns; callers never refuse a seed or relaunch over it.
 fm_jev_key_push_remote() (
   local scripts=$1 state=$2 id=$3 lock generation
-  lock=$(fm_remote_inherit_transaction_lock_path "$state" "$id") || return 1
-  if ! fm_lock_acquire_wait "$lock"; then
-    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered)\n' >&2
+  if ! lock=$(fm_remote_inherit_transaction_lock_path "$state" "$id") || ! fm_lock_acquire_wait "$lock"; then
+    printf 'SECONDMATE_SYNC: secondmate %s: TYPESAFE_API_KEY not delivered: inheritance transaction could not be locked\n' "$id" >&2
     return 1
   fi
   trap 'fm_lock_release "$lock" || true' EXIT
   if ! generation=$(fm_remote_inherit_generation_next "$state" "$id"); then
-    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered)\n' >&2
+    printf 'SECONDMATE_SYNC: secondmate %s: TYPESAFE_API_KEY not delivered: inheritance generation could not be published\n' "$id" >&2
     return 1
   fi
   "$scripts/fm-remote-inherit-push.sh" "$id" "$generation" --jev-key-only
