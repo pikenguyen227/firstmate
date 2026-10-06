@@ -1148,6 +1148,7 @@ Secondmate homes inherit this file from the primary, so a secondmate's own crewm
 
 `bin/fm-dispatch-resolve.sh` resolves one concrete crewmate or scout profile from a written brief with typesafe.ai's System One model (Jev), so the rule match that firstmate otherwise reasons out in its own context becomes one short tool turn.
 It is off unless `TYPESAFE_API_KEY` is non-empty in the calling environment or the home's gitignored `.env` holds a `TYPESAFE_API_KEY=` line; the environment wins, matching the Relay and mail-plane contracts, and the Relay accessor in `bin/fm-env-lib.sh` reads the line.
+In this fork, the primary's `.env` assignment is inherited at secondmate seed, launch/relaunch, bootstrap, and config push under the [key-only inheritance contract](../.agents/skills/secondmate-provisioning/SKILL.md); an environment-only key is not persisted or propagated.
 
 Off means one `dispatch-resolve: off` line on stderr, nothing on stdout, exit 0, and no network call, so firstmate dispatches exactly as it does without the tool.
 This section is the single owner of the tool's operator contract; the script header owns its exact flags and output lines, and "Crew dispatch profiles" above owns the declared rule and profile fields it applies.

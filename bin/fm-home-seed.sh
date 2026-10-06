@@ -22,6 +22,8 @@
 #       is copied to data/charter.md, newly cloned no-mistakes projects are
 #       initialized, an ignored .fm-secondmate-parent binding is published before
 #       the .fm-secondmate-home identity marker, and data/secondmates.md is updated.
+#       After commit, key-only Jev inheritance converges the ignored .env;
+#       refusal warns and leaves the seeded home available for launch-time retry.
 #       Seeding is transactional: on validation, clone, init, or registry failure,
 #       generated briefs, new homes, new project clones, and registry edits are
 #       rolled back. Treehouse-acquired homes are returned only when the rollback
@@ -53,6 +55,8 @@ SUB_HOME_PARENT_MARKER=".fm-secondmate-parent"
 . "$SCRIPT_DIR/fm-secondmate-charter-lib.sh"
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
+# shellcheck source=bin/fm-config-inherit-lib.sh
+. "$SCRIPT_DIR/fm-config-inherit-lib.sh"
 
 usage() {
   echo "usage: fm-home-seed.sh <id> <home|-> {<project>...|--no-projects}" >&2
@@ -1056,6 +1060,14 @@ seed_home() {
   seed_registry_lock_release
   trap - EXIT
   rm -rf -- "$SEED_BACKUP_DIR"
+  # Post-commit credential convergence cannot make a successful seed roll back.
+  # Launch and live propagation retry any guarded failure through the same owner.
+  if key_lock=$(fm_config_inherit_lock_path "$home") && fm_lock_acquire_wait "$key_lock"; then
+    propagate_jev_key "$FM_HOME" "$home" || true
+    fm_lock_release "$key_lock" || true
+  else
+    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error\n' >&2
+  fi
   printf 'home=%s\n' "$home"
 }
 

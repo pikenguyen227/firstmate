@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Push the declared inherited-material allowlist to one remote secondmate route.
-# Usage: fm-remote-inherit-push.sh <secondmate-id> <generation>
+# Usage: fm-remote-inherit-push.sh <secondmate-id> <generation> [--jev-key-only]
 #
 # The item set is derived from the ONE declared owner
 # (FM_INHERITABLE_CONFIG in bin/fm-config-inherit-lib.sh), the same declaration
@@ -29,7 +29,10 @@ sha256_file() {
 file_link_count() {
   if [ "$(uname)" = Darwin ]; then /usr/bin/stat -f %l "$1" 2>/dev/null; else stat -c %h "$1" 2>/dev/null; fi
 }
-[ "$#" -eq 2 ] || { echo "usage: fm-remote-inherit-push.sh <secondmate-id> <generation>" >&2; exit 2; }
+[ "$#" -eq 2 ] || { [ "$#" -eq 3 ] && [ "$3" = --jev-key-only ]; } || {
+  echo "usage: fm-remote-inherit-push.sh <secondmate-id> <generation> [--jev-key-only]" >&2
+  exit 2
+}
 ID=$1
 GENERATION=$2
 case "$ID" in ''|*[!A-Za-z0-9._-]*) die "invalid secondmate id: $ID" ;; esac
@@ -44,8 +47,39 @@ EMPTY="$TMP/empty"
 EMPTY_HASH=$(sha256_file "$EMPTY") || die "cannot hash empty inheritance payload"
 
 ITEMS=$(fm_config_inherit_items)
+[ "${3:-}" != --jev-key-only ] || ITEMS=$FM_JEV_KEY_REL
 while IFS= read -r rel; do
   [ -n "$rel" ] || continue
+  if [ "$rel" = "$FM_JEV_KEY_REL" ]; then
+    snapshot="$TMP/jev-key"
+    rc=0
+    (umask 077; fm_jev_key_extract "$FM_HOME/.env" > "$snapshot") || rc=$?
+    if [ "$rc" -eq 3 ]; then
+      printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped\n' >&2
+      continue
+    fi
+    if [ "$rc" -eq 0 ]; then
+      bytes=$(LC_ALL=C wc -c < "$snapshot" | tr -d ' ')
+      hash=$(sha256_file "$snapshot") || rc=1
+      if [ "$rc" -eq 0 ]; then
+        "$SCRIPT_DIR/fm-on.sh" --stdin "$ID" fm-remote-inherit.sh \
+          put "$rel" "$bytes" "$hash" "$GENERATION" < "$snapshot" > "$TMP/jev-result" 2>/dev/null || rc=$?
+      fi
+      if [ "$rc" -eq 0 ]; then
+        # Print only a known action, even when the remote revision is different.
+        if grep -Fxq "unchanged: $FM_JEV_KEY_REL" "$TMP/jev-result"; then
+          printf 'unchanged: %s\n' "$rel"
+          continue
+        elif grep -Fxq "pushed: $FM_JEV_KEY_REL" "$TMP/jev-result"; then
+          printf 'pushed: %s\n' "$rel"
+          continue
+        fi
+        rc=1
+      fi
+    fi
+    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered)\n' >&2
+    exit "$rc"
+  fi
   if [ "${FM_CONFIG_INHERIT_LIVE:-0}" = 1 ]; then
     case "$rel" in
       config/*)

@@ -47,6 +47,8 @@
 # (bin/fm-config-push.sh). It is PRIMARY-AUTHORITATIVE: the primary's value wins
 # and is re-pushed on every convergence, so the fleet stays converged on the
 # primary; an item the primary does not set is mirrored as absence downstream.
+# The fork-local Jev credential is the exception: absent assignments preserve
+# the destination key and warn. It is also converged after home seeding.
 # After successful config/* changes under an already-running secondmate, callers
 # invoke fm_config_send_reread_nudge so the live agent re-reads exact post-write
 # bytes (spawn/respawn already re-reads at launch and needs no redundant nudge).
@@ -75,6 +77,9 @@
 FM_SHARED_CAPTAIN_FILE="captain-shared.md"
 FM_SHARED_CAPTAIN_REL="data/$FM_SHARED_CAPTAIN_FILE"
 FM_SHARED_CAPTAIN_MODE="444"
+# Fork-local virtual item: transport only this assignment, never the whole .env.
+# It deliberately stays outside FM_INHERITABLE_CONFIG and config reread content.
+FM_JEV_KEY_REL=".env/TYPESAFE_API_KEY"
 
 # The declared inheritable set (space-separated, config-dir-relative item paths).
 # Extend here to inherit more of the primary's local config; override via the
@@ -99,7 +104,8 @@ fm_config_inherit_item_session_scoped() {  # <item>
 
 # The complete declared inherited-material set as home-relative paths, one per
 # line, in propagation order: every FM_INHERITABLE_CONFIG item under config/,
-# then the one shared data file. This is what remote senders and receivers
+# then the shared data file and the fork-local virtual Jev key item.
+# This is what remote senders and receivers
 # derive from, so both ends of a transfer agree by construction.
 fm_config_inherit_items() {
   local item
@@ -107,7 +113,113 @@ fm_config_inherit_items() {
     printf 'config/%s\n' "$item"
   done
   printf '%s\n' "$FM_SHARED_CAPTAIN_REL"
+  printf '%s\n' "$FM_JEV_KEY_REL"
 }
+
+# Extract the last matching assignment using the accessor's line grammar.
+# Return 3 for proven absence; unsafe/unreadable input is an error. Values never
+# enter shell variables, arguments, traces, diagnostics, or inheritance reports.
+fm_jev_key_extract() {
+  perl -MErrno=ENOENT -MFcntl=:DEFAULT,:mode -e '
+    my $path = shift;
+    if (!lstat $path) { exit($! == ENOENT ? 3 : 1) }
+    sysopen(my $fh, $path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit 1;
+    my @s = stat $fh;
+    S_ISREG($s[2]) && $s[3] == 1 or exit 1;
+    my $last;
+    while (my $line = <$fh>) {
+      $line !~ /\0/ or exit 1;
+      $last = $line if $line =~ /^[\t\r ]*(?:export[\t ]+)?TYPESAFE_API_KEY=/;
+    }
+    eof($fh) or exit 1;
+    close($fh) or exit 1;
+    defined($last) or exit 3;
+    $last .= "\n" unless $last =~ /\n\z/;
+    print $last or exit 1;
+  ' -- "$1" 2>/dev/null
+}
+
+# Merge a validated, single-assignment payload into an ignored ordinary .env.
+# Preserve other lines byte-for-byte, collapse duplicate key assignments, and
+# publish atomically at 0600. The caller owns serialization for its home.
+fm_jev_key_apply() {
+  local home=$1 payload=$2 top
+  [ -d "$home" ] && [ ! -L "$home" ] || return 1
+  top=$(git -C "$home" rev-parse --show-toplevel 2>/dev/null) || return 1
+  [ "$top" = "$(cd "$home" && pwd -P)" ] || return 1
+  git -C "$home" check-ignore -q -- .env 2>/dev/null || return 1
+  perl -MErrno=ENOENT -MFcntl=:DEFAULT,:mode -MFile::Temp=tempfile -e '
+    my ($home, $payload) = @ARGV;
+    open(my $in, "<", $payload) or exit 1;
+    local $/;
+    my $key = <$in>;
+    close($in) or exit 1;
+    defined($key) && $key =~ /\A[\t\r ]*(?:export[\t ]+)?TYPESAFE_API_KEY=[^\n\0]*\n\z/ or exit 1;
+    my $dest = "$home/.env";
+    my $old = "";
+    if (lstat $dest) {
+      sysopen(my $fh, $dest, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or exit 1;
+      my @s = stat $fh;
+      S_ISREG($s[2]) && $s[3] == 1 or exit 1;
+      $old = <$fh> // "";
+      close($fh) or exit 1;
+    } elsif ($! != ENOENT) { exit 1 }
+    my $seen = 0;
+    my $next = $old;
+    $next =~ s/^[\t\r ]*(?:export[\t ]+)?TYPESAFE_API_KEY=[^\n]*(?:\n|\z)/$seen++ ? "" : $key/gme;
+    if (!$seen) {
+      $next .= "\n" if length($next) && $next !~ /\n\z/;
+      $next .= $key;
+    }
+    if ($next eq $old) {
+      chmod(0600, $dest) or exit 1;
+      print "unchanged\n";
+      exit 0;
+    }
+    my ($out, $tmp) = tempfile(".env-inherit.XXXXXX", DIR => $home, UNLINK => 1);
+    chmod(0600, $tmp) && print($out $next) && close($out) or exit 1;
+    rename($tmp, $dest) or exit 1;
+    print "pushed\n";
+  ' -- "$home" "$payload" 2>/dev/null
+}
+
+propagate_jev_key() (
+  local src_home=$1 dest_home=$2 tmp rc status
+  tmp=$(umask 077; mktemp "${TMPDIR:-/tmp}/fm-jev-inherit.XXXXXX") || return 1
+  trap 'rm -f -- "$tmp"' EXIT
+  rc=0
+  fm_jev_key_extract "$src_home/.env" > "$tmp" || rc=$?
+  if [ "$rc" -eq 3 ]; then
+    record_inheritable_config_result "$FM_JEV_KEY_REL" skipped ""
+    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped\n' >&2
+    return 0
+  fi
+  if [ "$rc" -eq 0 ] && status=$(fm_jev_key_apply "$dest_home" "$tmp"); then
+    record_inheritable_config_result "$FM_JEV_KEY_REL" "$status" ""
+    return 0
+  fi
+  record_inheritable_config_result "$FM_JEV_KEY_REL" error ""
+  printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error\n' >&2
+  return 1
+)
+
+# Key-only convergence after remote seed or before explicit remote relaunch.
+# Callers source fm-wake-lib.sh and fm-secondmate-nudge-lib.sh for the existing
+# transaction lock and monotonic remote generation owner.
+fm_jev_key_push_remote() (
+  local scripts=$1 state=$2 id=$3 lock generation
+  lock=$(fm_remote_inherit_transaction_lock_path "$state" "$id") || return 1
+  if ! fm_lock_acquire_wait "$lock"; then
+    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered)\n' >&2
+    return 1
+  fi
+  trap 'fm_lock_release "$lock" || true' EXIT
+  if ! generation=$(fm_remote_inherit_generation_next "$state" "$id"); then
+    printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered)\n' >&2
+    return 1
+  fi
+  "$scripts/fm-remote-inherit-push.sh" "$id" "$generation" --jev-key-only
+)
 
 fm_config_source_present() {
   perl -MErrno=ENOENT -e '
@@ -546,6 +658,7 @@ propagate_secondmate_inheritance() {
   rc=0
   propagate_inheritable_config "$src_config" "$dest_home/config" || rc=1
   propagate_shared_captain_preferences "$src_data" "$dest_home/data" || rc=1
+  propagate_jev_key "$src_home" "$dest_home" || rc=1
   return "$rc"
 }
 
