@@ -1,0 +1,19 @@
+.agents/skills/secondmate-provisioning/SKILL.md
+  s_5f70e1a7e4ba62::t_f8f04d8c571aa0 120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d622102fa565464ee8e78c94e79869c150206d6b",
+  "prompts": {},
+  "sessions": {
+    "s_5f70e1a7e4ba62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4884add1-e40b-4236-ab0a-98b144bcd69d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
