@@ -1,0 +1,58 @@
+### A. primary has NO key: seed sm-old (absence warns, seed succeeds)
+SECONDMATE_SYNC: TYPESAFE_API_KEY skipped
+home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-old
+seed sm-old exit=0
+(no key value in output)
+sm-old: no .env
+### B. mate adds its own local line; primary now has K1; seed sm-new
+home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-new
+seed sm-new exit=0
+(no key value in output)
+sm-new: mode=600 key=TYPESAFE_API_KEY=<K1> lines=TYPESAFE_API_KEY=<K1>|
+### C. config push covers every live home (sm-old existing, sm-new)
+config-push: $LAB -> live secondmate homes
+secondmate sm-new (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-new):
+  .env/TYPESAFE_API_KEY: unchanged
+secondmate sm-old (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-old):
+  .env/TYPESAFE_API_KEY: pushed
+config-push exit=0
+(no key value in output)
+sm-old: mode=600 key=TYPESAFE_API_KEY=<K1> lines=MATE_LOCAL=keep|TYPESAFE_API_KEY=<K1>|
+sm-new: mode=600 key=TYPESAFE_API_KEY=<K1> lines=TYPESAFE_API_KEY=<K1>|
+### D. rotate primary key to K2, config push again
+config-push: $LAB -> live secondmate homes
+secondmate sm-new (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-new):
+  .env/TYPESAFE_API_KEY: pushed
+secondmate sm-old (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-old):
+  .env/TYPESAFE_API_KEY: pushed
+config-push exit=0
+(no key value in output)
+sm-old: mode=600 key=TYPESAFE_API_KEY=<K2> lines=MATE_LOCAL=keep|TYPESAFE_API_KEY=<K2>|
+sm-new: mode=600 key=TYPESAFE_API_KEY=<K2> lines=TYPESAFE_API_KEY=<K2>|
+### E. primary key removed: config push preserves mates' K2 and warns
+config-push: $LAB -> live secondmate homes
+secondmate sm-new (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-new):
+SECONDMATE_SYNC: TYPESAFE_API_KEY skipped
+  .env/TYPESAFE_API_KEY: skipped
+secondmate sm-old (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-old):
+SECONDMATE_SYNC: TYPESAFE_API_KEY skipped
+  .env/TYPESAFE_API_KEY: skipped
+config-push exit=0
+(no key value in output)
+sm-old: mode=600 key=TYPESAFE_API_KEY=<K2> lines=MATE_LOCAL=keep|TYPESAFE_API_KEY=<K2>|
+sm-new: mode=600 key=TYPESAFE_API_KEY=<K2> lines=TYPESAFE_API_KEY=<K2>|
+### F. adversarial: sm-new .env hardlinked to an outside file; sm-old .env tracked (not ignored)
+config-push: $LAB -> live secondmate homes
+secondmate sm-new (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-new):
+SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered: payload or .env is unsafe (symlinked, hardlinked, or not a regular file))
+  .env/TYPESAFE_API_KEY: error
+secondmate sm-old (/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.c5PqrY/sm-old):
+SECONDMATE_SYNC: TYPESAFE_API_KEY error (not delivered: .env is not gitignored)
+  .env/TYPESAFE_API_KEY: error
+config-push exit=1
+(no key value in output)
+sm-old: mode=600 key=TYPESAFE_API_KEY=<K2> lines=MATE_LOCAL=keep|TYPESAFE_API_KEY=<K2>|
+victim file: VICTIM=keep
+### G. leftover staging/credential files in mate working trees
+sm-old: 
+sm-new: 

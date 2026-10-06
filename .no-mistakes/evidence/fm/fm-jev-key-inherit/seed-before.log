@@ -1,0 +1,14 @@
+code root at main=aeb880b
+== [before] primary dispatch-resolve (control)
+dispatch-resolve:
+  status: escalate
+  reason: no rules to match
+== [before] fm-home-seed.sh sm-new <new home> --no-projects
+scaffolded: $LAB/data/sm-new/brief.md (secondmate charter)
+home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.h86zLI/sm-new
+seed exit=0
+no key value in seed output
+== [before] new mate .env
+no .env in new mate home
+== [before] mate dispatch-resolve (run with FM_HOME=mate)
+dispatch-resolve: off (TYPESAFE_API_KEY absent from the environment and $MATES/sm-new/.env)

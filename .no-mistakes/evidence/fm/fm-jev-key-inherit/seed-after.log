@@ -1,0 +1,30 @@
+hint: Using 'master' as the name for the initial branch. This default branch name
+hint: is subject to change. To configure the initial branch name to use in all
+hint: of your new repositories, which will suppress this warning, call:
+hint:
+hint: 	git config --global init.defaultBranch <name>
+hint:
+hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+hint: 'development'. The just-created branch can be renamed via this command:
+hint:
+hint: 	git branch -m <name>
+code root at main=6ae57b8
+== [after] primary dispatch-resolve (control)
+dispatch-resolve:
+  status: escalate
+  reason: no rules to match
+== [after] fm-home-seed.sh sm-new <new home> --no-projects
+scaffolded: $LAB/data/sm-new/brief.md (secondmate charter)
+home=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab-mates.SbGWDO/sm-new
+seed exit=0
+no key value in seed output
+== [after] new mate .env
+mode=600 links=1
+key lines matching primary: 1
+other primary lines not copied
+.env gitignored in mate
+untracked/staging leftovers: none
+== [after] mate dispatch-resolve (run with FM_HOME=mate)
+dispatch-resolve:
+  status: escalate
+  reason: no rules to match
