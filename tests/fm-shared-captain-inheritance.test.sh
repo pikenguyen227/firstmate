@@ -256,7 +256,13 @@ SH
     || fail "an older remote key receiver must warn without failing the push"
   assert_grep 'SECONDMATE_SYNC: secondmate remote: TYPESAFE_API_KEY not delivered: remote receiver predates the key item' \
     "$out" "remote failure missing route and reason"
-  printf '#!/usr/bin/env bash\n[ "${1:-}" != --stdin ] || shift\nshift\ncommand=$1; shift\nexec env FM_HOME="$JEV_REMOTE_HOME" bash "$JEV_CODE_ROOT/bin/$command" "$@"\n' > "$sender/fm-on.sh"
+  cat > "$sender/fm-on.sh" <<'STUB'
+#!/usr/bin/env bash
+[ "${1:-}" != --stdin ] || shift
+shift
+command=$1; shift
+exec env FM_HOME="$JEV_REMOTE_HOME" bash "$JEV_CODE_ROOT/bin/$command" "$@"
+STUB
   : > "$second/.gitignore"
   FM_HOME="$primary" JEV_REMOTE_HOME="$second" JEV_CODE_ROOT="$ROOT" \
     bash "$sender/fm-remote-inherit-push.sh" remote 5 --jev-key-only >> "$out" 2>&1 \
