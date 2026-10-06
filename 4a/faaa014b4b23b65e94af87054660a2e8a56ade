@@ -1,0 +1,19 @@
+tests/fm-shared-captain-inheritance.test.sh
+  s_f5abfff44a0609::t_33336ac2ec92ba 259-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4afaaa014b4b23b65e94af87054660a2e8a56ade",
+  "prompts": {},
+  "sessions": {
+    "s_f5abfff44a0609": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "da12aa2b-8ea8-438e-86c7-7369653ae86d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
