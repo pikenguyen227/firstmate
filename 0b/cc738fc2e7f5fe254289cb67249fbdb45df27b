@@ -1,0 +1,20 @@
+tests/fm-secondmate-harness.test.sh
+  s_e2580df796d3d2::t_4f8e4e10dcd824 1707-1708,1873-1875
+  s_e2580df796d3d2::t_65c44c3ae6f60e 1709
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0bcc738fc2e7f5fe254289cb67249fbdb45df27b",
+  "prompts": {},
+  "sessions": {
+    "s_e2580df796d3d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf2edf69-796d-4602-b70f-8eb61377b352",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
