@@ -1704,7 +1704,9 @@ test_config_push_propagates_reports_without_ff_or_nudge() {
   instruction=$(reread_instruction_path "$w/sm") || fail "config-push reread instruction missing"
   assert_contains "$(cat "$instruction")" $'-----BEGIN config/backend-----\ntmux\n-----END config/backend-----' \
     "config-push reread must include exact backend bytes"
-  [ ! -s "$err" ] || fail "clean config push wrote unexpected stderr: $(cat "$err")"
+  # The primary has no Jev key, so the documented absence warning is the only stderr.
+  ! grep -vxF 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped' "$err" >/dev/null \
+    || fail "clean config push wrote unexpected stderr: $(cat "$err")"
   assert_contains "$(inbox_stream "$w/home/state" sm)" "[fm-from-firstmate]" \
     "config reread must use the marked routed secondmate path"
 
@@ -1868,7 +1870,9 @@ test_config_reread_per_home_changed_sets_and_exact_bytes() {
   err="$w/config-reread-per-home.err"
   out=$(run_config_push "$w" "$log" 2>"$err"); status=$?
   expect_code 0 "$status" "per-home reread config push should succeed"
-  [ ! -s "$err" ] || fail "unexpected stderr: $(cat "$err")"
+  # The primary has no Jev key, so each home's absence warning is the only stderr.
+  ! grep -vxF 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped' "$err" >/dev/null \
+    || fail "unexpected stderr: $(cat "$err")"
 
   # Destination bytes converged per home.
   cmp -s "$w/home/config/crew-dispatch.json" "$w/alpha/config/crew-dispatch.json" \
