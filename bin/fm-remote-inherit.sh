@@ -8,6 +8,8 @@
 # Only the inherited-material allowlist is writable or removable. Writes are
 # atomic ordinary-file replacements. data/captain-shared.md is read-only and is
 # quarantined before removal or before replacing bytes not last published here.
+# The fork-local .env/TYPESAFE_API_KEY virtual item merges only that assignment
+# into the ignored .env; absence preserves the remote credential and warns.
 set -eu
 
 FM_HOME=${FM_HOME:?FM_HOME is required}
@@ -60,12 +62,18 @@ case "$GENERATION" in ''|*[!0-9]*) die "generation must be a positive integer" ;
 [ "${#GENERATION}" -le 18 ] && [ "$GENERATION" -ge 1 ] || die "generation is outside the supported range"
 HOME_REAL=$(CDPATH='' cd -- "$FM_HOME" 2>/dev/null && pwd -P) || die "FM_HOME is unavailable"
 PARENT="$HOME_REAL/$(dirname "$REL")"
+[ "$REL" != "$FM_JEV_KEY_REL" ] || PARENT="$HOME_REAL"
 # The captain accepts this config/data parent TOCTOU within Firstmate's single-user trust boundary.
 [ ! -L "$PARENT" ] || die "inherited destination parent is a symlink"
 mkdir -p "$PARENT" || die "cannot create inherited destination parent"
 PARENT_REAL=$(CDPATH='' cd -- "$PARENT" && pwd -P)
-case "$PARENT_REAL" in "$HOME_REAL/config"|"$HOME_REAL/data") ;; *) die "inherited destination escapes FM_HOME" ;; esac
+case "$PARENT_REAL" in
+  "$HOME_REAL/config"|"$HOME_REAL/data") ;;
+  "$HOME_REAL") [ "$REL" = "$FM_JEV_KEY_REL" ] || die "inherited destination escapes FM_HOME" ;;
+  *) die "inherited destination escapes FM_HOME" ;;
+esac
 DEST="$PARENT_REAL/$(basename "$REL")"
+[ "$REL" != "$FM_JEV_KEY_REL" ] || DEST="$HOME_REAL/.env"
 [ ! -L "$DEST" ] || die "inherited destination is a symlink"
 if [ -e "$DEST" ]; then
   [ -f "$DEST" ] || die "inherited destination is not a regular file"
@@ -73,8 +81,16 @@ if [ -e "$DEST" ]; then
 fi
 
 BASE=$(basename "$REL")
-LOCK="$PARENT_REAL/.fm-inherit-$BASE.lock"
-GENERATION_FILE="$PARENT_REAL/.fm-inherit-$BASE.generation"
+RECORD_PARENT=$PARENT_REAL
+if [ "$REL" = "$FM_JEV_KEY_REL" ]; then
+  RECORD_PARENT="$HOME_REAL/config"
+  if ! shared_captain_dir_safe "$RECORD_PARENT" \
+    || ! destination_allows_inherited_item "$RECORD_PARENT" ".fm-inherit-$BASE.generation"; then
+    die "TYPESAFE_API_KEY not delivered: config/ staging is unsafe or not gitignored"
+  fi
+fi
+LOCK="$RECORD_PARENT/.fm-inherit-$BASE.lock"
+GENERATION_FILE="$RECORD_PARENT/.fm-inherit-$BASE.generation"
 fm_lock_acquire_wait "$LOCK" || die "cannot lock inherited destination"
 TMP=
 GENERATION_TMP=
@@ -117,7 +133,7 @@ commit_generation() {
       return 0
     fi
   fi
-  GENERATION_TMP=$(umask 077; mktemp "$PARENT_REAL/.inherit-generation.XXXXXX") \
+  GENERATION_TMP=$(umask 077; mktemp "$RECORD_PARENT/.inherit-generation.XXXXXX") \
     || die "cannot stage inheritance generation"
   printf '%s\n%s\n%s\n%s\n' "$GENERATION" "$EXPECTED_BYTES" "$EXPECTED_HASH" "$COMMAND" > "$GENERATION_TMP" \
     || die "cannot write inheritance generation"
@@ -152,7 +168,7 @@ quarantine_shared() {
 
 case "$COMMAND" in
   put)
-    TMP=$(umask 077; mktemp "$PARENT_REAL/.inherit.XXXXXX") || die "cannot stage inherited material"
+    TMP=$(umask 077; mktemp "$RECORD_PARENT/.inherit.XXXXXX") || die "cannot stage inherited material"
     head -c "$((MAX_BYTES + 1))" > "$TMP" || die "cannot read inherited material"
     BYTES=$(LC_ALL=C wc -c < "$TMP" | tr -d ' ')
     [ "$BYTES" -le "$MAX_BYTES" ] || die "inherited material exceeds the byte bound"
@@ -160,6 +176,11 @@ case "$COMMAND" in
     ACTUAL_HASH=$(sha256_file "$TMP") || die "cannot hash inherited material"
     [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || die "inherited material digest does not match its commitment"
     commit_generation
+    if [ "$REL" = "$FM_JEV_KEY_REL" ]; then
+      ACTION=$(fm_jev_key_apply "$HOME_REAL" "$TMP") || die "TYPESAFE_API_KEY not delivered: $ACTION"
+      printf '%s: %s\n' "$ACTION" "$REL"
+      exit 0
+    fi
     if [ -f "$DEST" ] && cmp -s "$TMP" "$DEST"; then
       [ "$REL" != data/captain-shared.md ] || chmod 444 "$DEST"
       printf 'unchanged: %s\n' "$REL"
@@ -173,6 +194,10 @@ case "$COMMAND" in
     printf 'pushed: %s\n' "$REL"
     ;;
   absent)
+    if [ "$REL" = "$FM_JEV_KEY_REL" ]; then
+      printf 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped\n' >&2
+      exit 0
+    fi
     [ "$EXPECTED_BYTES" -eq 0 ] || die "absent inheritance has a nonzero payload commitment"
     EMPTY=$(umask 077; mktemp "$PARENT_REAL/.inherit-empty.XXXXXX") || die "cannot stage empty inheritance commitment"
     : > "$EMPTY"

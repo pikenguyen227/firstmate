@@ -70,8 +70,21 @@ command_fields=$(perl -MMIME::Base64=decode_base64 -e '
 IFS=$'\t' read -r cmd action id harness model effort <<EOF
 $command_fields
 EOF
+if [ "$cmd" = fm-remote-inherit.sh ]; then
+  [ "$action" = put ] && [ "$id" = .env/TYPESAFE_API_KEY ] || exit 95
+  [ "$FM_FAKE_RELAUNCH_MODE" != key-unreachable ] || exit 255
+  # Consume only the expected fake assignment, never print its value.
+  received=$(cat)
+  [ "$received" = TYPESAFE_API_KEY=fake-relaunch-secret ] || exit 96
+  touch "$FM_HOME/state/key-delivered"
+  printf 'pushed: .env/TYPESAFE_API_KEY\n'
+  exit 0
+fi
 [ "$cmd" = fm-remote-secondmate-control.sh ] || exit 93
 [ "$action" = relaunch ] || exit 94
+if [ -f "$FM_HOME/.env" ] && [ "$FM_FAKE_RELAUNCH_MODE" != key-unreachable ]; then
+  [ -f "$FM_HOME/state/key-delivered" ] || exit 97
+fi
 case "$FM_FAKE_RELAUNCH_MODE" in
   refuse)
     printf 'error: unverified remote secondmate harness: %s\n' "$harness" >&2
@@ -160,6 +173,26 @@ OUT=$(run_relaunch local1 claude - -); RC=$?
 assert_contains "$OUT" "not a remotely placed secondmate" \
   "the refusal should explain the tool this task needs instead"
 pass "a local secondmate is refused by the remote relaunch tool"
+
+# --- key propagation precedes relaunch and preserves transport uncertainty --
+reset_meta
+printf 'TYPESAFE_API_KEY=fake-relaunch-secret\nOTHER=unrelated-relaunch-secret\n' > "$HOME_DIR/.env"
+OUT=$(run_relaunch ios claude - -); RC=$?
+expect_code 0 "$RC" "key convergence before remote relaunch failed"
+assert_present "$HOME_DIR/state/key-delivered" "remote relaunch skipped the key transfer"
+assert_not_contains "$OUT" 'fake-relaunch-secret' "remote relaunch leaked a key"
+rm "$HOME_DIR/state/key-delivered"
+reset_meta
+FM_FAKE_RELAUNCH_MODE=key-unreachable
+OUT=$(run_relaunch ios claude - -); RC=$?
+unset FM_FAKE_RELAUNCH_MODE
+expect_code 0 "$RC" "an undelivered key must not refuse the relaunch"$'\n'"$OUT"
+assert_contains "$OUT" 'SECONDMATE_SYNC: secondmate ios: TYPESAFE_API_KEY not delivered: remote host unreachable' \
+  "missing key delivery warning naming the route and reason"
+assert_contains "$OUT" 'relaunched ios' "relaunch did not proceed after failed key transfer"
+assert_not_contains "$OUT" 'fake-relaunch-secret' "failed key delivery leaked a key"
+rm "$HOME_DIR/.env"
+pass "remote relaunch converges only the key first and warns without blocking on failed delivery"
 
 # --- a relaunch keeps an already-armed PR poll authenticating ---------------
 # fm-pr-check.sh now refuses to arm a poll on a kind=secondmate record, but a

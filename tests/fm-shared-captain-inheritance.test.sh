@@ -66,6 +66,214 @@ assert_secondmate_write_fails() {
   fi
 }
 
+# Credential tests use only fake values; failure messages never include file bytes.
+new_jev_pair() {
+  local rec primary second
+  rec=$(new_home_pair "$1")
+  primary=${rec%%|*}; second=${rec#*|}
+  git init -q "$second"
+  printf '.env\nconfig/\ndata/\nstate/\n' > "$second/.gitignore"
+  printf '%s\n' "$rec"
+}
+
+assert_jev_private() {
+  local second=$1 output=$2
+  [ "$(file_mode "$second/.env")" = 600 ] || fail "credential destination mode is not private"
+  if grep -Eq 'fake-secret|unrelated-secret' "$output"; then
+    fail "credential output leaked a value"
+  fi
+}
+
+test_jev_seed() {
+  local seed primary second out expected remote
+  seed=$(make_seed_primary "$TMP_ROOT/jev-seed-code")
+  primary="$TMP_ROOT/jev-seed-primary"; second="$TMP_ROOT/jev-seed-second"
+  mkdir -p "$primary/data" "$primary/state"
+  printf 'OTHER=unrelated-secret\nTYPESAFE_API_KEY=fake-secret-seed\n' > "$primary/.env"
+  out="$TMP_ROOT/jev-seed.out"; expected="$TMP_ROOT/jev-seed.expected"
+  FM_HOME="$primary" FM_SECONDMATE_CHARTER='credential fixture' \
+    bash "$seed/bin/fm-home-seed.sh" sm "$second" --no-projects > "$out" 2>&1 \
+    || fail "credential seed failed"
+  printf 'TYPESAFE_API_KEY=fake-secret-seed\n' > "$expected"
+  cmp -s "$expected" "$second/.env" || fail "seed did not copy only the credential"
+  assert_jev_private "$second" "$out"
+  printf 'LOCAL=keep\n' >> "$second/.env"
+  printf 'TYPESAFE_API_KEY=fake-secret-reseed\n' > "$primary/.env"
+  FM_HOME="$primary" bash "$seed/bin/fm-home-seed.sh" sm "$second" --no-projects >> "$out" 2>&1 \
+    || fail "credential reseed failed"
+  printf 'TYPESAFE_API_KEY=fake-secret-reseed\nLOCAL=keep\n' > "$expected"
+  cmp -s "$expected" "$second/.env" || fail "reseed did not preserve other environment lines"
+  assert_jev_private "$second" "$out"
+  remote="$TMP_ROOT/jev-seed-remote"
+  git init -q "$remote"
+  printf '.env\nconfig/\n' > "$remote/.gitignore"
+  cat > "$seed/bin/fm-on.sh" <<'SH'
+#!/usr/bin/env bash
+[ "${1:-}" != --stdin ] || shift
+shift
+command=$1; shift
+case "$command" in
+  fm-remote-doctor.sh) exit 0 ;;
+  fm-remote-home-provision.sh) cat > /dev/null; printf 'provisioned\n'; exit 0 ;;
+  fm-remote-inherit.sh) exec env FM_HOME="$JEV_REMOTE_HOME" bash "$JEV_CODE_ROOT/bin/$command" "$@" ;;
+  *) exit 1 ;;
+esac
+SH
+  chmod +x "$seed/bin/fm-on.sh"
+  FM_HOME="$primary" FM_SECONDMATE_CHARTER='remote credential fixture' \
+    JEV_REMOTE_HOME="$remote" JEV_CODE_ROOT="$ROOT" \
+    bash "$seed/bin/fm-remote-home-seed.sh" remote fixture-host /fixture/code /fixture/home --no-projects >> "$out" 2>&1 \
+    || fail "remote seed credential convergence failed"
+  cmp -s "$primary/.env" "$remote/.env" || fail "remote seed skipped credential transfer"
+  assert_jev_private "$remote" "$out"
+  pass "local seed, reseed, and remote seed converge the Jev credential"
+
+}
+
+test_jev_merge_and_absence() {
+  local rec primary second report out expected before
+  rec=$(new_jev_pair jev-merge); primary=${rec%%|*}; second=${rec#*|}
+  report="$TMP_ROOT/jev.report"; out="$TMP_ROOT/jev.out"; expected="$TMP_ROOT/jev.expected"
+  printf 'OTHER=unrelated-secret\nTYPESAFE_API_KEY=stale\n export TYPESAFE_API_KEY="fake-secret-final"\n' > "$primary/.env"
+  printf '# keep\nLOCAL=literal\nTYPESAFE_API_KEY=old\nexport TYPESAFE_API_KEY=duplicate\nTAIL=keep' > "$second/.env"
+  printf '# keep\nLOCAL=literal\n export TYPESAFE_API_KEY="fake-secret-final"\nTAIL=keep' > "$expected"
+  FM_CONFIG_INHERIT_REPORT="$report" propagate_secondmate_inheritance "$primary" "$second" > "$out" 2>&1 \
+    || fail "key propagation failed"
+  cmp -s "$expected" "$second/.env" || fail "key merge changed unrelated lines or retained duplicates"
+  assert_jev_private "$second" "$out"
+  assert_grep $'.env/TYPESAFE_API_KEY\tpushed\t' "$report" "key update missing from report"
+  [ -z "$(fm_config_reread_changed_items "$report")" ] || fail "credential entered config reread set"
+  cat "$report" >> "$out"
+  printf 'codex\n' > "$second/config/crew-harness"
+  awk -F '\t' '$1 != "crew-harness"' "$report" > "$TMP_ROOT/jev-reread.report"
+  printf 'crew-harness\tpushed\t\n' >> "$TMP_ROOT/jev-reread.report"
+  fm_config_write_reread_instruction "$second" "$TMP_ROOT/jev-reread.report" "$TMP_ROOT/jev-reread" \
+    || fail "mixed config/key reread instruction failed"
+  if grep -Eq 'TYPESAFE_API_KEY|fake-secret|unrelated-secret' "$TMP_ROOT/jev-reread"; then
+    fail "credential entered reread instruction content"
+  fi
+  before=$(fm_inherit_sha256 "$second/.env")
+  chmod 644 "$second/.env"
+  : > "$report"
+  FM_CONFIG_INHERIT_REPORT="$report" propagate_jev_key "$primary" "$second" >> "$out" 2>&1 \
+    || fail "repeated key propagation failed"
+  assert_grep $'.env/TYPESAFE_API_KEY\tunchanged\t' "$report" "identical key was not unchanged"
+  assert_jev_private "$second" "$out"
+  printf 'OTHER=unrelated-secret\n' > "$primary/.env"
+  propagate_jev_key "$primary" "$second" >> "$out" 2>&1 || fail "key absence should warn only"
+  rm "$primary/.env"
+  propagate_jev_key "$primary" "$second" >> "$out" 2>&1 || fail "file absence should warn only"
+  [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "primary absence deleted destination key"
+  assert_grep 'SECONDMATE_SYNC: TYPESAFE_API_KEY skipped' "$out" "missing key did not warn"
+  pass "Jev key merges only its assignment, repairs permissions, excludes rereads, and preserves absent source"
+}
+
+test_jev_unsafe_destinations_and_sources() {
+  local rec primary second out kind before
+  rec=$(new_jev_pair jev-unsafe); primary=${rec%%|*}; second=${rec#*|}
+  out="$TMP_ROOT/jev-unsafe.out"
+  printf 'TYPESAFE_API_KEY=fake-secret-new\n' > "$primary/.env"
+  printf 'LOCAL=keep\n' > "$TMP_ROOT/jev-victim"
+  for kind in symlink dangling hardlink directory fifo tracked unignored; do
+    rm -rf "$second/.env"
+    printf '.env\n' > "$second/.gitignore"
+    case "$kind" in
+      symlink) ln -s "$TMP_ROOT/jev-victim" "$second/.env" ;;
+      dangling) ln -s "$TMP_ROOT/jev-missing" "$second/.env" ;;
+      hardlink) ln "$TMP_ROOT/jev-victim" "$second/.env" ;;
+      directory) mkdir "$second/.env" ;;
+      fifo) mkfifo "$second/.env" ;;
+      tracked) cp "$TMP_ROOT/jev-victim" "$second/.env"; git -C "$second" add -f .env ;;
+      unignored) git -C "$second" rm -q --cached .env; : > "$second/.gitignore" ;;
+    esac
+    if propagate_jev_key "$primary" "$second" > "$out" 2>&1; then
+      fail "unsafe credential destination accepted: $kind"
+    fi
+  done
+  assert_grep 'LOCAL=keep' "$TMP_ROOT/jev-victim" "unsafe destination modified another file"
+  rm -rf "$second/.env"
+  printf '.env\n' > "$second/.gitignore"
+  printf 'TYPESAFE_API_KEY=local\n' > "$second/.env"
+  before=$(fm_inherit_sha256 "$second/.env")
+  for kind in symlink dangling directory fifo unreadable; do
+    rm -rf "$primary/.env"
+    case "$kind" in
+      symlink) ln -s "$TMP_ROOT/jev-victim" "$primary/.env" ;;
+      dangling) ln -s "$TMP_ROOT/jev-missing" "$primary/.env" ;;
+      directory) mkdir "$primary/.env" ;;
+      fifo) mkfifo "$primary/.env" ;;
+      unreadable) printf 'TYPESAFE_API_KEY=fake-secret-new\n' > "$primary/.env"; chmod 000 "$primary/.env" ;;
+    esac
+    if propagate_jev_key "$primary" "$second" > "$out" 2>&1; then
+      fail "unsafe credential source accepted: $kind"
+    fi
+    [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "unsafe source changed destination"
+  done
+  chmod 600 "$primary/.env"
+  pass "Jev inheritance refuses unsafe sources and destinations without changing existing credentials"
+}
+
+test_jev_remote_transfer() {
+  local rec primary second sender out report expected before bytes hash
+  rec=$(new_jev_pair jev-remote); primary=${rec%%|*}; second=${rec#*|}
+  sender="$TMP_ROOT/jev-sender"; mkdir -p "$sender"
+  cp "$ROOT/bin/fm-remote-inherit-push.sh" "$ROOT/bin/fm-config-inherit-lib.sh" \
+    "$ROOT/bin/fm-secondmate-registry-lib.sh" "$ROOT/bin/fm-startup-memory-budget-lib.sh" "$sender/"
+  cat > "$sender/fm-on.sh" <<'SH'
+#!/usr/bin/env bash
+[ "${1:-}" != --stdin ] || shift
+shift
+command=$1; shift
+exec env FM_HOME="$JEV_REMOTE_HOME" bash "$JEV_CODE_ROOT/bin/$command" "$@"
+SH
+  chmod +x "$sender/fm-on.sh"
+  printf -- '- remote - fixture (host: example; root: /remote; home: /remote-home; scope: test; projects: ; added 2026-10-07)\n' > "$primary/data/secondmates.md"
+  printf 'OTHER=unrelated-secret\nTYPESAFE_API_KEY=fake-secret-remote\n' > "$primary/.env"
+  printf 'LOCAL=keep\n' > "$second/.env"
+  out="$TMP_ROOT/jev-remote.out"
+  FM_HOME="$primary" JEV_REMOTE_HOME="$second" JEV_CODE_ROOT="$ROOT" \
+    bash -x "$sender/fm-remote-inherit-push.sh" remote 1 --jev-key-only > "$out" 2>&1 \
+    || fail "remote key transfer failed"
+  expected="$TMP_ROOT/jev-remote.expected"
+  printf 'LOCAL=keep\nTYPESAFE_API_KEY=fake-secret-remote\n' > "$expected"
+  cmp -s "$expected" "$second/.env" || fail "remote transfer included other source secrets or lost destination lines"
+  assert_jev_private "$second" "$out"
+  before=$(fm_inherit_sha256 "$second/.env")
+  printf 'OTHER=unrelated-secret\n' > "$primary/.env"
+  FM_HOME="$primary" JEV_REMOTE_HOME="$second" JEV_CODE_ROOT="$ROOT" \
+    bash "$sender/fm-remote-inherit-push.sh" remote 2 --jev-key-only >> "$out" 2>&1 \
+    || fail "remote key absence failed"
+  [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "remote absence removed a credential"
+  # Receiver rejects whole-env injection even with a matching transport commitment.
+  bytes=$(wc -c < "$expected" | tr -d ' '); hash=$(fm_inherit_sha256 "$expected")
+  if FM_HOME="$second" bash "$ROOT/bin/fm-remote-inherit.sh" put "$FM_JEV_KEY_REL" "$bytes" "$hash" 3 < "$expected" >> "$out" 2>&1; then
+    fail "remote key receiver accepted a whole environment"
+  fi
+  [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "invalid remote payload changed destination"
+  printf '#!/usr/bin/env bash\nprintf "error: path is not inherited material: .env/TYPESAFE_API_KEY\\n" >&2\nexit 1\n' > "$sender/fm-on.sh"
+  printf 'TYPESAFE_API_KEY=fake-secret-remote\n' > "$primary/.env"
+  FM_HOME="$primary" bash "$sender/fm-remote-inherit-push.sh" remote 4 --jev-key-only >> "$out" 2>&1 \
+    || fail "an older remote key receiver must warn without failing the push"
+  assert_grep 'SECONDMATE_SYNC: secondmate remote: TYPESAFE_API_KEY not delivered: remote receiver predates the key item' \
+    "$out" "remote failure missing route and reason"
+  cat > "$sender/fm-on.sh" <<'STUB'
+#!/usr/bin/env bash
+[ "${1:-}" != --stdin ] || shift
+shift
+command=$1; shift
+exec env FM_HOME="$JEV_REMOTE_HOME" bash "$JEV_CODE_ROOT/bin/$command" "$@"
+STUB
+  : > "$second/.gitignore"
+  FM_HOME="$primary" JEV_REMOTE_HOME="$second" JEV_CODE_ROOT="$ROOT" \
+    bash "$sender/fm-remote-inherit-push.sh" remote 5 --jev-key-only >> "$out" 2>&1 \
+    || fail "an unignored remote destination must warn without failing the push"
+  assert_grep 'TYPESAFE_API_KEY not delivered: remote config/ staging is unsafe or not gitignored' \
+    "$out" "unignored remote destination missing reason"
+  [ "$before" = "$(fm_inherit_sha256 "$second/.env")" ] || fail "refused remote delivery changed destination"
+  assert_jev_private "$second" "$out"
+  pass "remote Jev sender transfers only the key, receiver guards payload, and failed delivery warns with a reason"
+}
+
 test_first_copy_readonly_and_local_files_preserved() {
   local rec primary second report out qcount
   rec=$(new_home_pair first-copy)
@@ -434,6 +642,7 @@ new_git_world() {
   touch "$home/state/.last-watcher-beat"
   git init -q -b main "$root"
   {
+    printf '%s\n' '.env'
     printf '%s\n' '.fm-secondmate-home'
     printf '%s\n' 'data/'
     printf '%s\n' 'state/'
@@ -451,6 +660,7 @@ new_git_world() {
   printf '%s\n' sm > "$w/sm/.fm-secondmate-home"
   mkdir -p "$w/sm/data" "$w/sm/state" "$w/sm/config" "$w/sm/projects"
   printf '%s\n' "charter" > "$w/sm/data/charter.md"
+  printf 'TYPESAFE_API_KEY=fake-secret-integration\n' > "$home/.env"
   write_shared "$home/data/captain-shared.md" "shared from primary"
   printf '%s|%s|%s|%s\n' "$w" "$root" "$home" "$w/sm"
 }
@@ -476,6 +686,7 @@ EOF
   cmp -s "$data_override/captain-shared.md" "$sm/data/captain-shared.md" \
     || fail "spawn convergence point did not copy shared captain preferences from FM_DATA_OVERRIDE"
   assert_shared_readonly "$sm/data/captain-shared.md"
+  cmp -s "$home/.env" "$sm/.env" || fail "convergence point did not inherit Jev key"
   pass "spawn convergence point propagates data/captain-shared.md from FM_DATA_OVERRIDE"
 }
 
@@ -506,6 +717,7 @@ EOF
   cmp -s "$data_override/captain-shared.md" "$sm/data/captain-shared.md" \
     || fail "bootstrap convergence point did not copy shared captain preferences from FM_DATA_OVERRIDE"
   assert_shared_readonly "$sm/data/captain-shared.md"
+  cmp -s "$home/.env" "$sm/.env" || fail "convergence point did not inherit Jev key"
   pass "bootstrap convergence point propagates data/captain-shared.md from FM_DATA_OVERRIDE"
 }
 
@@ -535,6 +747,7 @@ EOF
   cmp -s "$data_override/captain-shared.md" "$sm/data/captain-shared.md" \
     || fail "config-push convergence point did not update shared captain preferences from FM_DATA_OVERRIDE"
   assert_shared_readonly "$sm/data/captain-shared.md"
+  cmp -s "$home/.env" "$sm/.env" || fail "convergence point did not inherit Jev key"
   pass "fm-config-push convergence point updates changed shared captain source bytes from FM_DATA_OVERRIDE"
 }
 
@@ -593,6 +806,10 @@ EOF
   pass "session-start digest renders data/captain-shared.md with the shared read-only label"
 }
 
+test_jev_seed
+test_jev_merge_and_absence
+test_jev_unsafe_destinations_and_sources
+test_jev_remote_transfer
 test_first_copy_readonly_and_local_files_preserved
 test_true_divergence_after_inherit_still_quarantines
 test_interrupted_publication_matching_source_does_not_quarantine

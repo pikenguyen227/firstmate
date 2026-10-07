@@ -9,7 +9,8 @@
 # remote host dimension in data/secondmates.md, gates the host on
 # fm-remote-doctor.sh readiness before touching it, sends a bounded provisioning
 # manifest through fm-on.sh, and lets the remote host clone its own Firstmate
-# home and project origins. No project tree or secret environment is copied.
+# home and project origins. No project tree or whole secret environment is copied;
+# after successful provisioning, the inherited Jev assignment is transferred.
 #
 # Each project needs an origin the remote account can clone. Firstmate resolves
 # that origin and names it as <project>=<origin-url>, so seeding never requires
@@ -44,6 +45,10 @@ MAX_MANIFEST_BYTES=1048576
 . "$SCRIPT_DIR/fm-remote-readiness-lib.sh"
 # shellcheck source=bin/fm-project-origin-lib.sh
 . "$SCRIPT_DIR/fm-project-origin-lib.sh"
+# shellcheck source=bin/fm-secondmate-nudge-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-nudge-lib.sh"
+# shellcheck source=bin/fm-config-inherit-lib.sh
+. "$SCRIPT_DIR/fm-config-inherit-lib.sh"
 
 die() { printf 'error: %s\n' "$1" >&2; exit 1; }
 usage() { sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
@@ -269,4 +274,7 @@ if [ "$PROVISION_RC" -ne 0 ]; then
   die "remote provisioning failed; registry restored"
 fi
 printf '%s\n' "$PROVISION_OUT"
+# Provisioning is already committed. An unsupported remote revision or unsafe
+# destination leaves the route intact and names the undelivered credential.
+fm_jev_key_push_remote "$SCRIPT_DIR" "$STATE" "$ID" || true
 printf 'home=%s:%s\n' "$HOST" "$REMOTE_HOME"

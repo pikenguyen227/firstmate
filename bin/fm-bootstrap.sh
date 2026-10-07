@@ -629,6 +629,7 @@ secondmate_sync() {
     fi
     if inherit_out=$(FM_CONFIG_INHERIT_LIVE=1 \
       "$SCRIPT_DIR/fm-remote-inherit-push.sh" "$id" "$remote_generation" 2>&1); then
+      printf '%s\n' "$inherit_out" | grep '^SECONDMATE_SYNC: .*TYPESAFE_API_KEY not delivered:' || true
       if printf '%s\n' "$inherit_out" | grep -Eq '^(pushed|removed):'; then nudge_needed=1; fi
     else
       echo "SECONDMATE_SYNC: secondmate $id: skipped: remote inheritance failed on $remote_host: $(remote_inherit_failure_reason "$inherit_out")"
