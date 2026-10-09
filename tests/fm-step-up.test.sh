@@ -166,6 +166,14 @@ test_second_test_failure_triggers() {
   out=$(step "$home" apply --trigger test-failure --cause 'parser test still red' --harness claude --model claude-opus-5-5 --effort medium)
   expect_code 0 "$?" "second Test-step failure steps: $out"
   assert_grep 'after a second Test-step failure' "$home/control.argv" 'note names the trigger'
+
+  home=$(new_task tests-terminal ship direct-PR claude claude-sonnet-5-5 medium full)
+  say "$home" 'failed: Test step still red'
+  out=$(step "$home" test-failure --cause 'parser test still red')
+  expect_code 1 "$?" 'a Test-step failure is not recorded over a terminal failed:'
+  assert_equals failed "$(status_line_verb "$(last_status_line "$home/state/t1.status")")" 'the terminal failed: stays the latest event'
+  out=$(step "$home" plan --trigger failed --cause 'parser test still red')
+  expect_code 0 "$?" "the failed trigger still applies: $out"
   pass 'the second Test-step failure for a task triggers the step'
 }
 
@@ -199,6 +207,16 @@ test_non_triggers() {
   out=$(step "$home" plan --trigger failed --cause 'cannot explain')
   expect_code 1 "$?" 'research is never stepped'
   assert_contains "$out" 'research scout is never stepped' 'reason names research'
+
+  home=$(new_task research-shared ship direct-PR claude claude-opus-5-5 medium full)
+  jq '(.rules[] | select(.strategy == "research") | .use) = {"harness": "claude", "model": "claude-opus-5-5", "effort": "medium"}' \
+    "$home/config/crew-dispatch.json" > "$home/config/d.json" && mv "$home/config/d.json" "$home/config/crew-dispatch.json"
+  say "$home" 'failed: could not explain the parser crash'
+  out=$(step "$home" plan --trigger failed --cause 'cannot explain a failure')
+  expect_code 0 "$?" "a ship on the research profile still steps: $out"
+  assert_contains "$out" 'from: standard' 'a ship is classified on the ladder, not as research'
+  out=$(step "$home" plan --trigger failed --cause 'cannot explain a failure' --from-tier research)
+  expect_code 2 "$?" 'research is not a tier for a ship'
 
   home=$(new_task unmatched ship direct-PR claude claude-sonnet-5-5 low full)
   say "$home" 'failed: gave up'

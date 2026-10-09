@@ -1317,7 +1317,7 @@ A real worker failure earns one relaunch of the same task on the next tier of `c
 - **Triggers:** a terminal `failed:` whose cause is not an external system, a `blocked:` that recovery could not clear and whose cause is the worker's capability, or the second recorded Test-step failure for the task.
   A cause or status note that names CI, Azure, a vendor or outage, disk, the daemon, quota or rate limits, credentials or login, or the network never steps.
 - **Ladder:** the rules whose `strategy` slot is `check`, `light`, `standard`, then `hard`, skipping a rung the home does not configure.
-  The task's tier is the rung whose profiles hold its recorded harness, model, and effort; a hard-tier failure goes to the captain with the evidence, and a `research` scout is never stepped.
+  The task's tier is the rung whose profiles hold its recorded harness, model, and effort; a hard-tier failure goes to the captain with the evidence, and a scout on a `research` profile is never stepped (a ship sharing that profile is placed on the ladder).
 - **Action:** an in-place relaunch through `bin/fm-control.sh <id> relaunch` on a next-tier profile, which may change harness, in the same local copy, branch, and validation run, with a note naming the cause.
   A next tier with several profiles is resolved through `quota-array-dispatch` first, so quota eligibility picks the candidate.
 - **Limits:** at most one step per task, recorded in its status log and so in the lifecycle feed, and never a second validation run: a branch whose run has concluded is not stepped, and a live run stays with the task.

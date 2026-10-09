@@ -33,9 +33,10 @@
 #   tiers         the ladder is the dispatch rules whose `strategy` slot is
 #                 check, light, standard, or hard, in that order, skipping a
 #                 rung the home does not configure; the task's current tier is
-#                 the one rung (or research) whose profiles contain the
-#                 recorded harness, model, and effort, or --from-tier when that
-#                 rung contains it; research and hard are never stepped
+#                 the one rung (or, for a scout, research) whose profiles
+#                 contain the recorded harness, model, and effort, or
+#                 --from-tier when that rung contains it; a research scout and
+#                 hard are never stepped
 #   validation    a no-mistakes ship whose branch already has a concluded
 #                 validation run is never stepped, because finishing it would
 #                 need a second run; a live run stays with the task and the
@@ -57,7 +58,9 @@
 # must name the tier the task finished on. The record is written before the
 # relaunch so the one-step cap holds even when the relaunch fails; that
 # failure appends `blocked [key=step-up]` and exits 3. test-failure appends one
-# `working` record per observed Test-step failure and prints the count.
+# `working` record per observed Test-step failure and prints the count; it
+# refuses (exit 1) when the latest event is a terminal done: or failed:, which
+# such a record would mask.
 # Status appends are self-announced, so firstmate's own records never wake it.
 #
 # Exit codes: 0 step planned or applied (or failure recorded), 1 no step or
@@ -152,6 +155,9 @@ count_records() {  # <prefix>
 if [ "$VERB" = test-failure ]; then
   [ -z "$TRIGGER$FROM_TIER$AUTONOMY_ARG" ] && [ "$PICKED$APPROVED" = 00 ] \
     || die "test-failure takes only --cause"
+  case "$(status_line_verb "$(last_status_line "$STATUS")")" in
+    done|failed) printf 'the latest status event is terminal; step on it with --trigger failed instead\n' >&2; exit 1 ;;
+  esac
   n=$(( $(count_records "$TEST_PREFIX") + 1 ))
   append_status "$(capped_line "working: ${TEST_PREFIX}$n recorded: $CAUSE")" || exit 2
   printf 'recorded test-step failure %s for %s\n' "$n" "$ID"
@@ -241,14 +247,16 @@ tier_has_profile() {  # <tier> <harness> <model> <effort>
 profile_text() { printf '%s%s%s' "$1" "${2:+ $2}" "${3:+ $3}"; }
 
 CURRENT_PROFILE=$(profile_text "$HARNESS" "$MODEL" "$EFFORT")
+TIERS=$LADDER
+[ "$KIND" != scout ] || TIERS="$LADDER research"
 if [ -n "$FROM_TIER" ]; then
-  case " $LADDER research " in *" $FROM_TIER "*) ;; *) die "--from-tier must be one of: $LADDER research" ;; esac
+  case " $TIERS " in *" $FROM_TIER "*) ;; *) die "--from-tier must be one of: $TIERS" ;; esac
   tier_has_profile "$FROM_TIER" "$HARNESS" "$MODEL" "$EFFORT" \
     || no_step "the task runs $CURRENT_PROFILE, which is not a $FROM_TIER profile"
   FROM=$FROM_TIER
 else
   matches=''
-  for t in $LADDER research; do
+  for t in $TIERS; do
     tier_has_profile "$t" "$HARNESS" "$MODEL" "$EFFORT" && matches="$matches${matches:+ }$t"
   done
   case "$matches" in

@@ -90,7 +90,7 @@ The judgment is yours: pick the trigger only when the evidence fits it.
 
 - `--trigger failed` for a terminal `failed:` whose cause is not an external system (CI, Azure, a vendor outage, disk, the daemon, quota, credentials, or a tool the instructions could not have avoided).
 - `--trigger blocked` for a `blocked:` the escalation above could not clear whose cause is the worker's capability: it misread its instructions, cannot explain a failure, loops, or asks what its instructions already answer.
-- `--trigger test-failure` after each reported Test-step failure is recorded with `bin/fm-step-up.sh <id> test-failure --cause '<what failed>'`; the second one for the same task triggers.
+- `--trigger test-failure` after each reported Test-step failure is recorded with `bin/fm-step-up.sh <id> test-failure --cause '<what failed>'`; the second one for the same task triggers. Recording is refused after a terminal `done:` or `failed:`; step a `failed:` with `--trigger failed`.
 
 Run `plan` with that trigger and a plain `--cause`, and act on its verdict.
 On `no-step`, follow its reason: a hard-tier failure, a second failure after a step, or a refused step goes to the captain with the evidence through step 6, and a research scout is never stepped.
