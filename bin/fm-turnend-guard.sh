@@ -194,12 +194,14 @@ if [ "$FM_SUP_NEEDED" = false ]; then
   [ -e "$FAILURE_NOTICE" ] || budget_reset
   exit 0
 fi
-# Every Claude turn end in a home that needs supervision is stamped, whatever
-# this guard then decides, so a detached handling successor whose close no
-# turn-end hook carried can tell "a turn ended and armed nothing" from "the
-# turn is still running" (bin/fm-watch-arm.sh await_close_carrier).
+# Every Claude turn end in a home that needs supervision is stamped with the
+# stopping session's CLAUDE_PID, whatever this guard then decides, so a
+# detached handling successor whose close no turn-end hook carried can tell "its
+# own session's turn ended and armed nothing" from "the turn is still running"
+# (bin/fm-watch-arm.sh await_close_carrier); another session's Stop proves
+# nothing about the successor's session.
 if [ "$CLAUDE_MODE" -eq 1 ]; then
-  touch "$STATE/.claude-stop-seen" 2>/dev/null || true
+  printf '%s\n' "${CLAUDE_PID:-}" > "$STATE/.claude-stop-seen" 2>/dev/null || true
 fi
 # One owner of the "supervision is on, let this turn end" exit contract, shared
 # by every proof of supervision below.
@@ -267,7 +269,8 @@ block_stop() {
 # cannot arm or repair supervision without stealing ownership, so blocking
 # every Stop would create an impossible loop. Each Stop ends safely with a
 # status message naming the owner, the beacon age, and the unblock. When the
-# beacon is already past grace, the first Stop of that outage instead blocks
+# beacon is already past grace and no owner auto-arm generation explains the
+# gap (fm_autoarm_midturn_healthy, or an open claim), the first Stop of that outage instead blocks
 # once, so the model relays the outage to the captain in its own reply rather
 # than leaving it in a status line nobody may see; the notice marker
 # (owner pid and beacon mtime) bounds that to one block per outage, and a
@@ -290,7 +293,10 @@ if [ "$CLAUDE_MODE" -eq 1 ] && fm_session_lock_foreign_owner_live "$STATE"; then
     owner_desc="pid $owner, session $recorded"
   fi
   hint=$(fm_session_lock_unblock_hint "$owner" "$FM_ROOT")
-  if [ "$FM_SUP_WATCHER_FRESH" = false ] && foreign_owner_notice_due "$owner"; then
+  if [ "$FM_SUP_WATCHER_FRESH" = false ] \
+    && ! fm_autoarm_midturn_healthy "$STATE" "$GRACE" \
+    && ! fm_autoarm_claim_open "$STATE" "$GRACE" \
+    && foreign_owner_notice_due "$owner"; then
     rule='━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
     {
       printf '●%s\n' "$rule"

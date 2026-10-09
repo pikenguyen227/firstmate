@@ -438,8 +438,9 @@ registry_record() {  # <config-dir> <pid> <session-id>
 
 # The third verdict never grants ownership; it only lets a re-keyed session
 # take over a live front-end that Claude's own session registry proves runs no
-# live copy of the recorded conversation. Every weaker combination keeps the
-# live owner foreign.
+# conversation at all while no live process runs the recorded one. Every weaker
+# combination, including an owner whose record names any other conversation (a
+# healthy session mid-/clear), keeps the live owner foreign.
 test_idle_claude_owner_is_reclaimable_only_with_registry_proof() {
   local dir fakebin state cc
   dir="$TMP_ROOT/reclaimable-owner"
@@ -450,7 +451,7 @@ test_idle_claude_owner_is_reclaimable_only_with_registry_proof() {
   write_background_session_ps "$fakebin"
   printf '700\n' > "$state/.lock"
   printf 'S1\n' > "$state/.lock-session"
-  registry_record "$cc" 700 S0
+  registry_record "$cc" 700 ""
   registry_record "$cc" 710 S2
 
   # The divergence itself: the re-keyed session neither owns the lock nor sees
@@ -459,7 +460,7 @@ test_idle_claude_owner_is_reclaimable_only_with_registry_proof() {
     fail "a re-keyed session owned the front-end's lock outright"
   fi
   CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state" \
-    || fail "an idle front-end whose recorded session runs nowhere was not reclaimable"
+    || fail "an idle front-end that runs no conversation was not reclaimable"
   if CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 foreign_owner "$fakebin" "$state" >/dev/null; then
     fail "a reclaimable front-end was still reported as a foreign live owner"
   fi
@@ -478,7 +479,13 @@ test_idle_claude_owner_is_reclaimable_only_with_registry_proof() {
   if CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state"; then
     fail "a front-end still running the recorded session was reclaimable"
   fi
-  registry_record "$cc" 700 S0
+  registry_record "$cc" 700 S3
+  registry_record "$cc" 730 S3
+  if CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state"; then
+    fail "a live owner whose record names a different live conversation was reclaimable"
+  fi
+  rm -f "$cc/sessions/730.json"
+  registry_record "$cc" 700 ""
   registry_record "$cc" 750 S1
   if CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state"; then
     fail "a recorded session still live in another process was reclaimable"
@@ -496,7 +503,7 @@ test_idle_claude_owner_is_reclaimable_only_with_registry_proof() {
   if CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state"; then
     fail "an owner with no registry record was reclaimable"
   fi
-  registry_record "$cc" 700 S0
+  registry_record "$cc" 700 ""
   printf '{"pid":' > "$cc/sessions/760.json"
   if CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state"; then
     fail "a malformed registry record was ignored instead of read as uncertainty"
@@ -508,7 +515,7 @@ test_idle_claude_owner_is_reclaimable_only_with_registry_proof() {
   fi
   CLAUDE_CONFIG_DIR=$cc FM_TEST_SESSION_ID=S2 FM_TEST_CLAUDE_PID=710 reclaimable "$fakebin" "$state" \
     || fail "the restored proof no longer reclaims"
-  pass "session-lock: an idle Claude front-end is reclaimable only when the session registry proves it holds no live conversation of the lock"
+  pass "session-lock: an idle Claude front-end is reclaimable only when the session registry proves it runs no conversation"
 }
 
 test_reanchor_need_follows_the_trusted_model_loop() {
@@ -962,7 +969,7 @@ test_e2e_background_session_survives_rekey_after_recycle() {
 # The same stall from a lock written before re-anchoring existed: line 1 still
 # names the idle front-end when the daemon restart and the /clear arrive. The
 # re-keyed session is refused until Claude's own session registry proves the
-# front-end runs no live copy of the recorded conversation; then the Stop hook
+# front-end runs no conversation and nothing runs the recorded one; then the Stop hook
 # reclaims the lock and supervision resumes without anyone ending the front-end.
 test_e2e_idle_frontend_lock_is_reclaimed_after_rekey() {
   local dir state frontend spare
@@ -988,7 +995,7 @@ test_e2e_idle_frontend_lock_is_reclaimed_after_rekey() {
   expect_phase_foreign "$dir" 2 0 "$frontend" S1 0 "front-end still runs the recorded session"
 
   # Phase 3: another live process still runs the recorded conversation.
-  write_registry_record "$dir" "$frontend" S0
+  write_registry_record "$dir" "$frontend" ""
   write_registry_record "$dir" "$FIXTURE_PTYHOST" S1
   fire_phase "$dir" 3 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
   expect_phase_foreign "$dir" 3 0 "$frontend" S1 0 "recorded session live elsewhere"
@@ -999,17 +1006,24 @@ test_e2e_idle_frontend_lock_is_reclaimed_after_rekey() {
   fire_phase "$dir" 4 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
   expect_phase_foreign "$dir" 4 0 "$frontend" S1 0 "own record not yet re-keyed"
 
-  # Phase 5: the front-end runs another conversation and no live process runs
-  # S1, so the front-end holds nothing; the hook reclaims and supervises.
+  # Phase 5: the front-end's record names a different conversation, as a
+  # healthy owner's does between its own /clear and its SessionStart re-key.
   write_registry_record "$dir" "$spare" S2
+  write_registry_record "$dir" "$frontend" S3
   fire_phase "$dir" 5 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
+  expect_phase_foreign "$dir" 5 0 "$frontend" S1 0 "owner record names another conversation"
+
+  # Phase 6: the front-end runs no conversation and no live process runs S1,
+  # so the front-end holds nothing; the hook reclaims and supervises.
+  write_registry_record "$dir" "$frontend" ""
+  fire_phase "$dir" 6 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
   kill -0 "$frontend" 2>/dev/null || fail "the front-end exited, so the reclaim was not of a live owner"
-  expect_phase_owned "$dir" 5 2 "$spare" S2 "idle front-end reclaimed"
+  expect_phase_owned "$dir" 6 2 "$spare" S2 "idle front-end reclaimed"
   [ ! -e "$state/.lock-reanchor" ] || fail "a takeover left a stale re-anchor record: $(cat "$state/.lock-reanchor")"
 
   : > "$state/stop-frontend"
   : > "$state/stop-spare"
-  pass "session-lock e2e: a live front-end that no longer runs the recorded session is reclaimed after a re-key, and nothing weaker is"
+  pass "session-lock e2e: a live front-end that runs no conversation is reclaimed after a re-key, and nothing weaker is"
 }
 
 # A same-session confirmation must refresh a /clear re-key even while another

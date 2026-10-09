@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Token-free live guard for the Claude session registry that
 # fm_session_lock_owner_reclaimable in bin/fm-session-lock-lib.sh reads to decide
-# whether a live front-end still runs the conversation a session lock records.
+# whether a live front-end runs no conversation at all.
 #
 # The registry is Claude Code's own surface (<CLAUDE_CONFIG_DIR or
 # ~/.claude>/sessions/<pid>.json), so it is proven here against the installed
 # harness rather than a fixture: the guard must run inside a real Claude session,
 # whose own record must name the session's current id, and the real library
-# verdict is then driven both ways against another live Claude process's record
-# in a scratch home - reclaimable when the lock records a conversation no live
-# record names, not reclaimable when it records that process's own current
-# conversation. The registry is only read; no live home or lock is touched.
+# verdict is then driven against another live Claude process whose record names
+# a conversation, in a scratch home: never reclaimable, whether the lock records
+# that process's current conversation or one no live record names (the shape of
+# a healthy owner between its own /clear and its SessionStart re-key). The
+# registry is only read; no live home or lock is touched.
 # A failure names the Claude version.
 set -u
 
@@ -69,9 +70,11 @@ verdict() {
   bash -c '. "$1" && fm_session_lock_owner_reclaimable "$2"' _ "$LIB" "$state"
 }
 printf 'fm-live-guard-absent-%s\n' "$$" > "$state/.lock-session"
-verdict || fail "claude $CLAUDE_VERSION: live pid $other runs '$other_id', yet a lock recording a conversation no process runs was not reclaimable"
+if verdict; then
+  fail "claude $CLAUDE_VERSION: live pid $other runs conversation '$other_id', yet a lock recording another conversation was reclaimable"
+fi
 printf '%s\n' "$other_id" > "$state/.lock-session"
 if verdict; then
   fail "claude $CLAUDE_VERSION: live pid $other still runs the recorded conversation '$other_id', yet its lock was reclaimable"
 fi
-pass "claude $CLAUDE_VERSION: the reclaim verdict reads the real registry both ways against live pid $other"
+pass "claude $CLAUDE_VERSION: the reclaim verdict keeps live pid $other, which runs a conversation, on the real registry"

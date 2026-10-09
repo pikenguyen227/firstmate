@@ -26,9 +26,8 @@
 # sweep guard, leases, and the session-start completion record do not mistake
 # it for a takeover; a takeover removes that record. Every other confirmation
 # leaves a live line 1 untouched. A dead recorded pid is reclaimed and
-# rewritten to this session's anchor, and so is a live Claude owner that
-# fm_session_lock_owner_reclaimable proves holds no live conversation of the
-# lock.
+# rewritten to this session's anchor, and so is a live Claude front-end that
+# fm_session_lock_owner_reclaimable proves runs no conversation at all.
 #
 # Usage: fm-lock.sh           acquire; exit 1 unless ownership is verified
 #        fm-lock.sh status    print holder and liveness; always exits 0.
@@ -317,6 +316,6 @@ fi
 commit_lock_session
 release_claim_lock
 if [ -n "$RECLAIMED_FROM" ]; then
-  echo "lock reclaimed: pid ${RECLAIMED_FROM%% *} is a Claude process that no longer runs recorded session ${RECLAIMED_FROM#* }"
+  echo "lock reclaimed: pid ${RECLAIMED_FROM%% *} is a Claude process that runs no conversation, not recorded session ${RECLAIMED_FROM#* }"
 fi
 echo "lock acquired: harness pid $me"

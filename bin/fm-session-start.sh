@@ -701,12 +701,14 @@ if [ "$LOCK_RC" -ne 0 ]; then
     fm_session_lock_inspect "$STATE"
     if [ "$FM_LOCK_INSPECT_STATE" = held ]; then
       fm_supervision_status "$STATE" "${FM_GUARD_GRACE:-300}"
-      if [ "$FM_SUP_NEEDED" = true ] && [ "$FM_SUP_WATCHER_FRESH" = false ]; then
+      if [ "$FM_SUP_WATCHER_FRESH" = true ] \
+        || fm_autoarm_midturn_healthy "$STATE" "${FM_GUARD_GRACE:-300}" \
+        || fm_autoarm_claim_open "$STATE" "${FM_GUARD_GRACE:-300}"; then
+        printf '●  The watcher last beat %s, so the holder is still supervising.\n' "$FM_SUP_BEACON_DESC"
+      elif [ "$FM_SUP_NEEDED" = true ]; then
         printf '●  SUPERVISION IS DOWN: the watcher last beat %s (grace %ss) and only the\n' \
           "$FM_SUP_BEACON_DESC" "${FM_GUARD_GRACE:-300}"
         printf '●  lock holder can restore it. Tell the captain now, with the unblock below.\n'
-      elif [ "$FM_SUP_WATCHER_FRESH" = true ]; then
-        printf '●  The watcher last beat %s, so the holder is still supervising.\n' "$FM_SUP_BEACON_DESC"
       fi
       printf '●  To unblock: %s\n' "$(fm_session_lock_unblock_hint "$FM_LOCK_INSPECT_PID" "$FM_ROOT")"
     fi

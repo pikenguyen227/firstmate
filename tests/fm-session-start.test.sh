@@ -922,6 +922,52 @@ EOF
   pass "a lock refusal prints a loud read-only banner, skips every mutating step, and still completes the digest"
 }
 
+# A holder whose Claude auto-arm claim is open is still supervising between
+# turns even though its beacon is past grace, so the read-only banner must not
+# tell the captain supervision is down.
+test_lock_refusal_banner_respects_an_open_owner_claim() {
+  local rec root home fakebin holder_pid identity out status
+  rec=$(new_world lock-refusal-claim)
+  IFS='|' read -r root home fakebin <<EOF
+$rec
+EOF
+  make_fake_toolchain "$fakebin"
+  make_fake_ps_claude "$fakebin"
+  # The claim's owner identity is read through ps lstart, which the harness
+  # stub does not answer; delegate just that query to the real ps.
+  mv "$fakebin/ps" "$fakebin/ps-harness"
+  cat > "$fakebin/ps" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+  *"lstart="*) exec /bin/ps "$@" ;;
+esac
+exec "$(dirname "$0")/ps-harness" "$@"
+SH
+  chmod +x "$fakebin/ps"
+  printf 'project=x\n' > "$home/state/task.meta"
+
+  sleep 300 &
+  holder_pid=$!
+  printf '%s\n' "$holder_pid" > "$home/state/.lock"
+  # shellcheck disable=SC2016 # expanded by the child shell
+  identity=$(PATH="$fakebin:$BASE_PATH" FM_HOME="$home" bash -c '. "$1/bin/fm-wake-lib.sh" && fm_pid_identity "$2"' _ "$ROOT" "$holder_pid") \
+    || fail "could not compute the holder's identity"
+  printf 'epoch=1 owner_pid=%s outcome=arming updated_at=%s\n%s\n' "$holder_pid" "$(date +%s)" "$identity" \
+    > "$home/state/.claude-autoarm-epoch"
+
+  status=0
+  out=$(run_session_start "$home" "$root" "$fakebin:$BASE_PATH") || status=$?
+  kill "$holder_pid" 2>/dev/null || true
+  wait "$holder_pid" 2>/dev/null || true
+
+  expect_code 0 "$status" "fm-session-start.sh must exit 0 even on a lock refusal"
+  assert_contains "$out" "READ-ONLY SESSION" "read-only banner missing on lock refusal"
+  assert_not_contains "$out" "SUPERVISION IS DOWN: the watcher last beat" "an open owner claim was reported as a supervision outage"
+  assert_contains "$out" "so the holder is still supervising" "the banner did not say the holder is still supervising"
+  assert_contains "$out" "To unblock: if pid $holder_pid" "the banner lost the unblock"
+  pass "a read-only banner does not report an outage while the holder's auto-arm claim is open"
+}
+
 test_lock_write_failure_read_only_path() {
   local rec root home fakebin out status
   rec=$(new_world lock-write-failure)
@@ -2996,6 +3042,7 @@ EOF
 test_context_digest_absent_empty_present
 test_context_digest_leads_with_left_off_note_and_prints_project_map
 test_lock_refusal_read_only_path
+test_lock_refusal_banner_respects_an_open_owner_claim
 test_lock_write_failure_read_only_path
 test_trace_context_effective_state_is_frozen_after_lock
 test_session_lock_concurrent_single_winner

@@ -1095,8 +1095,10 @@ test_arm_refuses_a_disposable_validation_checkout() {
 
 # A handling successor the Claude Stop hook detached (FM_WATCH_ARM_UNREAD=1)
 # whose watcher closes on a real wake. Supervision need comes from an in-flight
-# task record with no endpoint. Sets ARM_PID and leaves the arm waiting for a
-# carrier after the close.
+# task record with no endpoint. The arm inherits CLAUDE_PID=$UNREAD_SESSION_PID
+# as the auto-arm hook's environment gives it. Sets ARM_PID and leaves the arm
+# waiting for a carrier after the close.
+UNREAD_SESSION_PID=424242
 start_unread_successor_and_close() {  # <dir> <arm-out>
   local dir=$1 armout=$2 state fakebin i
   state="$dir/state"
@@ -1105,7 +1107,7 @@ start_unread_successor_and_close() {  # <dir> <arm-out>
   PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" \
     FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
     FM_ARM_CONFIRM_TIMEOUT="$REARM_CONFIRM_SECONDS" FM_ARM_UNCARRIED_SETTLE=1 \
-    FM_ARM_UNCARRIED_POLL=0.2 FM_WATCH_ARM_UNREAD=1 \
+    FM_ARM_UNCARRIED_POLL=0.2 FM_WATCH_ARM_UNREAD=1 CLAUDE_PID="$UNREAD_SESSION_PID" \
     "$WATCH_ARM" > "$armout" 2>&1 &
   ARM_PID=$!
   i=0
@@ -1125,8 +1127,9 @@ start_unread_successor_and_close() {  # <dir> <arm-out>
 
 # The 2026-10-09 stall's second failure: the handling successor's close went to
 # a file nobody reads while no turn end could arm. The arm must not finish as
-# successor=none; once a Claude Stop in the home settles without arming
-# anything, it queues one supervision-uncovered check naming the close.
+# successor=none; once a Claude Stop of its own session settles without arming
+# anything, it queues one supervision-uncovered check naming the close. A Stop
+# stamped by another (read-only) session in the same home proves nothing.
 test_unread_successor_reports_a_close_no_turn_end_carried() {
   local dir state armout status
   dir=$(make_case unread-successor-uncovered)
@@ -1137,7 +1140,12 @@ test_unread_successor_reports_a_close_no_turn_end_carried() {
   is_live_non_zombie "$ARM_PID" || fail "the successor exited as soon as its uncarried close landed: $(cat "$armout")"
   grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
     && fail "the successor reported an outage before any turn end proved one"
-  touch "$state/.claude-stop-seen"
+  printf '%s\n' "$((UNREAD_SESSION_PID + 1))" > "$state/.claude-stop-seen"
+  sleep 2.5
+  is_live_non_zombie "$ARM_PID" || fail "another session's Stop ended the successor's wait: $(cat "$armout")"
+  grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
+    && fail "another session's Stop was read as this session's turn end arming nothing"
+  printf '%s\n' "$UNREAD_SESSION_PID" > "$state/.claude-stop-seen"
   wait_for_exit "$ARM_PID" 150
   status=$?
   expect_code 0 "$status" "the successor must close cleanly after reporting the outage"

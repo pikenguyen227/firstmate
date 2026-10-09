@@ -379,12 +379,14 @@ fm_session_lock_names_pid() {  # <state> <pid>
 #   - the sidecar records a session id other than this session's;
 #   - the registry is readable with jq, this session's own record names its
 #     current id (proof the registry is current for this Claude build), and the
-#     owner pid has its own record naming a different conversation;
+#     owner pid has its own record naming no conversation at all;
 #   - no live process's record names the sidecar's session id.
-# Every uncertainty - no jq, no registry, a malformed record, no record for the
-# owner or for this session - is false, so a live owner stays foreign. A
-# session that genuinely still runs the recorded conversation, wherever it
-# lives, keeps the lock.
+# An owner whose record names any conversation is never reclaimable: that is
+# also a healthy session between its own /clear and the SessionStart hook that
+# re-keys the sidecar. Every uncertainty - no jq, no registry, a malformed
+# record, no record for the owner or for this session - is false, so a live
+# owner stays foreign. A session that genuinely still runs the recorded
+# conversation, wherever it lives, keeps the lock.
 fm_session_lock_owner_reclaimable() {  # <state> [<ancestry-pids>]
   local state=$1 pids=${2:-} lock_pid trusted recorded dir rows pid sid owner_seen=0 self_seen=0
   lock_pid=$(cat "$state/.lock" 2>/dev/null || true)
@@ -409,7 +411,7 @@ fm_session_lock_owner_reclaimable() {  # <state> [<ancestry-pids>]
     case "$pid" in ''|*[!0-9]*) continue ;; esac
     if [ "$pid" = "$lock_pid" ]; then
       owner_seen=1
-      [ "$sid" != "$recorded" ] || return 1
+      [ -z "$sid" ] || return 1
     fi
     if [ "$pid" = "$CLAUDE_PID" ] && [ "$sid" = "$trusted" ]; then
       self_seen=1

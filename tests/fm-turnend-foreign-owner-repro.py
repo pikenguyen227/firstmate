@@ -181,6 +181,23 @@ try:
     require(auto.returncode == 0, "foreign-owner auto-arm must exit safely")
     require(not (root / "state/.claude-autoarm-epoch").exists(), "foreign-owner auto-arm must not claim a generation")
 
+    # An open auto-arm claim of the owner explains the stale beacon: its turn
+    # end is arming, so the guard ends safely without the outage notice and
+    # without spending the once-per-outage marker.
+    identity = run(
+        env,
+        '. "$FM_ROOT_OVERRIDE/bin/fm-wake-lib.sh" && fm_pid_identity ' + lock_owner,
+    ).stdout.strip()
+    require(identity, "could not compute the lock owner's identity")
+    ledger = root / "state/.claude-autoarm-epoch"
+    ledger.write_text(f"epoch=1 owner_pid={lock_owner} outcome=arming updated_at={int(time.time())}\n{identity}\n")
+    covered = guard(env, "owner claim open")
+    require(covered.returncode == 0, "a foreign-owner Stop raised the outage notice while the owner's claim was open")
+    require("SUPERVISION IS OWNED BY ANOTHER LIVE SESSION" in covered.stdout, "a covered foreign-owner Stop lost its diagnostic")
+    require(not (root / "state/.turnend-foreign-owner-notified").exists(), "a covered Stop spent the once-per-outage notice")
+    ledger.unlink()
+    print("FIXED an open owner claim covers a stale beacon: no outage notice", flush=True)
+
     # The beacon is past grace, so the first Stop of this outage blocks exactly
     # once to make the model tell the captain, naming the owner and the unblock.
     notice = guard(env, "nonowner stop 1")
