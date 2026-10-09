@@ -2563,8 +2563,8 @@ EOF
 # CLEANUP_SAFE becomes 1 only after both creates returned complete exact IDs.
 # A missing, failed, or malformed create response stays ambiguous and grants no
 # cleanup authority.
-fm_backend_herdr_projection_create_task() {  # <cwd> <workspace-label> <task-label>
-  local cwd=$1 workspace_label=$2 task_label=$3 session out tabs panes tab_count pane_count focus_before active_tab
+fm_backend_herdr_projection_create_task() {  # <cwd> <workspace-label> <task-label> [<session>]
+  local cwd=$1 workspace_label=$2 task_label=$3 session=${4:-} out tabs panes tab_count pane_count focus_before active_tab
   FM_BACKEND_HERDR_PROJECTION_SESSION=""
   FM_BACKEND_HERDR_PROJECTION_WORKSPACE_ID=""
   FM_BACKEND_HERDR_PROJECTION_SEEDED_TAB_ID=""
@@ -2574,7 +2574,7 @@ fm_backend_herdr_projection_create_task() {  # <cwd> <workspace-label> <task-lab
   FM_BACKEND_HERDR_PROJECTION_CLEANUP_SAFE=0
 
   fm_backend_herdr_version_check || return 1
-  session=$(fm_backend_herdr_session)
+  [ -n "$session" ] || session=$(fm_backend_herdr_session)
   fm_backend_herdr_server_ensure "$session" || return 1
   focus_before=$(fm_backend_herdr_projection_focus_snapshot "$session") || {
     echo "error: herdr presentation workspace create could not capture exact active workspace and tab; refusing a focus-unsafe projection" >&2
@@ -2705,19 +2705,45 @@ fm_backend_herdr_projection_parent_workspace_exact() {  # <session> <parent-labe
   ' 2>/dev/null
 }
 
+# fm_backend_herdr_projection_parent_live_label: the exact current label of the
+# one workspace with this id, so a binding records whatever the captain named
+# the parent rather than assuming the computed home label.
+fm_backend_herdr_projection_parent_live_label() {  # <session> <parent-workspace>
+  local session=$1 parent_workspace=$2 list
+  [ -n "$parent_workspace" ] || return 1
+  list=$(fm_backend_herdr_cli "$session" workspace list 2>/dev/null) || return 1
+  printf '%s' "$list" | jq -er --arg parent_workspace "$parent_workspace" '
+    (.result.workspaces // null) as $spaces
+    | select(($spaces | type) == "array")
+    | [$spaces[]? | select(.workspace_id == $parent_workspace)]
+    | if length == 1
+        and (.[0].label | type) == "string"
+        and (.[0].label | length) > 0
+        and (.[0].label | test("[\\n\\r]") | not)
+      then .[0].label
+      else empty
+      end
+  ' 2>/dev/null
+}
+
 # fm_backend_herdr_projection_live_binding_matches: verify one exact projected
 # workspace, its single task tab/pane, its unique token label, and its current
 # position inside the exact parent workspace's contiguous child block.
+# The parent is identified by its exact workspace id, and <parent-label> is the
+# live label recorded for that id at spawn, which need not be the home label.
+# <owner-label> is the home label that legacy child titles carry as a prefix;
+# it defaults to <parent-label>.
 # This read-only predicate grants no mutation authority by itself.
-fm_backend_herdr_projection_live_binding_matches() {  # <session> <token> <workspace> <tab> <pane> <parent-workspace> <parent-label> <workspace-label> <task-label>
+fm_backend_herdr_projection_live_binding_matches() {  # <session> <token> <workspace> <tab> <pane> <parent-workspace> <parent-label> <workspace-label> <task-label> [<owner-label>]
   local session=$1 token=$2 workspace=$3 tab=$4 pane=$5 parent_workspace=$6
-  local parent_label=$7 workspace_label=$8 task_label=$9 list tabs panes
+  local parent_label=$7 workspace_label=$8 task_label=$9 owner_label=${10:-$7} list tabs panes
   list=$(fm_backend_herdr_cli "$session" workspace list 2>/dev/null) || return 1
   printf '%s' "$list" | jq -e \
     --arg token "$token" \
     --arg workspace "$workspace" \
     --arg parent_workspace "$parent_workspace" \
     --arg parent_label "$parent_label" \
+    --arg owner_label "$owner_label" \
     --arg workspace_label "$workspace_label" '
       def is_new_child:
         (.label | type) == "string"
@@ -2740,7 +2766,7 @@ fm_backend_herdr_projection_live_binding_matches() {  # <session> <token> <works
       | ($children[0]) as $child_index
       | select($child_index > $parent_index)
       | reduce range($parent_index + 1; $child_index) as $i
-          (true; . and (($spaces[$i] | is_new_child) or ($spaces[$i] | is_legacy_child_for($parent_label))))
+          (true; . and (($spaces[$i] | is_new_child) or ($spaces[$i] | is_legacy_child_for($owner_label))))
       | select(. == true)
     ' >/dev/null 2>&1 || return 1
   tabs=$(fm_backend_herdr_cli "$session" tab list --workspace "$workspace" 2>/dev/null) || return 1
@@ -2775,12 +2801,15 @@ fm_backend_herdr_projection_reclaim_rollback() {  # <session> <new-pane>
 # restored projection husk inside its original workspace.
 # The caller holds the session presentation lock and has already established
 # that flat fallback is safe across every token match.
+# The parent is matched by the binding's exact parent workspace id and the live
+# label recorded for it at spawn; <owner-label> is the computed home label used
+# only for legacy child titles.
 # Return 0 means exact reclaim, 2 means non-mutating or exactly rolled-back
 # refusal with flat fallback permitted, and 1 means a live/unknown or
 # post-mutation uncertainty that must refuse the launch.
-fm_backend_herdr_projection_reclaim_task() {  # <session> <journal> <task-id> <home> <meta-workspace> <meta-tab> <meta-pane> <parent-label> <task-label> <cwd>
+fm_backend_herdr_projection_reclaim_task() {  # <session> <journal> <task-id> <home> <meta-workspace> <meta-tab> <meta-pane> <owner-label> <task-label> <cwd>
   local session=$1 journal=$2 id=$3 home=$4 meta_workspace=$5 meta_tab=$6 meta_pane=$7
-  local parent_label=$8 task_label=$9 cwd=${10} canonical_home state focus_before active_tab out new_tab new_pane info close_status
+  local owner_label=$8 task_label=$9 cwd=${10} canonical_home state focus_before active_tab out new_tab new_pane info close_status
   FM_BACKEND_HERDR_PROJECTION_TAB_ID=""
   FM_BACKEND_HERDR_PROJECTION_PANE_ID=""
   fm_backend_herdr_projection_journal_snapshot "$journal" "$id" || return 1
@@ -2797,7 +2826,6 @@ fm_backend_herdr_projection_reclaim_task() {  # <session> <journal> <task-id> <h
      || [ "$FM_BACKEND_HERDR_JOURNAL_WORKSPACE_ID" != "$meta_workspace" ] \
      || [ "$FM_BACKEND_HERDR_JOURNAL_TAB_ID" != "$meta_tab" ] \
      || [ "$FM_BACKEND_HERDR_JOURNAL_PANE_ID" != "$meta_pane" ] \
-     || [ "$FM_BACKEND_HERDR_JOURNAL_PARENT_LABEL" != "$parent_label" ] \
      || [ "$FM_BACKEND_HERDR_JOURNAL_TASK_LABEL" != "$task_label" ]; then
     echo "warning: herdr presentation binding for $id does not match its exact home, endpoint, or parent; spawning flat" >&2
     return 2
@@ -2805,8 +2833,8 @@ fm_backend_herdr_projection_reclaim_task() {  # <session> <journal> <task-id> <h
   if ! fm_backend_herdr_projection_live_binding_matches \
     "$session" "$FM_BACKEND_HERDR_JOURNAL_PROJECTION_ID" \
     "$meta_workspace" "$meta_tab" "$meta_pane" \
-    "$FM_BACKEND_HERDR_JOURNAL_PARENT_WORKSPACE_ID" "$parent_label" \
-    "$FM_BACKEND_HERDR_JOURNAL_WORKSPACE_LABEL" "$task_label"; then
+    "$FM_BACKEND_HERDR_JOURNAL_PARENT_WORKSPACE_ID" "$FM_BACKEND_HERDR_JOURNAL_PARENT_LABEL" \
+    "$FM_BACKEND_HERDR_JOURNAL_WORKSPACE_LABEL" "$task_label" "$owner_label"; then
     echo "warning: herdr presentation binding for $id has an ambiguous, renamed, foreign, or non-nested live shape; spawning flat" >&2
     return 2
   fi
@@ -2904,8 +2932,8 @@ fm_backend_herdr_projection_reclaim_task() {  # <session> <journal> <task-id> <h
   if ! fm_backend_herdr_projection_live_binding_matches \
     "$session" "$FM_BACKEND_HERDR_JOURNAL_PROJECTION_ID" \
     "$meta_workspace" "$new_tab" "$new_pane" \
-    "$FM_BACKEND_HERDR_JOURNAL_PARENT_WORKSPACE_ID" "$parent_label" \
-    "$FM_BACKEND_HERDR_JOURNAL_WORKSPACE_LABEL" "$task_label"; then
+    "$FM_BACKEND_HERDR_JOURNAL_PARENT_WORKSPACE_ID" "$FM_BACKEND_HERDR_JOURNAL_PARENT_LABEL" \
+    "$FM_BACKEND_HERDR_JOURNAL_WORKSPACE_LABEL" "$task_label" "$owner_label"; then
     fm_backend_herdr_projection_reclaim_rollback "$session" "$new_pane" || return 1
     echo "warning: herdr presentation reclaim for $id did not converge exactly; spawning flat" >&2
     return 2

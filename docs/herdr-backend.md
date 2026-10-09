@@ -247,12 +247,14 @@ An unconverged opt-out keeps the default projection in that home until convergen
 Presentation is a best-effort visual projection, never task ownership or lifecycle authority.
 A presentation journal is the per-task record in this home's `state/` that binds a task to its projected workspace.
 
-Only a fresh task with neither metadata nor an existing presentation journal is eligible for projected creation.
+A fresh task with neither metadata nor an existing presentation journal is eligible for projected creation.
+So is a respawn or a gone-endpoint relaunch whose old journal names a projected workspace that is confirmed gone, as [Restart recovery](#restart-recovery) describes.
 Creation proceeds in this order:
 
 1. Firstmate atomically publishes a three-field version 1 journal containing a random 128-bit base64url token, before asking Herdr to create anything.
 2. After the new workspace converges to one exact task endpoint beneath one exact parent workspace id, the journal advances to a version 2 binding.
-   That binding records the physical home, named session, endpoint, parent, and immutable expected labels.
+   That binding records the physical home, named session, endpoint, parent workspace id, and immutable expected labels.
+   The recorded parent label is that workspace's live label at spawn, so a captain-renamed parent such as a main workspace called "Control Tower" still gets an exact binding.
 
 Another parent with the same presentation label does not prevent publication or participate in restart reclaim.
 
@@ -373,7 +375,7 @@ The replacement is allowed only when all of these agree:
 - The metadata endpoint.
 - The unique token match.
 - The workspace shape and labels.
-- The parent identity and placement.
+- The parent identity and placement, where the parent's live label must still equal the label recorded at spawn.
 - The non-target focus snapshot.
 
 The replacement tab and pane are created and verified before the old pane is rechecked and closed.
@@ -393,6 +395,10 @@ These cases fall back flat without mutating the old projection when duplicate-ag
 - Ambiguous identity or focus.
 
 A live or unknown recorded or token-matched endpoint refuses duplicate launch.
+
+When the flat fallback would apply and no workspace still carries the old journal's token, Firstmate retires that journal under the session lock and projects a fresh child exactly as a fresh spawn does, with a new token, under the launcher's parent.
+A relaunch whose recorded endpoint is proven gone takes the same fresh projection when its old journal names a gone workspace or there is no journal at all.
+An unreadable workspace list, or a token still present, keeps the journal and the flat fallback.
 
 ### Startup cleanup of restored projections
 
@@ -460,19 +466,19 @@ Any of these preserves the candidate and lets session startup continue with at m
 - Recovery of an existing presentation journal deliberately refuses the spawn when the shared presentation lock is contended, rather than falling back flat.
   Default-on makes that refusal reachable in any Herdr home.
 - Existing layouts are not force-renamed or rearranged.
-- Missing or ambiguous restart bindings fall back to the ordinary home workspace while the old projection remains untouched.
+- Missing or ambiguous restart bindings fall back to the ordinary home workspace while the old projection remains untouched, unless that old projection is confirmed gone, in which case the task is projected fresh.
 - Crashes, lost responses, failed exact-pane cleanup, or human renames can leave quarantined spaces.
   Session start removes only the exact home-local, uniquely journal-correlated, childless idle-shell shape above.
 - Spaces have no cross-home cleanup path, and a secondmate child can clean up only from its exact home.
 - Every stale-looking space outside that narrow startup proof still requires manual cleanup in Herdr's UI after human inspection.
-- Regaining a dedicated space after degradation requires stopping the flat task, manually checking the stale projection, and clearing its journal before a genuinely fresh launch.
+- Regaining a dedicated space while a stale projection still exists requires stopping the flat task, manually checking the stale projection, and clearing its journal before a fresh launch.
 - The visible token is only a restart-stable correlator and never substitutes for the exact binding.
 
 ### Presentation tests
 
 | Test | What it covers |
 | --- | --- |
-| `tests/fm-backend-herdr-presentation-e2e.test.sh` | Multi-home ordering, concurrency, lock contention, legacy coexistence, focus preservation, exact same-identity restart replacement, ambiguous bindings and tokens, and exact-pane cleanup through the guarded lab path. |
+| `tests/fm-backend-herdr-presentation-e2e.test.sh` | Multi-home ordering, concurrency, lock contention, legacy coexistence, focus preservation, exact same-identity restart replacement under a renamed parent, fresh projection after a gone workspace on relaunch or respawn, ambiguous bindings and tokens, and exact-pane cleanup through the guarded lab path. |
 | `tests/fm-herdr-session-cleanup.test.sh` | Every discovery, ownership, topology, process, locking, revalidation, focus, retirement, and continue-on-error boundary. |
 | `tests/fm-herdr-session-cleanup-e2e.test.sh` | The restored-shell cleanup in a guarded non-default named lab. |
 | `tests/fm-backend-herdr-focus-flash-e2e.test.sh` | Reproduces the raw explicit-close focus steal on the installed release, and proves the focus-safe emptying-close plan removes a doomed workspace with no wrong-focus interval. |
