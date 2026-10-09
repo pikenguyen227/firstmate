@@ -1,0 +1,22 @@
+$ bin/fm-lint.sh   # AGENTS.md is 32211 bytes
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+fm-lint.sh: no changed lint targets
+fm-lint-workflows.sh: 3 workflow files valid
+exit=0
+
+$ bin/fm-lint.sh   # AGENTS.md is 32768 bytes
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+fm-lint.sh: no changed lint targets
+fm-lint-workflows.sh: 3 workflow files valid
+exit=0
+
+$ bin/fm-lint.sh   # AGENTS.md is 32769 bytes
+fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+fm-lint.sh: local changed-file mode; ShellCheck source following disabled
+fm-lint.sh: no changed lint targets
+fm-lint.sh: AGENTS.md is 32769 bytes, over the 32768-byte Codex project-doc limit; move conditional detail into its owning skill or doc.
+fm-lint-workflows.sh: 3 workflow files valid
+exit=1
+
