@@ -329,18 +329,16 @@ EOF
 # The question is deliberately "does the lock still name the session that asked
 # for this work?", not "is that session still alive". The hazard being closed is
 # a SECOND session sweeping concurrently. A different session can take the lock
-# only after the recorded holder is dead, when bin/fm-lock.sh rewrites that pid
-# with its own anchor. An unchanged value therefore proves no one else owns the sweeps, which is
-# the whole guarantee. Requiring liveness instead would refuse to finish work
-# nobody else has claimed, and the sweeps are idempotent, so finishing it is
-# strictly better than abandoning it. A missing, unreadable, or replaced lock all
-# fail closed to the read-only probe.
+# only after the recorded holder is dead or provably holds no live conversation,
+# when bin/fm-lock.sh rewrites that pid with its own anchor. The same session
+# may re-anchor its own line 1, which fm_session_lock_names_pid follows. A lock
+# that still names the requesting session therefore proves no one else owns the
+# sweeps, which is the whole guarantee. Requiring liveness instead would refuse
+# to finish work nobody else has claimed, and the sweeps are idempotent, so
+# finishing it is strictly better than abandoning it. A missing, unreadable, or
+# replaced lock all fail closed to the read-only probe.
 lock_unchanged() {  # <expected-pid>
-  local expected=$1 current
-  case "$expected" in ''|*[!0-9]*) return 1 ;; esac
-  [ -f "$STATE/.lock" ] && [ ! -L "$STATE/.lock" ] || return 1
-  current=$(cat "$STATE/.lock" 2>/dev/null) || return 1
-  [ "$current" = "$expected" ]
+  fm_session_lock_names_pid "$STATE" "$1"
 }
 
 # Bootstrap owns the meaning of its output protocol: silence is success,

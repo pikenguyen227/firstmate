@@ -1093,6 +1093,124 @@ test_arm_refuses_a_disposable_validation_checkout() {
   pass "watch-arm: a disposable validation checkout refuses to arm"
 }
 
+# A handling successor the Claude Stop hook detached (FM_WATCH_ARM_UNREAD=1)
+# whose watcher closes on a real wake. Supervision need comes from an in-flight
+# task record with no endpoint. The arm inherits CLAUDE_PID=$UNREAD_SESSION_PID
+# as the auto-arm hook's environment gives it. Sets ARM_PID and leaves the arm
+# waiting for a carrier after the close.
+UNREAD_SESSION_PID=424242
+UNREAD_SETTLE=3
+start_unread_successor_and_close() {  # <dir> <arm-out>
+  local dir=$1 armout=$2 state fakebin i
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  printf 'project=x\n' > "$state/task.meta"
+  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_ARM_CONFIRM_TIMEOUT="$REARM_CONFIRM_SECONDS" FM_ARM_UNCARRIED_SETTLE="$UNREAD_SETTLE" \
+    FM_ARM_UNCARRIED_POLL=0.2 FM_WATCH_ARM_UNREAD=1 CLAUDE_PID="$UNREAD_SESSION_PID" \
+    "$WATCH_ARM" > "$armout" 2>&1 &
+  ARM_PID=$!
+  i=0
+  while [ "$i" -lt "$REARM_REPORT_POLLS" ] && ! grep -q '^watcher: started pid=' "$armout" 2>/dev/null; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  grep -q '^watcher: started pid=' "$armout" || fail "the successor arm did not start a watcher: $(cat "$armout")"
+  printf 'done: fixture finished\n' > "$state/demo.status"
+  i=0
+  while [ "$i" -lt 200 ] && ! grep -q '^signal:' "$armout" 2>/dev/null; do
+    sleep 0.1
+    i=$((i + 1))
+  done
+  grep -q '^signal:' "$armout" || fail "the successor's watcher never closed on the wake: $(cat "$armout")"
+}
+
+# Run the real Claude turn-end guard Stop for the case home as the session whose
+# model loop is CLAUDE_PID <pid>. Its exit is the guard's own business here;
+# only the stamp it leaves matters to the successor.
+claude_guard_stop() {  # <dir> <pid>
+  local dir=$1 root="$1/guard-root"
+  if [ ! -d "$root/bin" ]; then
+    mkdir -p "$root/bin"
+    : > "$root/AGENTS.md"
+    git init -q "$root"
+  fi
+  printf '{"session_id":"stop-%s","stop_hook_active":false}\n' "$2" \
+    | PATH="$dir/fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$dir/state" FM_ROOT_OVERRIDE="$root" \
+      FM_CLAUDE_AUTOARM_SYNC_WAIT_MS=0 CLAUDE_PID="$2" \
+      "$ROOT/bin/fm-turnend-guard.sh" --claude >/dev/null 2>&1 || true
+}
+
+# The 2026-10-09 stall's second failure: the handling successor's close went to
+# a file nobody reads while no turn end could arm. The arm must not finish as
+# successor=none; once a real Claude Stop of its own session settles without
+# arming anything, it queues one supervision-uncovered check naming the close.
+# A Stop of another (read-only) session in the same home proves nothing, and
+# one landing right after the successor's own Stop must not hide it.
+test_unread_successor_reports_a_close_no_turn_end_carried() {
+  local dir state armout status
+  dir=$(make_case unread-successor-uncovered)
+  state="$dir/state"
+  armout="$dir/arm.out"
+  start_unread_successor_and_close "$dir" "$armout"
+  sleep 1.5
+  is_live_non_zombie "$ARM_PID" || fail "the successor exited as soon as its uncarried close landed: $(cat "$armout")"
+  grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
+    && fail "the successor reported an outage before any turn end proved one"
+  claude_guard_stop "$dir" "$((UNREAD_SESSION_PID + 1))"
+  sleep "$((UNREAD_SETTLE + 2))"
+  is_live_non_zombie "$ARM_PID" || fail "another session's Stop ended the successor's wait: $(cat "$armout")"
+  grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
+    && fail "another session's Stop was read as this session's turn end arming nothing"
+  claude_guard_stop "$dir" "$UNREAD_SESSION_PID"
+  claude_guard_stop "$dir" "$((UNREAD_SESSION_PID + 1))"
+  wait_for_exit "$ARM_PID" 150
+  status=$?
+  expect_code 0 "$status" "the successor must close cleanly after reporting the outage"
+  grep -q "supervision-uncovered	check: supervision uncovered: the handling watcher closed on 'signal:" "$state/.wake-queue" \
+    || fail "no durable supervision-uncovered check names the close: $(cat "$state/.wake-queue" 2>/dev/null)"
+  grep -q 'successor=uncovered:published' "$state/.watch-cycle-exits.log" \
+    || fail "the cycle ledger still records the uncarried close as successor=none: $(cat "$state/.watch-cycle-exits.log")"
+  pass "watch-arm: a detached successor whose close no turn end carried queues a supervision-uncovered check"
+}
+
+test_unread_successor_stands_down_when_a_turn_end_carries_the_close() {
+  local dir state armout status
+  dir=$(make_case unread-successor-carried)
+  state="$dir/state"
+  armout="$dir/arm.out"
+  start_unread_successor_and_close "$dir" "$armout"
+  sleep 1.5
+  is_live_non_zombie "$ARM_PID" || fail "the successor exited before any carrier appeared: $(cat "$armout")"
+  # A turn-end hook took the event: its epoch-ledger write lands after the close.
+  printf 'epoch=1 owner_pid=1 outcome=rewake updated_at=%s\n' "$(date +%s)" > "$state/.claude-autoarm-epoch"
+  wait_for_exit "$ARM_PID" 150
+  status=$?
+  expect_code 0 "$status" "a carried successor must close cleanly"
+  grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
+    && fail "a carried close was reported as uncovered"
+  grep -q 'successor=carried:turn-end-hook' "$state/.watch-cycle-exits.log" \
+    || fail "the cycle ledger did not record the carrier: $(cat "$state/.watch-cycle-exits.log")"
+  pass "watch-arm: a detached successor stands down once a turn-end hook carries its close"
+}
+
+test_unread_successor_waiting_for_a_carrier_still_honors_term() {
+  local dir armout status
+  dir=$(make_case unread-successor-term)
+  armout="$dir/arm.out"
+  start_unread_successor_and_close "$dir" "$armout"
+  sleep 0.5
+  is_live_non_zombie "$ARM_PID" || fail "the successor exited before the TERM case could run: $(cat "$armout")"
+  kill -TERM "$ARM_PID"
+  wait_for_exit "$ARM_PID" 50
+  status=$?
+  expect_code 143 "$status" "a successor waiting for a carrier must stop on TERM within a poll"
+  grep -q 'reason=arm-interrupted' "$dir/state/.watch-cycle-exits.log" \
+    || fail "the interrupted wait was not recorded in the cycle ledger: $(cat "$dir/state/.watch-cycle-exits.log")"
+  pass "watch-arm: a successor waiting for a carrier still stops promptly on TERM"
+}
+
 # Start a real watcher through the real arm for a temporary home and set
 # WATCH_PID from the arm's started line. Both stdout and stderr land in <arm-out>
 # so the watcher's own exit reason, which it logs to stderr, is readable there.
@@ -1196,6 +1314,9 @@ test_reaper_stops_a_tracked_watcher() {
 
 test_attached_arm_reports_the_delivered_wake
 test_attached_arm_reports_the_delivered_wake_after_drain
+test_unread_successor_reports_a_close_no_turn_end_carried
+test_unread_successor_stands_down_when_a_turn_end_carries_the_close
+test_unread_successor_waiting_for_a_carrier_still_honors_term
 test_arm_refuses_an_unusable_launch_confirm_window
 test_arm_refuses_a_disposable_validation_checkout
 test_watcher_exits_when_its_state_directory_is_removed

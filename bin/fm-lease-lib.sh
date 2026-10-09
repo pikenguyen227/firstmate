@@ -167,8 +167,9 @@ fm_lease_read() {
 }
 
 # fm_lease_live <task>: 0 iff a well-formed lease exists, its recorded pid is
-# alive, and that pid IS the current session-lock holder (the staleness
-# contract above). The calling context never enters the verdict.
+# alive, and the session lock still names that pid's session (the staleness
+# contract above; fm_session_lock_names_pid follows a same-session line-1
+# re-anchor). The calling context never enters the verdict.
 fm_lease_live() {
   local lock_pid
   fm_lease_read "$1" || return 1
@@ -177,7 +178,9 @@ fm_lease_live() {
   kill -0 "$FM_LEASE_PID" 2>/dev/null || return 1
   lock_pid=$(head -n 1 "$STATE/.lock" 2>/dev/null || true)
   case "$lock_pid" in ''|0|1|*[!0-9]*) return 1 ;; esac
-  [ "$FM_LEASE_PID" = "$lock_pid" ]
+  fm_lease_lock_helpers
+  fm_wake_session_lock_lib || return 1
+  fm_session_lock_names_pid "$STATE" "$FM_LEASE_PID"
 }
 
 # fm_lease_clear_stale <task>: remove the lease file when it exists but is not

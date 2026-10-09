@@ -2419,3 +2419,23 @@ ok - claude 2.1.282 (Claude Code): the session record reads settled with context
 ```
 
 `tests/fm-fresh-start.test.sh` pins the decision logic over records written in this shape, including a subagent turn that must not count and an open turn that must read as mid-turn.
+
+## Claude session registry
+
+`fm_session_lock_owner_reclaimable` in `bin/fm-session-lock-lib.sh` reads Claude Code's per-process session registry, `<CLAUDE_CONFIG_DIR or ~/.claude>/sessions/<pid>.json`, whose `pid` and `sessionId` fields name the conversation each live Claude process runs now.
+A background session's model loop has its own record (`"kind":"bg"`), and that record follows a `/clear` re-key: on 2026-10-09 the background model loop behind the stall in this home's history carried the post-clear id, not the id its session lock still recorded.
+The library treats the registry only as proof that a live front-end runs no conversation at all and that no live process runs the recorded conversation; an owner record naming any conversation, and every uncertainty, is no proof.
+
+Verified 2026-10-09 on Claude Code 2.1.295, from inside a live interactive session, by the token-free live guard that refreshes this record:
+
+```sh
+bash tests/fm-session-lock-claude-registry-live-e2e.test.sh
+```
+
+```
+ok - claude 2.1.295 (Claude Code): the session registry names this session's model loop and its current id
+ok - claude 2.1.295 (Claude Code): the reclaim verdict keeps live pid 11869, which runs a conversation, on the real registry
+```
+
+The guard skips outside a Claude session or without a second live Claude process, and fails when `FM_CLAUDE_REGISTRY_LIVE=1` forces it without one.
+`tests/fm-session-lock-ancestry.test.sh` pins the decision over registry records written in this shape, including the owner-still-recorded, owner-on-a-different-conversation, re-key-lag, other-live-holder, malformed-record, and missing-registry negatives.

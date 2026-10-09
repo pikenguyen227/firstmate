@@ -3,6 +3,14 @@
 # docs/watcher-continuity.md owns the recovery-episode state contract.
 
 FM_WAKE_LIB_DIR="$(d=${BASH_SOURCE[0]%/*}; [ "$d" != "${BASH_SOURCE[0]}" ] || d=.; cd "${d:-/}" && pwd)"
+
+# Load bin/fm-session-lock-lib.sh on first need, for the few lock-identity
+# questions asked here (fm_session_lock_names_pid owns the re-anchor rule).
+fm_wake_session_lock_lib() {
+  command -v fm_session_lock_names_pid >/dev/null 2>&1 && return 0
+  # shellcheck source=bin/fm-session-lock-lib.sh
+  . "$FM_WAKE_LIB_DIR/fm-session-lock-lib.sh"
+}
 FM_WAKE_DEFAULT_ROOT="$(cd "$FM_WAKE_LIB_DIR/.." && pwd)"
 FM_ROOT="${FM_ROOT_OVERRIDE:-${FM_ROOT:-$FM_WAKE_DEFAULT_ROOT}}"
 FM_HOME="${FM_HOME:-${FM_ROOT_OVERRIDE:-$FM_ROOT}}"
@@ -1892,7 +1900,8 @@ fm_autoarm_midturn_healthy() {  # <state-dir> [grace]
   fm_autoarm_ledger_read "$state" || return 1
   [ "$FM_AUTOARM_OUTCOME" = rewake ] || return 1
   lock_pid=$(sed -n '1p' "$state/.lock" 2>/dev/null || true)
-  [ -n "$FM_AUTOARM_SESSION" ] && [ "$FM_AUTOARM_SESSION" = "$lock_pid" ] || return 1
+  fm_wake_session_lock_lib || return 1
+  fm_session_lock_names_pid "$state" "$FM_AUTOARM_SESSION" || return 1
   fm_pid_alive "$lock_pid" || return 1
   fm_recovery_marker_read "$state/.watcher-down" || return 1
   recovery=${FM_RECOVERY_MARKER_TOKEN##*:}

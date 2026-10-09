@@ -16,9 +16,12 @@
 #     session id (which is what keeps a background session arming after its
 #     transient helper chain is recycled).
 #     When an existing numeric owner fails the shared harness-liveness predicate,
-#     the hook delegates guarded recovery to bin/fm-lock.sh and then re-verifies
-#     ownership. A live owner, missing lock, malformed lock, or unresolved
-#     ancestry remains inert, so a competing session never arms or rewakes.
+#     or is a live Claude owner the library proves reclaimable, the hook
+#     delegates guarded recovery to bin/fm-lock.sh and then re-verifies
+#     ownership; an owned lock that still needs its line 1 re-anchored is
+#     confirmed through bin/fm-lock.sh the same way. Any other live owner, a
+#     missing lock, malformed lock, or unresolved ancestry remains inert, so a
+#     competing session never arms or rewakes.
 #   - AFK: while state/.afk exists the away daemon owns the watcher and triage;
 #     this hook exits 0 and NEVER rewakes the primary (checked again at
 #     translation time so a mid-cycle AFK transition is honored).
@@ -176,13 +179,18 @@ fm_primary_scope_matches "$FM_ROOT" "$STATE" || exit 0
 # Defer the mutating claim until after the unchanged AFK and need gates, so an
 # idle or away home remains byte-for-byte inert. Missing or malformed locks are
 # uncertainty rather than stale-owner evidence and remain inert.
+# A live owner that fm_session_lock_owner_reclaimable proves holds no live
+# conversation of the lock (an idle front-end left behind by a re-keyed
+# background session) is recovered exactly like a dead one.
 RECOVER_SESSION_LOCK=0
 if ! fm_session_lock_owned_by_self "$STATE"; then
   LOCK_PID=$(cat "$STATE/.lock" 2>/dev/null || true)
   case "$LOCK_PID" in
     ''|*[!0-9]*) exit 0 ;;
   esac
-  fm_harness_pid_alive "$LOCK_PID" && exit 0
+  if fm_harness_pid_alive "$LOCK_PID" && ! fm_session_lock_owner_reclaimable "$STATE"; then
+    exit 0
+  fi
   RECOVER_SESSION_LOCK=1
 fi
 
@@ -201,6 +209,12 @@ need_supervision || exit 0
 # before touching any auto-arm state.
 if [ "$RECOVER_SESSION_LOCK" -eq 1 ]; then
   "$SCRIPT_DIR/fm-lock.sh" >/dev/null 2>&1 || exit 0
+  fm_session_lock_owned_by_self "$STATE" || exit 0
+# An owned lock whose line 1 is not this trusted session's model-loop pid was
+# written before bin/fm-lock.sh re-anchored on confirmation; one confirmation
+# here moves it, so a later daemon restart plus /clear cannot strand the home.
+elif fm_session_lock_needs_reanchor "$STATE"; then
+  "$SCRIPT_DIR/fm-lock.sh" >/dev/null 2>&1 || true
   fm_session_lock_owned_by_self "$STATE" || exit 0
 fi
 
@@ -333,7 +347,10 @@ run_arm() {  # <output file, or empty for none>
 # successor receives the closed arm's pid as FM_WATCH_PREDECESSOR_ARM_PID; it
 # must outlive this hook's exit, so it is detached three ways: nohup, stdio
 # away from the hook's pipes, and its own process group. Its one status line
-# is awaited within the arm's own confirmation budget plus slack. Sets
+# is awaited within the arm's own confirmation budget plus slack, and nothing
+# reads the rest, so FM_WATCH_ARM_UNREAD=1 tells the arm to wait for a later
+# turn-end hook to carry its close and to queue a supervision-uncovered check
+# when none does (bin/fm-watch-arm.sh await_close_carrier). Sets
 # SUCCESSOR_FAILURE to the banner line for an unconfirmed successor.
 SUCCESSOR_FAILURE=
 start_handling_successor() {  # <closed-arm-pid>
@@ -346,7 +363,7 @@ start_handling_successor() {  # <closed-arm-pid>
   fi
   case $- in *m*) monitor_was_on=1 ;; esac
   set -m 2>/dev/null || true
-  FM_WATCH_PREDECESSOR_ARM_PID=$1 FM_GUARD_GRACE="$GRACE" \
+  FM_WATCH_PREDECESSOR_ARM_PID=$1 FM_GUARD_GRACE="$GRACE" FM_WATCH_ARM_UNREAD=1 \
     nohup "$SCRIPT_DIR/fm-watch-arm.sh" >"$out" 2>&1 </dev/null &
   pid=$!
   [ "$monitor_was_on" -eq 1 ] || set +m 2>/dev/null || true

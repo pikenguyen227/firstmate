@@ -97,7 +97,7 @@ session_start_completed() {
   lock_pid=$(cat "$STATE/.lock" 2>/dev/null) || return 1
   completion_pid=$(cat "$COMPLETION_FILE" 2>/dev/null) || return 1
   case "$lock_pid" in ''|*[!0-9]*) return 1 ;; esac
-  [ "$completion_pid" = "$lock_pid" ]
+  fm_session_lock_names_pid "$STATE" "$completion_pid"
 }
 
 if [ -z "$SOURCE" ] && [ ! -t 0 ]; then

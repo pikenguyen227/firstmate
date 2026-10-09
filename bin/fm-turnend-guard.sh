@@ -194,6 +194,19 @@ if [ "$FM_SUP_NEEDED" = false ]; then
   [ -e "$FAILURE_NOTICE" ] || budget_reset
   exit 0
 fi
+# Every Claude turn end in a home that needs supervision touches the stopping
+# session's own stamp, state/.claude-stop-seen.<CLAUDE_PID>, whatever this
+# guard then decides, so a detached handling successor whose close no turn-end
+# hook carried can tell "its own session's turn ended and armed nothing" from
+# "the turn is still running" (bin/fm-watch-arm.sh await_close_carrier). One
+# file per session means another session's Stop neither counts for nor
+# overwrites the successor's own.
+if [ "$CLAUDE_MODE" -eq 1 ]; then
+  case "${CLAUDE_PID:-}" in
+    ''|*[!0-9]*) ;;
+    *) touch "$STATE/.claude-stop-seen.$CLAUDE_PID" 2>/dev/null || true ;;
+  esac
+fi
 # One owner of the "supervision is on, let this turn end" exit contract, shared
 # by every proof of supervision below.
 allow_supervised_stop() {
@@ -255,14 +268,53 @@ block_stop() {
 }
 
 # Another verified live session owns the home lock under the shared
-# ancestry-or-trusted-id verdict. This session is read-only and cannot arm or
-# repair supervision without
-# stealing ownership, so blocking its Stop would create an impossible loop.
-# Report the ownership conflict as a diagnostic and let this turn end safely;
-# the owning session remains responsible for restoring the watcher.
+# ancestry-or-trusted-id verdict (a live owner the library proves reclaimable
+# is not foreign: the auto-arm recovers it). This session is read-only and
+# cannot arm or repair supervision without stealing ownership, so blocking
+# every Stop would create an impossible loop. Each Stop ends safely with a
+# status message naming the owner, the beacon age, and the unblock. When the
+# beacon is already past grace and no owner auto-arm generation explains the
+# gap (fm_autoarm_midturn_healthy, or an open claim), the first Stop of that outage instead blocks
+# once, so the model relays the outage to the captain in its own reply rather
+# than leaving it in a status line nobody may see; the notice marker
+# (owner pid and beacon mtime) bounds that to one block per outage, and a
+# marker that cannot be written never blocks.
+FOREIGN_NOTICE="$STATE/.turnend-foreign-owner-notified"
+foreign_owner_notice_due() {  # <owner-pid>
+  local key tmp
+  key="$1 $(fm_sup_stat_mtime "$STATE/.last-watcher-beat" 2>/dev/null || true)"
+  [ "$(cat "$FOREIGN_NOTICE" 2>/dev/null || true)" != "$key" ] || return 1
+  tmp=$(mktemp "$STATE/.turnend-foreign-owner-notified.XXXXXX" 2>/dev/null) || return 1
+  if ! { printf '%s\n' "$key" > "$tmp" && mv -f "$tmp" "$FOREIGN_NOTICE"; } 2>/dev/null; then
+    rm -f "$tmp" 2>/dev/null || true
+    return 1
+  fi
+}
 if [ "$CLAUDE_MODE" -eq 1 ] && fm_session_lock_foreign_owner_live "$STATE"; then
-  printf '{"systemMessage":"FIRSTMATE SUPERVISION IS OWNED BY ANOTHER LIVE SESSION: this read-only session cannot and should not arm or repair the watcher (lock owner pid %s). Allowing this turn to end safely; the owning session must restore supervision."}\n' \
-    "$FM_SESSION_LOCK_FOREIGN_OWNER_PID"
+  owner=$FM_SESSION_LOCK_FOREIGN_OWNER_PID
+  owner_desc="pid $owner"
+  if recorded=$(fm_session_lock_recorded_session_id "$STATE"); then
+    owner_desc="pid $owner, session $recorded"
+  fi
+  hint=$(fm_session_lock_unblock_hint "$owner" "$FM_ROOT")
+  if [ "$FM_SUP_WATCHER_FRESH" = false ] \
+    && ! fm_autoarm_midturn_healthy "$STATE" "$GRACE" \
+    && ! fm_autoarm_claim_open "$STATE" "$GRACE" \
+    && foreign_owner_notice_due "$owner"; then
+    rule='━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    {
+      printf '●%s\n' "$rule"
+      printf '●  SUPERVISION IS DOWN AND ANOTHER LIVE SESSION HOLDS THIS HOME - TELL THE CAPTAIN NOW\n'
+      printf '●  The home needs supervision but its watcher last beat %s (grace %ss), and live %s holds the session lock, so this session can neither re-arm the watcher nor drain wakes.\n' \
+        "$FM_SUP_BEACON_DESC" "$GRACE" "$owner_desc"
+      printf '●  Unblock: %s\n' "$hint"
+      printf '●  Relay the outage and that unblock to the captain in plain words in your reply. This notice fires once per outage; later turns end with the same facts as a status message.\n'
+      printf '●%s\n' "$rule"
+    } >&2
+    exit 2
+  fi
+  jq -cn --arg m "FIRSTMATE SUPERVISION IS OWNED BY ANOTHER LIVE SESSION: this read-only session cannot and should not arm or repair the watcher (lock owner $owner_desc; last watcher beat $FM_SUP_BEACON_DESC, grace ${GRACE}s). Allowing this turn to end safely. Unblock: $hint" \
+    '{systemMessage: $m}'
   exit 0
 fi
 

@@ -106,15 +106,25 @@ The current session owns the lock when either of these holds:
 
 That second signal keeps a background Claude session owning its own lock after the transient helper chain between its hooks and its recorded owner is recycled.
 The library's header owns the trust gate (`CLAUDE_PID` must be a Claude-shaped member of the current run).
-`bin/fm-lock.sh` owns the sidecar and the line-1 anchor it records for such a session.
+`bin/fm-lock.sh` owns the sidecar and the line-1 anchor it records for such a session, and re-anchors line 1 onto the session's model-loop pid on a confirmed acquisition, so a later `/clear` re-key still owns the lock through ancestry.
 
-A Claude session that does not own the lock cannot arm or repair the home without stealing the live owner's lock, so blocking it would create an unbounded loop.
+A live Claude front-end that `fm_session_lock_owner_reclaimable` proves runs no conversation at all is not foreign either.
+That is a front-end left behind when its conversation moved into a background session that has since been re-keyed: Claude's own session registry shows the front-end's record naming no conversation and no live process running the recorded session.
+An owner whose record names any conversation, including a healthy session between its own `/clear` and the `SessionStart` hook that re-keys the sidecar, stays foreign.
+The Stop auto-arm then recovers the lock through `bin/fm-lock.sh` exactly as it recovers a dead owner, and this guard cooperates with it as usual.
+
+A Claude session that does not own the lock cannot arm or repair the home without stealing the live owner's lock, so blocking every Stop would create an unbounded loop.
 The lock-owning session remains responsible for restoring supervision.
+Every such Stop ends with a status message naming the owner, the beacon age, and the exact unblock.
+When the beacon is already past grace and no owner auto-arm generation explains the gap (`fm_autoarm_midturn_healthy` or an open claim, as `bin/fm-guard.sh` uses), the first Stop of that outage instead blocks once with the same facts and asks the model to tell the captain, because a status message alone can go unseen for an hour.
+`state/.turnend-foreign-owner-notified` (owner pid and beacon mtime) bounds that to one block per outage, and a marker that cannot be written never blocks.
 
 The exception has these limits:
 
 - Malformed, absent, dead, or ancestry-uncertain lock records do not satisfy this Claude-specific exception and retain the ordinary guard behavior.
-- A missing or mismatched sidecar or an untrusted id adds nothing to the verdict, so a live owner outside the ancestry still takes this exit exactly as before.
+- A missing or mismatched sidecar, an untrusted id, or an uncertain registry adds nothing to the verdict, so a live owner outside the ancestry still takes this exit exactly as before.
+
+Every `--claude` Stop in a home that needs supervision also touches its own per-session stamp `state/.claude-stop-seen.<CLAUDE_PID>` before any of these decisions; [`watcher-continuity.md`](watcher-continuity.md#claude-handling-successor) owns why.
 
 ### Pull-warning verdict by supervision model
 
@@ -560,7 +570,7 @@ That warning uses `bin/fm-supervision-instructions.sh --repair-line`, so it alwa
 - Exactly-one-path safety.
 
 `tests/fm-turnend-foreign-owner-arm-fix.test.sh` runs the extracted isolated executable reproduction against real auto-arm and turn-end guard scripts.
-It proves that a live foreign owner still prevents arming while repeated non-owner Stops receive a diagnostic and exit safely.
+It proves that a live foreign owner still prevents arming, that the first non-owner Stop of a supervision outage raises one captain notice naming the owner and the unblock, and that every later non-owner Stop receives the diagnostic and exits safely.
 
 `tests/fm-guard-stale-banner.test.sh` covers the pull-guard predicate for each supervision model:
 

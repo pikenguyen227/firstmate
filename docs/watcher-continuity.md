@@ -177,6 +177,13 @@ The next Stop's foreground arm attaches to that live cycle.
 A successor that confirms no live watcher adds one line to the rewake banner and never withholds the wake.
 The next Stop then re-arms as before.
 
+Nothing reads the successor's output after that first line, so its own actionable close reaches the model only through a later turn-end hook.
+When no hook can arm, as after a session-identity break, that close would vanish and leave the beacon as the home's only coverage.
+So the successor does not finish as `successor=none`: it waits until a hook visibly carries the event, or until a Claude Stop of its own session settles without arming anything.
+Each `--claude` Stop touches only its own stamp, `state/.claude-stop-seen.<CLAUDE_PID>`, and the successor reads only the stamp for the `CLAUDE_PID` it inherited from the hook, so another session's Stop in the same home neither counts for it nor overwrites it.
+In the second case it queues one durable `check: supervision uncovered` wake naming the close, so the outage is on record for whichever session drains next.
+`await_close_carrier` in `bin/fm-watch-arm.sh` owns the carrier tests, the settle window, and the quiet bound for a turn that never ends.
+
 ### Durable queue and turn-end backstop
 
 The durable wake queue preserves actionable events between a watcher close and the next drain.
