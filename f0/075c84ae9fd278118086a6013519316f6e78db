@@ -1,0 +1,19 @@
+tests/fm-session-lock-ancestry.test.sh
+  s_b2297482fb8461::t_ef0a0231de4588 955
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f0075c84ae9fd278118086a6013519316f6e78db",
+  "prompts": {},
+  "sessions": {
+    "s_b2297482fb8461": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0e59b4f-f608-44ec-b0af-2af752704f5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
