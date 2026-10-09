@@ -1,0 +1,30 @@
+.agents/skills/operational-home-layout/SKILL.md
+  s_d6357bce7e20eb::t_acb6221143f3fc 122
+docs/watcher-continuity.md
+  s_d6357bce7e20eb::t_acb6221143f3fc 182-183
+tests/fm-watch-arm.test.sh
+  s_d6357bce7e20eb::t_acb6221143f3fc 1129-1144,1147-1150,1161-1162,1166-1167
+  s_d6357bce7e20eb::t_a7c194c4facbe7 1102,1110
+bin/fm-watch-arm.sh
+  s_d6357bce7e20eb::t_acb6221143f3fc 423-426,463-466
+bin/fm-turnend-guard.sh
+  s_d6357bce7e20eb::t_acb6221143f3fc 197-203,205-208
+docs/turnend-guard.md
+  s_d6357bce7e20eb::t_acb6221143f3fc 127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2aa0d9cbfc8ff7922eb7f0bd434534c028b87198",
+  "prompts": {},
+  "sessions": {
+    "s_d6357bce7e20eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57697a7b-7f5e-43e2-bcb9-ec6762c5311b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
