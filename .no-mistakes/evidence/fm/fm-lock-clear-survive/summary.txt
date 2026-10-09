@@ -1,0 +1,8 @@
+fm-session-lock-ancestry rc=0 137s
+fm-turnend-foreign-owner-arm-fix rc=1 26s
+fm-watch-arm rc=0 376s
+fm-turnend-guard rc=1 46s
+fm-claude-stop-autoarm rc=0 158s
+fm-startup-network rc=1 206s
+fm-sessionstart-nudge rc=1 233s
+fm-session-start rc=1 1778s

@@ -1,0 +1,6 @@
+first screen after 91s trust=False
+
+===== after startup @ 15:26:26
+.lock: '85976'
+.lock-session: 'e377dfb6-c3ce-4cfc-8ea4-f2eecf31b54a'
+claude pty child:   PID  PPID COMMAND | 88275 86384 claude | 
