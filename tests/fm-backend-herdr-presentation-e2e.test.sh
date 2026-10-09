@@ -1349,6 +1349,194 @@ teardown_task "$BRAVO_WAVE_ID" "$SECOND_HOME_B" > "$TMP_ROOT/bravo-wave-teardown
 "$REAL_TREEHOUSE" return --force "$BRAVO_WAVE_NEW_WT" >/dev/null 2>&1 || true
 pass "real Herdr lab: concurrent cross-home recoveries replace exact husks under one session lock with no focus drift"
 
+# A captain may rename the primary's parent workspace, as the main home's
+# "Control Tower" is. The binding identifies that parent by the launcher's exact
+# workspace id and records its live label, so restart reclaim survives the
+# rename. A relaunch or respawn whose old projection is gone projects a fresh
+# child under the same parent instead of degrading to a flat tab.
+LAB_SOCKET=$(lab session list --json 2>/dev/null \
+  | jq -r --arg s "$HERDR_LAB_SESSION" '.sessions[]? | select(.name == $s) | .socket_path' 2>/dev/null)
+[ -n "$LAB_SOCKET" ] || fail "could not read the isolated lab session's socket path"
+lab workspace get "$FIRSTMATE_WSID" >/dev/null 2>&1 \
+  || fail "the primary parent workspace did not survive the earlier restarts"
+lab workspace rename "$FIRSTMATE_WSID" "Control Tower" >/dev/null \
+  || fail "could not rename the primary parent workspace"
+INERT_HARNESS="sh -c 'while :; do sleep 60; done'"
+
+launcher_pane() {
+  lab pane list --workspace "$FIRSTMATE_WSID" 2>/dev/null | jq -r '.result.panes[0].pane_id // empty' 2>/dev/null
+}
+
+# launcher_spawn <launcher-pane> <home> <fm-spawn args...>: run fm-spawn with
+# exactly the identity Herdr injects into a process running in that pane.
+launcher_spawn() {
+  local pane=$1 home=$2
+  shift 2
+  env HERDR_ENV=1 HERDR_PANE_ID="$pane" HERDR_SOCKET_PATH="$LAB_SOCKET" \
+    FM_GATE_REFUSE_BYPASS=1 FM_SPAWN_NO_GUARD=1 FM_HOME="$home" FM_ROOT_OVERRIDE="$ROOT" \
+    "$ROOT/bin/fm-spawn.sh" "$@"
+}
+
+workspace_index() {  # <workspace-id>
+  lab workspace list | jq -r --arg id "$1" '
+    [.result.workspaces[]?.workspace_id] | index($id) // empty'
+}
+
+assert_bound_under_renamed_parent() {  # <id> <case-name>
+  local id=$1 case_name=$2 journal wsid parent_index child_index
+  journal="$HOME_DIR/state/$id.herdr-presentation"
+  [ "$(grep '^version=' "$journal")" = version=2 ] \
+    || fail "$case_name did not publish an exact restart binding under the renamed parent"
+  [ "$(grep '^parent_label=' "$journal" | cut -d= -f2-)" = "Control Tower" ] \
+    || fail "$case_name did not record the parent's live label"
+  [ "$(grep '^parent_workspace_id=' "$journal" | cut -d= -f2-)" = "$FIRSTMATE_WSID" ] \
+    || fail "$case_name bound a parent other than the launcher's exact workspace"
+  wsid=$(grep '^herdr_workspace_id=' "$HOME_DIR/state/$id.meta" | cut -d= -f2-)
+  [ "$wsid" != "$FIRSTMATE_WSID" ] || fail "$case_name placed the worker flat in the parent workspace"
+  [ "$(grep '^workspace_id=' "$journal" | cut -d= -f2-)" = "$wsid" ] \
+    || fail "$case_name journal and metadata name different workspaces"
+  parent_index=$(workspace_index "$FIRSTMATE_WSID")
+  child_index=$(workspace_index "$wsid")
+  [ -n "$parent_index" ] && [ -n "$child_index" ] && [ "$child_index" -gt "$parent_index" ] \
+    || fail "$case_name child workspace is not placed after its parent"
+}
+
+# A raw pane close that empties a non-focused workspace moves focus to its
+# neighbor below Herdr 0.8.0 (upstream #1328); product closes restore focus,
+# so the fixture's own raw closes restore the captain's tab the same way.
+restore_captain_focus_after_raw_close() {  # <case-name>
+  lab tab focus "$SECOND_TWO_TAB" >/dev/null || fail "could not restore the captain tab after the $1"
+  assert_focus_is "$CAPTAIN_FOCUS" "$1 restoration"
+}
+
+RENAMED_ID=renamed-parent-r1
+GONE_ID=relaunch-gone-r1
+V1_ID=respawn-v1-gone-r1
+write_ship_brief "$HOME_DIR" "$RENAMED_ID" 'Renamed-parent restart binding fixture.'
+write_ship_brief "$HOME_DIR" "$GONE_ID" 'Relaunch after projected workspace loss fixture.'
+write_ship_brief "$HOME_DIR" "$V1_ID" 'Respawn over a version 1 journal fixture.'
+
+LAUNCHER_PANE=$(launcher_pane)
+[ -n "$LAUNCHER_PANE" ] || fail "the renamed parent workspace has no pane to act as the launcher"
+launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$RENAMED_ID" "$RECOVERY_PROJECT_DIR" "$INERT_HARNESS" \
+  --mode no-mistakes --yolo off --backend herdr \
+  > "$TMP_ROOT/$RENAMED_ID-first.out" 2> "$TMP_ROOT/$RENAMED_ID-first.err" \
+  || fail "projected spawn under a renamed parent failed: $(cat "$TMP_ROOT/$RENAMED_ID-first.err")"
+if grep -F "could not publish an exact restart binding" "$TMP_ROOT/$RENAMED_ID-first.err" >/dev/null; then
+  fail "a renamed parent still voided the restart binding"
+fi
+assert_bound_under_renamed_parent "$RENAMED_ID" "renamed-parent spawn"
+RENAMED_META="$HOME_DIR/state/$RENAMED_ID.meta"
+OLD_RENAMED_WT=$(remember_meta_worktree "$RENAMED_META")
+OLD_RENAMED_WSID=$(grep '^herdr_workspace_id=' "$RENAMED_META" | cut -d= -f2-)
+OLD_RENAMED_PANE=$(grep '^herdr_pane_id=' "$RENAMED_META" | cut -d= -f2-)
+PATH="$HERDR_ORIGINAL_PATH" "$HERDR_LAB_HELPER" stop "$HERDR_LAB_SESSION" >/dev/null \
+  || fail "could not stop the isolated session for renamed-parent reclaim"
+PATH="$HERDR_ORIGINAL_PATH" "$HERDR_LAB_HELPER" provision "$HERDR_LAB_SESSION" \
+  || fail "could not reprovision the isolated session for renamed-parent reclaim"
+[ "$(lab workspace get "$FIRSTMATE_WSID" | jq -r '.result.workspace.label')" = "Control Tower" ] \
+  || fail "the renamed parent label did not survive the restart"
+lab pane get "$OLD_RENAMED_PANE" >/dev/null 2>&1 \
+  || fail "renamed-parent restart did not preserve the projected pane structurally"
+RECLAIM_FOCUS=$(focus_snapshot)
+spawn_task "$RENAMED_ID" "$HOME_DIR" "$RECOVERY_PROJECT_DIR" \
+  > "$TMP_ROOT/$RENAMED_ID-reclaim.out" 2> "$TMP_ROOT/$RENAMED_ID-reclaim.err" \
+  || fail "renamed-parent reclaim failed: $(cat "$TMP_ROOT/$RENAMED_ID-reclaim.err")"
+NEW_RENAMED_WT=$(remember_meta_worktree "$RENAMED_META")
+[ "$(grep '^herdr_workspace_id=' "$RENAMED_META" | cut -d= -f2-)" = "$OLD_RENAMED_WSID" ] \
+  || fail "renamed-parent reclaim flattened or moved the worker: $(cat "$TMP_ROOT/$RENAMED_ID-reclaim.err")"
+[ "$(grep '^herdr_pane_id=' "$RENAMED_META" | cut -d= -f2-)" != "$OLD_RENAMED_PANE" ] \
+  || fail "renamed-parent reclaim reused the old husk pane"
+assert_focus_is "$RECLAIM_FOCUS" "renamed-parent reclaim"
+teardown_task "$RENAMED_ID" "$HOME_DIR" > "$TMP_ROOT/$RENAMED_ID-teardown.out" 2> "$TMP_ROOT/$RENAMED_ID-teardown.err" \
+  || fail "renamed-parent teardown failed: $(cat "$TMP_ROOT/$RENAMED_ID-teardown.err")"
+[ ! -e "$HOME_DIR/state/$RENAMED_ID.herdr-presentation" ] \
+  || fail "renamed-parent teardown did not retire its journal"
+"$REAL_TREEHOUSE" return --force "$OLD_RENAMED_WT" >/dev/null 2>&1 || true
+"$REAL_TREEHOUSE" return --force "$NEW_RENAMED_WT" >/dev/null 2>&1 || true
+pass "real Herdr lab: a renamed parent workspace keeps an exact restart binding and reclaims in place"
+
+# The restart above may have renumbered nothing, but re-read the launcher pane
+# rather than trusting a pre-restart id.
+LAUNCHER_PANE=$(launcher_pane)
+[ -n "$LAUNCHER_PANE" ] || fail "the renamed parent workspace lost its launcher pane across restart"
+launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$GONE_ID" "$RECOVERY_PROJECT_DIR" "$INERT_HARNESS" \
+  --mode no-mistakes --yolo off --backend herdr \
+  > "$TMP_ROOT/$GONE_ID-first.out" 2> "$TMP_ROOT/$GONE_ID-first.err" \
+  || fail "projected spawn for the relaunch fixture failed: $(cat "$TMP_ROOT/$GONE_ID-first.err")"
+GONE_META="$HOME_DIR/state/$GONE_ID.meta"
+GONE_WT=$(remember_meta_worktree "$GONE_META")
+OLD_GONE_WSID=$(grep '^herdr_workspace_id=' "$GONE_META" | cut -d= -f2-)
+OLD_GONE_PANE=$(grep '^herdr_pane_id=' "$GONE_META" | cut -d= -f2-)
+OLD_GONE_TOKEN=$(grep '^projection_id=' "$HOME_DIR/state/$GONE_ID.herdr-presentation" | cut -d= -f2-)
+lab pane close "$OLD_GONE_PANE" >/dev/null 2>&1 || fail "could not close the relaunch fixture's pane"
+for _ in $(seq 1 50); do
+  lab workspace get "$OLD_GONE_WSID" >/dev/null 2>&1 || break
+  sleep 0.1
+done
+if lab workspace get "$OLD_GONE_WSID" >/dev/null 2>&1; then
+  fail "closing the only task pane did not remove its projected workspace"
+fi
+restore_captain_focus_after_raw_close "relaunch fixture pane close"
+launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$GONE_ID" --relaunch --harness "$INERT_HARNESS" \
+  > "$TMP_ROOT/$GONE_ID-relaunch.out" 2> "$TMP_ROOT/$GONE_ID-relaunch.err" \
+  || fail "relaunch after projected workspace loss failed: $(cat "$TMP_ROOT/$GONE_ID-relaunch.err")"
+assert_bound_under_renamed_parent "$GONE_ID" "relaunch after projected workspace loss"
+NEW_GONE_WSID=$(grep '^herdr_workspace_id=' "$GONE_META" | cut -d= -f2-)
+NEW_GONE_TOKEN=$(grep '^projection_id=' "$HOME_DIR/state/$GONE_ID.herdr-presentation" | cut -d= -f2-)
+[ "$NEW_GONE_TOKEN" != "$OLD_GONE_TOKEN" ] || fail "relaunch reused the lost projection's token"
+[ "$(lab workspace get "$NEW_GONE_WSID" | jq -r '.result.workspace.label')" = "└ $GONE_ID · p:$NEW_GONE_TOKEN" ] \
+  || fail "relaunch child workspace does not carry the fresh projection label"
+[ "$(grep '^worktree=' "$GONE_META" | cut -d= -f2-)" = "$GONE_WT" ] \
+  || fail "relaunch moved the task off its recorded worktree"
+teardown_task "$GONE_ID" "$HOME_DIR" > "$TMP_ROOT/$GONE_ID-teardown.out" 2> "$TMP_ROOT/$GONE_ID-teardown.err" \
+  || fail "relaunch fixture teardown failed: $(cat "$TMP_ROOT/$GONE_ID-teardown.err")"
+[ ! -e "$HOME_DIR/state/$GONE_ID.herdr-presentation" ] \
+  || fail "relaunch fixture teardown did not retire its journal"
+"$REAL_TREEHOUSE" return --force "$GONE_WT" >/dev/null 2>&1 || true
+pass "real Herdr lab: a relaunch whose projected workspace is gone gets a fresh child workspace, not a flat tab"
+
+# A respawn over a version 1 journal (no exact binding) whose projected
+# workspace is gone also projects fresh rather than flat.
+launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$V1_ID" "$RECOVERY_PROJECT_DIR" "$INERT_HARNESS" \
+  --mode no-mistakes --yolo off --backend herdr \
+  > "$TMP_ROOT/$V1_ID-first.out" 2> "$TMP_ROOT/$V1_ID-first.err" \
+  || fail "projected spawn for the version 1 fixture failed: $(cat "$TMP_ROOT/$V1_ID-first.err")"
+V1_META="$HOME_DIR/state/$V1_ID.meta"
+V1_JOURNAL="$HOME_DIR/state/$V1_ID.herdr-presentation"
+OLD_V1_WT=$(remember_meta_worktree "$V1_META")
+OLD_V1_WSID=$(grep '^herdr_workspace_id=' "$V1_META" | cut -d= -f2-)
+OLD_V1_PANE=$(grep '^herdr_pane_id=' "$V1_META" | cut -d= -f2-)
+OLD_V1_TOKEN=$(grep '^projection_id=' "$V1_JOURNAL" | cut -d= -f2-)
+printf 'version=1\ntask_id=%s\nprojection_id=%s\n' "$V1_ID" "$OLD_V1_TOKEN" > "$V1_JOURNAL"
+lab pane close "$OLD_V1_PANE" >/dev/null 2>&1 || fail "could not close the version 1 fixture's pane"
+for _ in $(seq 1 50); do
+  lab workspace get "$OLD_V1_WSID" >/dev/null 2>&1 || break
+  sleep 0.1
+done
+restore_captain_focus_after_raw_close "version 1 fixture pane close"
+launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$V1_ID" "$RECOVERY_PROJECT_DIR" "$INERT_HARNESS" \
+  --mode no-mistakes --yolo off --backend herdr \
+  > "$TMP_ROOT/$V1_ID-respawn.out" 2> "$TMP_ROOT/$V1_ID-respawn.err" \
+  || fail "respawn over a version 1 journal failed: $(cat "$TMP_ROOT/$V1_ID-respawn.err")"
+NEW_V1_WT=$(remember_meta_worktree "$V1_META")
+NEW_V1_WSID=$(grep '^herdr_workspace_id=' "$V1_META" | cut -d= -f2-)
+[ "$NEW_V1_WSID" != "$FIRSTMATE_WSID" ] && [ "$NEW_V1_WSID" != "$OLD_V1_WSID" ] \
+  || fail "respawn over a version 1 journal did not project a fresh child workspace"
+assert_bound_under_renamed_parent "$V1_ID" "respawn over a version 1 journal"
+NEW_V1_TOKEN=$(grep '^projection_id=' "$V1_JOURNAL" | cut -d= -f2-)
+[ "$NEW_V1_TOKEN" != "$OLD_V1_TOKEN" ] \
+  || fail "respawn over a version 1 journal reused the lost token"
+[ "$(lab workspace get "$NEW_V1_WSID" | jq -r '.result.workspace.label')" = "└ $V1_ID · p:$NEW_V1_TOKEN" ] \
+  || fail "respawn over a version 1 journal did not carry the fresh projection label"
+teardown_task "$V1_ID" "$HOME_DIR" > "$TMP_ROOT/$V1_ID-teardown.out" 2> "$TMP_ROOT/$V1_ID-teardown.err" \
+  || fail "version 1 fixture teardown failed: $(cat "$TMP_ROOT/$V1_ID-teardown.err")"
+"$REAL_TREEHOUSE" return --force "$OLD_V1_WT" >/dev/null 2>&1 || true
+"$REAL_TREEHOUSE" return --force "$NEW_V1_WT" >/dev/null 2>&1 || true
+pass "real Herdr lab: a respawn over a version 1 journal whose workspace is gone projects a fresh child"
+lab workspace rename "$FIRSTMATE_WSID" firstmate >/dev/null \
+  || fail "could not restore the primary parent workspace label"
+
 # Seed a legacy old-format primary projection and a flat secondmate tab; correction must not migrate them.
 LEGACY_OUT=$(lab workspace create --cwd "$PROJECT_DIR" --label "firstmate/legacy-seed · p:AbCdEfGhIjKlMnOpQrStUv" --no-focus) \
   || fail "could not seed a legacy old-format presentation space"
