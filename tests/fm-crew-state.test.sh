@@ -2421,6 +2421,33 @@ test_no_mistakes_prevalidation_done_stays_done() {
   pass "no-mistakes pre-validation done: stays current-state done"
 }
 
+# The brief has a no-mistakes worker follow its handoff done: with a declared
+# wait for firstmate's /no-mistakes instruction. The handoff done: must still
+# surface as an actionable event, while current state reads the declared wait.
+test_no_mistakes_handoff_declared_wait() {
+  reset_fakes
+  local d out events
+  d=$(new_case preval-wait)
+  make_repo_on_branch "$d/wt" fm/prewait
+  make_fakebin "$d" >/dev/null
+  fm_write_meta "$d/state/prewait.meta" \
+    "window=fm:fm-prewait" "worktree=$d/wt" "project=$d/wt" \
+    "kind=ship" "mode=no-mistakes" "harness=claude"
+  printf '%s\n' 'done [at=1791516546]: implementation complete' \
+    "paused [at=1791516547]: awaiting firstmate's /no-mistakes instruction" \
+    > "$d/state/prewait.status"
+  FM_FAKE_AXI_STATUS=""
+  FM_FAKE_RUNS_LIST=""
+  FM_FAKE_BUSY=0
+  arm_idle_record "$d/state" prewait
+  out=$(run_crew_state "$d" prewait)
+  assert_contains "$out" "state: paused" "handoff wait must read as a declared pause"
+  assert_contains "$out" "awaiting firstmate's /no-mistakes instruction" "pause detail must name the awaited instruction"
+  events=$(bash -c '. "$1"; status_span_first_actionable "$2" 0' _ "$ROOT/bin/fm-classify-lib.sh" "$d/state/prewait.status")
+  assert_contains "$events" "done [at=1791516546]: implementation complete" "the handoff done: must still surface"
+  pass "no-mistakes handoff done: followed by its declared wait reads paused and still surfaces the done"
+}
+
 test_moved_remote_branch_without_named_head_is_blocked() {
   reset_fakes
   local d main_sha fix_sha out
@@ -5630,6 +5657,7 @@ test_other_branch_run_ignored
 test_unpushed_ship_done_is_blocked
 test_merged_pr_reads_done_under_captured_meta
 test_no_mistakes_prevalidation_done_stays_done
+test_no_mistakes_handoff_declared_wait
 test_moved_remote_branch_without_named_head_is_blocked
 test_no_run_busy_pane
 test_no_run_launch_prompt_parked_is_not_working

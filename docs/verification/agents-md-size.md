@@ -17,6 +17,7 @@ Measured 2026-09-30 with `wc -c AGENTS.md`.
 The scenario answers were captured on a 31,951-byte draft; the only later edit restored the full section 9 internal-label rewrite list (260 bytes), which no scenario answer depends on.
 
 Re-measure with `wc -c AGENTS.md` after any edit; the result must stay at or below 32,768.
+`bin/fm-lint.sh` enforces that bound on every CI and pre-push lint run, and `tests/fm-lint.test.sh` pins the check.
 `bin/fm-codex-launch-lib.sh` still raises `project_doc_max_bytes` per Codex launch as the stopgap it describes; this change did not touch launch behavior.
 
 ## Where relocated text lives
