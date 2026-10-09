@@ -1,0 +1,44 @@
+== [base-5dd62e6] lab layout
+alpha: HEAD->refs/heads/main local-main=yes worktree-files=1
+beta: HEAD->refs/heads/main local-main=yes worktree-files=1
+copilot-studio: HEAD->refs/heads/main local-main=no worktree-files=0
+gamma: HEAD->refs/heads/main local-main=yes worktree-files=1
+jira-etl: HEAD->refs/heads/main local-main=no worktree-files=0
+== [base-5dd62e6] fm-fleet-sync.sh run 1 (timed)
+alpha: synced 79af57a..1260a9e
+beta: synced 3df4673..ae195d2
+copilot-studio: skipped: local main does not exist
+gamma: synced da31f76..3eac20c
+jira-etl: skipped: local main does not exist
+elapsed=66s
+== [base-5dd62e6] fm-fleet-sync.sh run 2 (timed)
+alpha: already current
+beta: already current
+copilot-studio: skipped: local main does not exist
+gamma: already current
+jira-etl: skipped: local main does not exist
+elapsed=57s
+== [base-5dd62e6] per-clone state after sync
+alpha main=C1
+beta main=C1
+gamma main=C1
+== [base-5dd62e6] marker dir
+ls: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.sHQ2gN/state/fleet-sync-needs-setup: No such file or directory
+== [base-5dd62e6] fm-bootstrap.sh session start 1 (FLEET_SYNC lines; timeout=5+3*5=20s)
+FLEET_SYNC: alpha: synced 79af57a..1260a9e
+FLEET_SYNC: beta: synced 3df4673..ae195d2
+FLEET_SYNC: fleet: skipped: bootstrap refresh timed out (timeout=20s elapsed=21s)
+elapsed=24s
+alpha main=C1
+beta main=C1
+gamma main=C0
+== [base-5dd62e6] fm-bootstrap.sh session start 2 (FLEET_SYNC lines)
+FLEET_SYNC: alpha: already current
+FLEET_SYNC: beta: already current
+FLEET_SYNC: fleet: skipped: bootstrap refresh timed out (timeout=20s elapsed=20s)
+== [base-5dd62e6] adversarial: check out copilot-studio, then relapse
+copilot-studio: already current
+copilot-studio: skipped: local main does not exist
+== [base-5dd62e6] adversarial: detached HEAD with no local main is NOT treated as needs-setup
+alpha: recovered: re-attached main (already current)
+== [base-5dd62e6] lab removed

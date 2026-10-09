@@ -1,0 +1,42 @@
+== [fixed-7d0e887] lab layout
+alpha: HEAD->refs/heads/main local-main=yes worktree-files=1
+beta: HEAD->refs/heads/main local-main=yes worktree-files=1
+copilot-studio: HEAD->refs/heads/main local-main=no worktree-files=0
+gamma: HEAD->refs/heads/main local-main=yes worktree-files=1
+jira-etl: HEAD->refs/heads/main local-main=no worktree-files=0
+== [fixed-7d0e887] fm-fleet-sync.sh run 1 (timed)
+alpha: synced 79af57a..1260a9e
+beta: synced 3df4673..7f11a8d
+copilot-studio: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+gamma: synced df64bb4..7b97b47
+jira-etl: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+elapsed=22s
+== [fixed-7d0e887] fm-fleet-sync.sh run 2 (timed)
+alpha: already current
+beta: already current
+copilot-studio: skipped: needs setup (already reported)
+gamma: already current
+jira-etl: skipped: needs setup (already reported)
+elapsed=11s
+== [fixed-7d0e887] per-clone state after sync
+alpha main=C1
+beta main=C1
+gamma main=C1
+== [fixed-7d0e887] marker dir
+copilot-studio.2431005118
+jira-etl.3438987404
+== [fixed-7d0e887] fm-bootstrap.sh session start 1 (FLEET_SYNC lines; timeout=5+3*5=20s)
+FLEET_SYNC: copilot-studio: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+FLEET_SYNC: jira-etl: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+elapsed=11s
+alpha main=C1
+beta main=C1
+gamma main=C1
+== [fixed-7d0e887] fm-bootstrap.sh session start 2 (FLEET_SYNC lines)
+(no FLEET_SYNC lines)
+== [fixed-7d0e887] adversarial: check out copilot-studio, then relapse
+copilot-studio: synced e648958..7c5a787
+copilot-studio: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+== [fixed-7d0e887] adversarial: detached HEAD with no local main is NOT treated as needs-setup
+alpha: recovered: re-attached main (already current)
+== [fixed-7d0e887] lab removed

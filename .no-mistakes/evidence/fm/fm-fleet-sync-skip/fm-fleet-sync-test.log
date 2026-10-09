@@ -1,0 +1,8 @@
+ok - a live process holding the clone worktree dir blocks lock removal (clone-dir liveness)
+ok - a transient packed-refs.lock that self-clears is retried without a force-remove
+ok - a non-packed-refs.lock fetch failure keeps today's behavior (no retry)
+ok - a non-repo directory under projects/ never fast-forwards the enclosing repo
+ok - the single-project form also refuses a directory that is not its own clone root
+ok - the clone-root guard accepts a symlinked clone directory
+ok - a never-checked-out clone is skipped before fetch and reported as needing setup once
+ok - bootstrap relays a needs-setup clone once, not every session start

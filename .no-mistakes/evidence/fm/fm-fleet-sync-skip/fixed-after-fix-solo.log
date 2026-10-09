@@ -1,0 +1,42 @@
+== [fixed-7d0e887-solo] lab layout
+alpha: HEAD->refs/heads/main local-main=yes worktree-files=1
+beta: HEAD->refs/heads/main local-main=yes worktree-files=1
+copilot-studio: HEAD->refs/heads/main local-main=no worktree-files=0
+gamma: HEAD->refs/heads/main local-main=yes worktree-files=1
+jira-etl: HEAD->refs/heads/main local-main=no worktree-files=0
+== [fixed-7d0e887-solo] fm-fleet-sync.sh run 1 (timed)
+alpha: synced 85ce81f..f66c380
+beta: synced cbffb72..1c73d96
+copilot-studio: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+gamma: synced c4a84ad..989d8c3
+jira-etl: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+elapsed=6s
+== [fixed-7d0e887-solo] fm-fleet-sync.sh run 2 (timed)
+alpha: already current
+beta: already current
+copilot-studio: skipped: needs setup (already reported)
+gamma: already current
+jira-etl: skipped: needs setup (already reported)
+elapsed=4s
+== [fixed-7d0e887-solo] per-clone state after sync
+alpha main=C1
+beta main=C1
+gamma main=C1
+== [fixed-7d0e887-solo] marker dir
+copilot-studio.3906109792
+jira-etl.4011387420
+== [fixed-7d0e887-solo] fm-bootstrap.sh session start 1 (FLEET_SYNC lines; timeout=5+3*5=20s)
+FLEET_SYNC: copilot-studio: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+FLEET_SYNC: jira-etl: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+elapsed=9s
+alpha main=C1
+beta main=C1
+gamma main=C1
+== [fixed-7d0e887-solo] fm-bootstrap.sh session start 2 (FLEET_SYNC lines)
+(no FLEET_SYNC lines)
+== [fixed-7d0e887-solo] adversarial: check out copilot-studio, then relapse
+copilot-studio: synced dd2894b..2116aba
+copilot-studio: skipped: needs setup: nothing checked out and no local main; check it out or remove the clone
+== [fixed-7d0e887-solo] adversarial: detached HEAD with no local main is NOT treated as needs-setup
+alpha: recovered: re-attached main (already current)
+== [fixed-7d0e887-solo] lab removed
