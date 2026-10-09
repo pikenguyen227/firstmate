@@ -1401,6 +1401,14 @@ assert_bound_under_renamed_parent() {  # <id> <case-name>
     || fail "$case_name child workspace is not placed after its parent"
 }
 
+# A raw pane close that empties a non-focused workspace moves focus to its
+# neighbor below Herdr 0.8.0 (upstream #1328); product closes restore focus,
+# so the fixture's own raw closes restore the captain's tab the same way.
+restore_captain_focus_after_raw_close() {  # <case-name>
+  lab tab focus "$SECOND_TWO_TAB" >/dev/null || fail "could not restore the captain tab after the $1"
+  assert_focus_is "$CAPTAIN_FOCUS" "$1 restoration"
+}
+
 RENAMED_ID=renamed-parent-r1
 GONE_ID=relaunch-gone-r1
 V1_ID=respawn-v1-gone-r1
@@ -1469,6 +1477,7 @@ done
 if lab workspace get "$OLD_GONE_WSID" >/dev/null 2>&1; then
   fail "closing the only task pane did not remove its projected workspace"
 fi
+restore_captain_focus_after_raw_close "relaunch fixture pane close"
 launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$GONE_ID" --relaunch --harness "$INERT_HARNESS" \
   > "$TMP_ROOT/$GONE_ID-relaunch.out" 2> "$TMP_ROOT/$GONE_ID-relaunch.err" \
   || fail "relaunch after projected workspace loss failed: $(cat "$TMP_ROOT/$GONE_ID-relaunch.err")"
@@ -1505,6 +1514,7 @@ for _ in $(seq 1 50); do
   lab workspace get "$OLD_V1_WSID" >/dev/null 2>&1 || break
   sleep 0.1
 done
+restore_captain_focus_after_raw_close "version 1 fixture pane close"
 launcher_spawn "$LAUNCHER_PANE" "$HOME_DIR" "$V1_ID" "$RECOVERY_PROJECT_DIR" "$INERT_HARNESS" \
   --mode no-mistakes --yolo off --backend herdr \
   > "$TMP_ROOT/$V1_ID-respawn.out" 2> "$TMP_ROOT/$V1_ID-respawn.err" \
