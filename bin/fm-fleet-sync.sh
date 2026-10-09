@@ -12,7 +12,14 @@
 # ... - needs attention" warning rather than a quiet drift. Nothing is ever forced,
 # stashed, or discarded.
 # Still skips (benignly) local-only/no-origin projects, missing remotes/branches,
-# and fetch failures. A project whose registry entry bin/fm-project-mode.sh
+# and fetch failures.
+# A clone with nothing to sync - no commit checked out and no local default
+# branch, such as a bare-looking .git-only clone that was never checked out - is
+# skipped BEFORE its fetch, so it costs the fleet no network time. It is reported
+# as "skipped: needs setup: ..." once; later runs print "skipped: needs setup
+# (already reported)", which bootstrap does not relay, until the clone is set up.
+# The once-marker lives under $FM_HOME/state/fleet-sync-needs-setup/ and is
+# cleared the first time that clone gets past this check. A project whose registry entry bin/fm-project-mode.sh
 # refuses is skipped too, naming that command so its refusal is readable, rather
 # than synced under a guessed posture.
 # A candidate under projects/ must be the root of its own work tree: git discovery
@@ -26,6 +33,14 @@
 # killed mid-write - e.g. a timed-out bootstrap sync or a teardown process kill),
 # it is retried with a bounded wait and removed only when provably stale; see
 # fetch_with_packed_refs_lock_guard and the FM_FLEET_SYNC_PACKED_REFS_LOCK_* knobs.
+# Whole-fleet time slices: when FM_FLEET_SYNC_BUDGET names a positive number of
+# seconds (bootstrap sets it from its own refresh budget), each project syncs in
+# its own bounded child run whose slice is the remaining budget divided by the
+# projects not yet synced, so a fast project rolls its unused time forward and
+# one slow fetch can exhaust only its own slice, never the rest of the fleet's.
+# A project that overruns its slice is stopped (bin/fm-timeout-lib.sh owns the
+# bound) and reported as "skipped: sync timed out after <n>s"; the loop then
+# moves on. Unset, blank, 0, or non-numeric keeps the unbounded in-process loop.
 # Usage: fm-fleet-sync.sh [<project-dir-or-name>]
 # The single-project form accepts either a path (absolute, or relative to the
 # caller's cwd) or a bare "<name>"/"projects/<name>" form, resolved against
@@ -45,8 +60,12 @@ PROJECTS="${FM_PROJECTS_OVERRIDE:-$FM_HOME/projects}"
 # Inert unless FM_TIMING_LOG names a file; only the deferred network stage sets it.
 # shellcheck source=bin/fm-timing-lib.sh
 . "$SCRIPT_DIR/fm-timing-lib.sh"
+# shellcheck source=bin/fm-timeout-lib.sh
+. "$SCRIPT_DIR/fm-timeout-lib.sh"
 FM_LOCK_LOG_PREFIX=fleet-sync
-"$FM_ROOT/bin/fm-guard.sh" || true
+NEEDS_SETUP_DIR="$FM_HOME/state/fleet-sync-needs-setup"
+# A time-sliced child run already had its parent run the guard.
+[ "${FM_FLEET_SYNC_SLICED_CHILD:-0}" = 1 ] || "$FM_ROOT/bin/fm-guard.sh" || true
 
 # Bounded recovery for an orphaned .git/packed-refs.lock. A git ref rewrite
 # (fetch --prune, branch -D, pack-refs) killed after creating the lock but before
@@ -131,6 +150,39 @@ default_branch() {
     fi
   done
   return 1
+}
+
+# needs_setup_marker: this clone's once-marker path, keyed by its physical path
+# so the bare-name and full-path invocation forms share one marker.
+needs_setup_marker() {
+  local key
+  key=$(printf '%s' "$proj_abs" | cksum | awk '{print $1}')
+  printf '%s/%s.%s\n' "$NEEDS_SETUP_DIR" "$(basename "$proj_abs")" "$key"
+}
+
+# True (and reported) when the clone has nothing a sync could act on: no commit
+# checked out and no local default branch. Read from local refs only, so it runs
+# before the fetch. A clone that merely sits off its default branch has HEAD at a
+# commit and keeps the ordinary recovery and STUCK paths.
+skip_needs_setup() {
+  local default marker
+  if git -C "$PROJ" rev-parse --verify --quiet 'HEAD^{commit}' >/dev/null; then
+    rm -f "$(needs_setup_marker)" 2>/dev/null || true
+    return 1
+  fi
+  default=$(default_branch) || default=""
+  if [ -n "$default" ] && git -C "$PROJ" rev-parse --verify --quiet "refs/heads/$default^{commit}" >/dev/null; then
+    rm -f "$(needs_setup_marker)" 2>/dev/null || true
+    return 1
+  fi
+  marker=$(needs_setup_marker)
+  if [ -e "$marker" ]; then
+    echo "$label: skipped: needs setup (already reported)"
+    return 0
+  fi
+  echo "$label: skipped: needs setup: nothing checked out and no local ${default:-default branch}; check it out or remove the clone"
+  { mkdir -p "$NEEDS_SETUP_DIR" && : > "$marker"; } 2>/dev/null || true
+  return 0
 }
 
 first_line() {
@@ -339,6 +391,9 @@ sync_project() {
     echo "$label: skipped: no origin remote"
     return 0
   fi
+  if skip_needs_setup; then
+    return 0
+  fi
 
   if ! fetch_with_packed_refs_lock_guard; then
     reason="fetch failed"
@@ -451,13 +506,34 @@ if [ $# -eq 1 ]; then
 fi
 
 [ -d "$PROJECTS" ] || exit 0
+budget=${FM_FLEET_SYNC_BUDGET:-}
+case "$budget" in ''|*[!0-9]*) budget=0 ;; esac
+budget=$((10#$budget))
+projs=()
 for proj in "$PROJECTS"/*; do
   [ -e "$proj" ] || continue
   [ -d "$proj" ] || continue
+  projs+=("$proj")
+done
+deadline=$((SECONDS + budget))
+left=${#projs[@]}
+for proj in ${projs[@]+"${projs[@]}"}; do
   # Per-clone elapsed, so a fleet refresh that runs long names WHICH clone cost
   # the time instead of only its total. Recording is a no-op unless the deferred
   # network stage asked for it.
   __fm_timing_stamp=$(fm_timing_now_ms)
-  sync_project "$proj"
+  if [ "$budget" -gt 0 ]; then
+    slice=$(( (deadline - SECONDS) / left ))
+    [ "$slice" -ge 1 ] || slice=1
+    rc=0
+    FM_FLEET_SYNC_SLICED_CHILD=1 FM_FLEET_SYNC_BUDGET='' \
+      fm_run_timed "$slice" "$SCRIPT_DIR/fm-fleet-sync.sh" "$proj" || rc=$?
+    if fm_timed_out "$rc"; then
+      echo "$(basename "$proj"): skipped: sync timed out after ${slice}s (its own time slice; the rest of the fleet still syncs)"
+    fi
+  else
+    sync_project "$proj"
+  fi
   fm_timing_record clone sync "$__fm_timing_stamp" "$(basename "$proj")"
+  left=$((left - 1))
 done

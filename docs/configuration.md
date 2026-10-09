@@ -1380,6 +1380,8 @@ The locked session-start deferred network stage runs bootstrap's best-effort pro
 
 - It emits `FLEET_SYNC:` for skipped refreshes that may matter, recovered self-heals, and `STUCK:` alarms.
 - Normal completed runs keep local-only and no-origin skips silent.
+- A clone with nothing checked out and no local default branch is skipped before its fetch and reported as needing setup once; later refreshes stay silent about it until it is checked out or removed.
+- Each project gets its own slice of the refresh budget, so one slow or hung fetch is reported as its own timeout while the rest of the fleet still refreshes; [`fm-fleet-sync.sh`'s header](../bin/fm-fleet-sync.sh) owns the slicing.
 - If bootstrap kills a timed-out refresh, it replays any completed `fm-fleet-sync.sh` output before the aggregate timeout skip so no finished result is lost.
 
 **Stale Git lock recovery**
@@ -2566,6 +2568,7 @@ FM_WORKTREE_WRITE_MAXDEPTH=6       # depth that same probe walks below the recor
 FM_WORKTREE_WRITE_TIMEOUT=10       # wall-clock seconds that one walk may take, so a worktree on a hung mount cannot stall the watcher poll that started it; hitting the bound reads as no write evidence, which leaves the escalation schedule exactly as it was; a value that is not a positive integer falls back to the default
 FM_WATCH_TRIAGE_LOG_MAX_BYTES=262144   # size cap for the watcher's absorbed-wake debug log
 FM_FLEET_SYNC_BOOTSTRAP_TIMEOUT=     # optional seconds allowed for bootstrap's best-effort clone refresh; unset/blank defaults to max(20, 5 + 3 * origin-backed-project-count)
+FM_FLEET_SYNC_BUDGET=   # whole-fleet fm-fleet-sync.sh only: total seconds split into per-project slices; bootstrap sets it from its refresh timeout, and unset/blank/0 runs unbounded
 FM_FLEET_PRUNE=1        # set to 0 to skip pruning local branches whose upstream is gone
 FM_STALE_WORKTREE_LOCK_AGE_SECS=30       # min mtime age before fm-teardown.sh treats a leftover worktree git index.lock as provably stale
 FM_TREEHOUSE_RETURN_LOCK_RETRIES=3        # retries after a treehouse return fails on the transient git index.lock signature

@@ -82,9 +82,14 @@
 #          bounded by FM_FLEET_SYNC_BOOTSTRAP_TIMEOUT when it is a non-empty
 #          numeric override, while non-numeric values fall back to 20s.
 #          When the override is unset or blank, the timeout is
-#          max(20, 5 + 3 * origin-backed project clone count). A timed-out
+#          max(20, 5 + 3 * origin-backed project clone count). Fleet sync gets
+#          that budget less a 2s margin as FM_FLEET_SYNC_BUDGET and gives each
+#          project its own slice of it (fm-fleet-sync.sh's header owns the
+#          slicing), so one slow clone cannot starve the rest; the aggregate
+#          timeout is the backstop. A timed-out
 #          refresh relays any completed fm-fleet-sync.sh output before the
 #          aggregate timeout skip line with timeout and elapsed seconds.
+#          A clone already reported as needing setup is not relayed again.
 #          Set FM_FLEET_PRUNE=0 to skip branch pruning during that refresh.
 #          BACKLOG_RECONCILE lines report what backlog_record_reconcile could not
 #          settle in THIS home. Every ordinary dispatch and completion now moves
@@ -317,6 +322,7 @@ fleet_sync_relay_filtered_output() {
     case "$line" in
       *': skipped: local-only project') ;;
       *': skipped: no origin remote') ;;
+      *': skipped: needs setup (already reported)') ;;
       *': skipped:'*) echo "FLEET_SYNC: $line" ;;
       *': STUCK:'*) echo "FLEET_SYNC: $line" ;;
       *': recovered:'*) echo "FLEET_SYNC: $line" ;;
@@ -341,7 +347,11 @@ fleet_sync() {
   monitor_was_on=0
   case $- in *m*) monitor_was_on=1 ;; esac
   set -m 2>/dev/null || true
-  "$FM_ROOT/bin/fm-fleet-sync.sh" >"$tmp" 2>/dev/null &
+  # Fleet sync splits this budget into per-project slices; the margin lets it
+  # report its own per-project timeouts before the aggregate kill below fires.
+  slice_budget=$((timeout - 2))
+  [ "$slice_budget" -ge 1 ] || slice_budget=1
+  FM_FLEET_SYNC_BUDGET=$slice_budget "$FM_ROOT/bin/fm-fleet-sync.sh" >"$tmp" 2>/dev/null &
   pid=$!
 
   start=$SECONDS
