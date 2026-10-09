@@ -952,7 +952,7 @@ test_e2e_background_session_survives_rekey_after_recycle() {
   # Any session outside the spare's run - here one still carrying the old id -
   # is refused, naming the live model loop and the re-keyed id.
   out=$(env -u CLAUDE_CODE_SESSION_ID -u CLAUDE_PID FM_HOME="$dir" CLAUDE_CONFIG_DIR="$dir/claude-config" \
-    "$NAMED_CLAUDE" -c 'CLAUDE_CODE_SESSION_ID=S1 CLAUDE_PID=$$ "$FM_HOME/bin/fm-lock.sh"' 2>&1) \
+    "$NAMED_CLAUDE" -c 'CLAUDE_CODE_SESSION_ID=S1 CLAUDE_PID=$$ "$FM_HOME/bin/fm-lock.sh"; exit $?' 2>&1) \
     && fail "an outside session with the pre-clear id took the re-keyed lock: $out"
   printf '%s\n' "$out" | grep -q "another live firstmate session holds the lock (pid $spare, session S2)" \
     || fail "the outside session's refusal did not name the re-keyed owner: $out"
