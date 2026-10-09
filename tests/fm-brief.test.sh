@@ -262,7 +262,7 @@ test_ship_mode_is_explicit_not_registry() {
     || fail "registered direct-PR posture overrode the explicit --mode"
   assert_grep "Firstmate will then instruct you to run /no-mistakes" "$brief" \
     "explicit no-mistakes brief did not render the pipeline definition of done"
-  assert_grep "append \`paused [at=<epoch>]: awaiting firstmate's /no-mistakes instruction\`" "$brief" \
+  assert_grep "append \`paused [at=<epoch>]: awaiting firstmate's /no-mistakes instruction until <YYYY-MM-DDTHH:MMZ>\`" "$brief" \
     "no-mistakes brief did not declare the post-handoff wait"
 
   # An unregistered project is not a blocker either, because nothing is looked up.

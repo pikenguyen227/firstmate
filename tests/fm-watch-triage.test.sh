@@ -6554,14 +6554,15 @@ test_afk_one_shot_never_hands_off_captain_held_under_away_record() {
 # A paused: line naming when the wait clears is rechecked at that time when it
 # falls within the flat cadence, but a distant or mistyped time cannot extend
 # the cadence, and a time that has passed is rechecked at once.
-paused_until_fixture() {  # <name> <until-epoch> <status-age-secs>
-  local name=$1 until=$2 age=$3 dir state statusf window key back
+paused_until_fixture() {  # <name> <until-epoch> <status-age-secs> [status-format]
+  local name=$1 until=$2 age=$3 fmt=${4:-'paused: rate limit resets, until %s, then resuming\n'} dir state statusf window key back
   dir=$(make_case "$name"); state="$dir/state"
   window="test:fm-until"
   statusf="$state/until.status"
   printf 'idle, waiting for the reset\n' > "$dir/pane.txt"
   printf 'window=%s\nkind=secondmate\n' "$window" > "$state/until.meta"
-  printf 'paused: rate limit resets, until %s, then resuming\n' "$(iso_utc_at "$until")" > "$statusf"
+  # shellcheck disable=SC2059 # The format is the caller's status-file shape.
+  printf "$fmt" "$(iso_utc_at "$until")" > "$statusf"
   back=$(( $(date +%s) - age ))
   if [ "$(uname)" = Darwin ]; then touch -mt "$(date -r "$back" '+%Y%m%d%H%M.%S')" "$statusf"
   else touch -m -d "@$back" "$statusf"; fi
@@ -6630,6 +6631,30 @@ test_paused_until_that_passed_is_rechecked_before_the_cadence() {
   fi
   reap "$UNTIL_PID"
   pass "a declared wait whose until time has passed is rechecked at once, then held to the cadence"
+}
+
+# A no-mistakes worker's handoff done: is followed by its brief's declared wait
+# bounded 15 minutes out. A missed handoff stays quiet before that bound and is
+# rechecked once it passes, instead of waiting out the flat pause cadence.
+HANDOFF_WAIT_FMT="done [at=1791516546]: implementation complete\npaused [at=1791516547]: awaiting firstmate's /no-mistakes instruction until %s\n"
+
+test_missed_handoff_wait_resurfaces_after_its_bound() {
+  local dir state
+  dir=$(paused_until_fixture handoff-wait-due "$(( $(date +%s) - 30 ))" 900 "$HANDOFF_WAIT_FMT"); state="$dir/state"
+  until_watch "$dir" 14400
+  wait_for_exit "$UNTIL_PID" 100 || { reap "$UNTIL_PID"; fail "a missed handoff was not rechecked once its declared bound passed"; }
+  grep -F 'stale: test:fm-until' "$dir/watch.out" >/dev/null || fail "the missed handoff recheck did not print a stale wake: $(cat "$dir/watch.out")"
+  grep -F 'declared clearing time has passed' "$dir/watch.out" >/dev/null \
+    || fail "the missed handoff recheck did not say the declared time passed: $(cat "$dir/watch.out")"
+
+  dir=$(paused_until_fixture handoff-wait-pending "$(( $(date +%s) + 600 ))" 300 "$HANDOFF_WAIT_FMT"); state="$dir/state"
+  until_watch "$dir" 14400
+  if ! wait_poll_cycle "$state" "$UNTIL_PID" || ! wait_poll_cycle "$state" "$UNTIL_PID"; then
+    reap "$UNTIL_PID"; fail "a handoff wait inside its bound was rechecked early: $(cat "$dir/watch.out")"
+  fi
+  [ ! -s "$state/.wake-queue" ] || fail "a handoff wait inside its bound was queued for a recheck"
+  reap "$UNTIL_PID"
+  pass "a missed handoff's declared wait stays quiet inside its bound and resurfaces once the bound passes"
 }
 
 # CI's stock macOS Bash lane sets FM_TEST_ONLY to run just the bash-3.2
@@ -6782,3 +6807,4 @@ test_afk_one_shot_never_hands_off_captain_held_under_away_record
 test_paused_until_near_future_is_quiet_before_the_cadence
 test_paused_until_wrong_year_is_bounded_by_the_cadence
 test_paused_until_that_passed_is_rechecked_before_the_cadence
+test_missed_handoff_wait_resurfaces_after_its_bound

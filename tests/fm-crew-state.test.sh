@@ -2434,7 +2434,7 @@ test_no_mistakes_handoff_declared_wait() {
     "window=fm:fm-prewait" "worktree=$d/wt" "project=$d/wt" \
     "kind=ship" "mode=no-mistakes" "harness=claude"
   printf '%s\n' 'done [at=1791516546]: implementation complete' \
-    "paused [at=1791516547]: awaiting firstmate's /no-mistakes instruction" \
+    "paused [at=1791516547]: awaiting firstmate's /no-mistakes instruction until 2026-10-09T03:04Z" \
     > "$d/state/prewait.status"
   FM_FAKE_AXI_STATUS=""
   FM_FAKE_RUNS_LIST=""
