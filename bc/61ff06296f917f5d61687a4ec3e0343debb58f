@@ -1,0 +1,21 @@
+bin/backends/herdr.sh
+  s_363ebbac624bdc::t_b63942a1ada6e4 28-29
+bin/fm-spawn.sh
+  s_363ebbac624bdc::t_b63942a1ada6e4 131-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc61ff06296f917f5d61687a4ec3e0343debb58f",
+  "prompts": {},
+  "sessions": {
+    "s_363ebbac624bdc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28643190-3f04-473b-8359-200037c17a4a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
