@@ -28,11 +28,10 @@
 # transient lock that self-clears is retried without a force-remove; and any
 # non-packed-refs.lock fetch failure keeps today's behavior with no retry.
 #
-# It also pins the two fleet-cost guards: a clone with nothing checked out and no
+# It also pins the fleet-cost guard: a clone with nothing checked out and no
 # local default branch is skipped before any fetch and reported as needing setup
 # once (bootstrap stops relaying it after the first report, and fixing the clone
-# re-arms the report), and a whole-fleet run with FM_FLEET_SYNC_BUDGET gives each
-# project its own slice, so a hung fetch costs only its own project.
+# re-arms the report).
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -248,22 +247,6 @@ make_unchecked_out() {
   git -C "$clone" update-ref -d refs/heads/main
   git -C "$clone" symbolic-ref HEAD refs/heads/main
   rm -f "$clone/.git/index" "$clone/file.txt"
-}
-
-# git shim: a fetch inside $FLEET_TEST_HANG_DIR hangs (a stuck network fetch);
-# everything else is the real git.
-git_hangs_in_dir() {
-  cat > "$1/git" <<'SH'
-#!/usr/bin/env bash
-real=${REAL_GIT_FOR_TEST:?}
-dir=; is_fetch=0; prev=
-for a in "$@"; do [ "$a" = fetch ] && is_fetch=1; [ "$prev" = -C ] && dir=$a; prev=$a; done
-if [ "$is_fetch" = 1 ] && [ "$dir" = "${FLEET_TEST_HANG_DIR:-}" ]; then
-  exec sleep 60
-fi
-exec "$real" "$@"
-SH
-  chmod +x "$1/git"
 }
 
 # --- tests ------------------------------------------------------------------
@@ -786,50 +769,6 @@ test_bootstrap_relays_needs_setup_once() {
   pass "bootstrap relays a needs-setup clone once, not every session start"
 }
 
-test_budget_gives_each_project_its_own_slice() {
-  local home fakebin slow fast out err started elapsed
-  home=$(new_home)
-  fakebin="$home/fb-slice"; mkdir -p "$fakebin"
-  git_hangs_in_dir "$fakebin"
-  slow=$(build_pair "$home" a-slow)
-  fast=$(build_pair "$home" b-fast)
-  advance_origin "$home" a-slow C1
-  advance_origin "$home" b-fast C1
-  out="$home/out-slice"; err="$home/err-slice"
-
-  started=$SECONDS
-  FLEET_TEST_HANG_DIR="$slow" FM_FLEET_SYNC_BUDGET=8 \
-    run_sync_guarded "$home" "$fakebin" "$out" "$err"
-  elapsed=$((SECONDS - started))
-
-  assert_contains "$(cat "$out")" "a-slow: skipped: sync timed out after 4s" "the hung project is stopped at its own slice"
-  assert_contains "$(cat "$out")" "b-fast: synced" "the next project still syncs after a hung one"
-  [ "$elapsed" -lt 20 ] || fail "time-sliced run took ${elapsed}s; the hung fetch was not bounded"
-  : "$fast"
-  pass "FM_FLEET_SYNC_BUDGET gives each project its own slice, so one hung fetch cannot starve the fleet"
-}
-
-test_bootstrap_slices_its_refresh_budget() {
-  local home fakebin slow out realgit
-  home=$(new_home)
-  fakebin="$home/fb-boot-slice"; mkdir -p "$fakebin"
-  git_hangs_in_dir "$fakebin"
-  slow=$(build_pair "$home" a-slow)
-  build_pair "$home" b-fast >/dev/null
-  advance_origin "$home" b-fast C1
-  realgit=$(command -v git)
-
-  out=$(PATH="$fakebin:$PATH" REAL_GIT_FOR_TEST="$realgit" FLEET_TEST_HANG_DIR="$slow" \
-    FM_FLEET_SYNC_BOOTSTRAP_TIMEOUT=12 FM_HOME="$home" FM_ROOT_OVERRIDE="$ROOT" \
-    "$ROOT/bin/fm-bootstrap.sh" 2>/dev/null)
-
-  assert_contains "$out" "FLEET_SYNC: a-slow: skipped: sync timed out after 5s" "bootstrap hands fleet sync its budget less the margin, split per project"
-  assert_not_contains "$out" "bootstrap refresh timed out" "per-project slices finish before the aggregate backstop"
-  [ "$(git -C "$home/projects/b-fast" rev-parse main)" = "$(git -C "$home/projects/b-fast" rev-parse origin/main)" ] \
-    || fail "the project after the hung one was not synced under bootstrap"
-  pass "bootstrap gives fleet sync per-project slices of its refresh budget"
-}
-
 test_detached_clean_ancestor_recovers
 test_detached_unique_commit_is_stuck_untouched
 test_detached_clean_ancestor_with_diverged_local_default_is_stuck_untouched
@@ -858,5 +797,3 @@ test_non_clone_dir_named_directly_never_syncs_the_enclosing_repo
 test_symlinked_clone_still_syncs
 test_unchecked_out_clone_needs_setup_once_without_fetch
 test_bootstrap_relays_needs_setup_once
-test_budget_gives_each_project_its_own_slice
-test_bootstrap_slices_its_refresh_budget

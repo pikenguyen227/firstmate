@@ -33,14 +33,6 @@
 # killed mid-write - e.g. a timed-out bootstrap sync or a teardown process kill),
 # it is retried with a bounded wait and removed only when provably stale; see
 # fetch_with_packed_refs_lock_guard and the FM_FLEET_SYNC_PACKED_REFS_LOCK_* knobs.
-# Whole-fleet time slices: when FM_FLEET_SYNC_BUDGET names a positive number of
-# seconds (bootstrap sets it from its own refresh budget), each project syncs in
-# its own bounded child run whose slice is the remaining budget divided by the
-# projects not yet synced, so a fast project rolls its unused time forward and
-# one slow fetch can exhaust only its own slice, never the rest of the fleet's.
-# A project that overruns its slice is stopped (bin/fm-timeout-lib.sh owns the
-# bound) and reported as "skipped: sync timed out after <n>s"; the loop then
-# moves on. Unset, blank, 0, or non-numeric keeps the unbounded in-process loop.
 # Usage: fm-fleet-sync.sh [<project-dir-or-name>]
 # The single-project form accepts either a path (absolute, or relative to the
 # caller's cwd) or a bare "<name>"/"projects/<name>" form, resolved against
@@ -60,12 +52,9 @@ PROJECTS="${FM_PROJECTS_OVERRIDE:-$FM_HOME/projects}"
 # Inert unless FM_TIMING_LOG names a file; only the deferred network stage sets it.
 # shellcheck source=bin/fm-timing-lib.sh
 . "$SCRIPT_DIR/fm-timing-lib.sh"
-# shellcheck source=bin/fm-timeout-lib.sh
-. "$SCRIPT_DIR/fm-timeout-lib.sh"
 FM_LOCK_LOG_PREFIX=fleet-sync
 NEEDS_SETUP_DIR="$FM_HOME/state/fleet-sync-needs-setup"
-# A time-sliced child run already had its parent run the guard.
-[ "${FM_FLEET_SYNC_SLICED_CHILD:-0}" = 1 ] || "$FM_ROOT/bin/fm-guard.sh" || true
+"$FM_ROOT/bin/fm-guard.sh" || true
 
 # Bounded recovery for an orphaned .git/packed-refs.lock. A git ref rewrite
 # (fetch --prune, branch -D, pack-refs) killed after creating the lock but before
@@ -506,34 +495,13 @@ if [ $# -eq 1 ]; then
 fi
 
 [ -d "$PROJECTS" ] || exit 0
-budget=${FM_FLEET_SYNC_BUDGET:-}
-case "$budget" in ''|*[!0-9]*) budget=0 ;; esac
-budget=$((10#$budget))
-projs=()
 for proj in "$PROJECTS"/*; do
   [ -e "$proj" ] || continue
   [ -d "$proj" ] || continue
-  projs+=("$proj")
-done
-deadline=$((SECONDS + budget))
-left=${#projs[@]}
-for proj in ${projs[@]+"${projs[@]}"}; do
   # Per-clone elapsed, so a fleet refresh that runs long names WHICH clone cost
   # the time instead of only its total. Recording is a no-op unless the deferred
   # network stage asked for it.
   __fm_timing_stamp=$(fm_timing_now_ms)
-  if [ "$budget" -gt 0 ]; then
-    slice=$(( (deadline - SECONDS) / left ))
-    [ "$slice" -ge 1 ] || slice=1
-    rc=0
-    FM_FLEET_SYNC_SLICED_CHILD=1 FM_FLEET_SYNC_BUDGET='' \
-      fm_run_timed "$slice" "$SCRIPT_DIR/fm-fleet-sync.sh" "$proj" || rc=$?
-    if fm_timed_out "$rc"; then
-      echo "$(basename "$proj"): skipped: sync timed out after ${slice}s (its own time slice; the rest of the fleet still syncs)"
-    fi
-  else
-    sync_project "$proj"
-  fi
+  sync_project "$proj"
   fm_timing_record clone sync "$__fm_timing_stamp" "$(basename "$proj")"
-  left=$((left - 1))
 done
