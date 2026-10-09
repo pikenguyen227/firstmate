@@ -40,6 +40,9 @@
 # backend-purity check. The backend-purity check rejects direct Beads CLI
 # invocations in the core bin/ and bin/backends/ scripts so every configured
 # backlog backend follows the same tasks-axi lifecycle path.
+# Every run without explicit paths also checks that the root AGENTS.md fits in
+# the 32,768 bytes Codex reads from project docs by default
+# (docs/verification/agents-md-size.md).
 #
 # Lint defaults to two concurrency-limited workers over two stable logical
 # shards, and each worker runs ONE canonical root per ShellCheck process, so a
@@ -625,6 +628,20 @@ fm_lint_run_backend_purity() {
   }
 }
 
+# Codex reads only the first 32 KiB of a repository's project docs by default
+# (project_doc_max_bytes), so a larger root AGENTS.md would reach a Codex
+# firstmate cut off mid-contract.
+FM_LINT_AGENTS_MD_MAX_BYTES=32768
+fm_lint_run_agents_md_size() {
+  local bytes
+  [ "$EXPLICIT_PATHS" -eq 0 ] && [ -f AGENTS.md ] || return 0
+  bytes=$(wc -c < AGENTS.md | tr -d '[:space:]')
+  [ "$bytes" -gt "$FM_LINT_AGENTS_MD_MAX_BYTES" ] || return 0
+  printf 'fm-lint.sh: AGENTS.md is %s bytes, over the %s-byte Codex project-doc limit; move conditional detail into its owning skill or doc.\n' \
+    "$bytes" "$FM_LINT_AGENTS_MD_MAX_BYTES" >&2
+  return 1
+}
+
 JOBS=${FM_LINT_JOBS:-2}
 TELEMETRY=${FM_LINT_TELEMETRY:-}
 FAST=0
@@ -863,6 +880,7 @@ if [ "$CHANGED_MODE" -eq 1 ] && [ "$ROOT_COUNT" -eq 0 ]; then
   printf 'fm-lint.sh: no changed lint targets\n'
   overall_rc=0
   fm_lint_run_backend_purity || overall_rc=$?
+  fm_lint_run_agents_md_size || overall_rc=$?
   fm_lint_run_workflows || overall_rc=$?
   exit "$overall_rc"
 fi
@@ -1195,6 +1213,11 @@ purity_rc=0
 fm_lint_run_backend_purity || purity_rc=$?
 if [ "$overall_rc" -eq 0 ] && [ "$purity_rc" -ne 0 ]; then
   overall_rc=$purity_rc
+fi
+size_rc=0
+fm_lint_run_agents_md_size || size_rc=$?
+if [ "$overall_rc" -eq 0 ] && [ "$size_rc" -ne 0 ]; then
+  overall_rc=$size_rc
 fi
 
 if [ "$overall_rc" -eq 0 ]; then

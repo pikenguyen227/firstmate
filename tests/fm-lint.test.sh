@@ -1198,6 +1198,40 @@ SH
   pass "fm-lint.sh rejects direct Beads CLI invocations in firstmate core"
 }
 
+test_enforces_agents_md_codex_size_limit() {
+  local tmp fakebin log lint_copy out rc
+  tmp=$(fm_test_tmproot fm-lint-agents-md-size)
+  fakebin=$(fm_fakebin "$tmp")
+  log="$tmp/shellcheck.log"
+  mkdir -p "$tmp/repo/bin/backends" "$tmp/repo/tests"
+  lint_copy="$tmp/repo/bin/fm-lint.sh"
+  cp "$LINT" "$lint_copy"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/repo/bin/fm-lint-workflows.sh"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/repo/bin/backends/noop.sh"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$tmp/repo/tests/noop.test.sh"
+  chmod +x "$lint_copy" "$tmp/repo/bin/fm-lint-workflows.sh"
+  fm_lint_stub_shellcheck "$fakebin" "$log"
+
+  head -c 32768 /dev/zero | tr '\0' 'a' > "$tmp/repo/AGENTS.md"
+  rc=0
+  out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" 2>&1) || rc=$?
+  [ "$rc" -eq 0 ] || fail "lint rejected an AGENTS.md exactly at the 32768-byte limit (exit $rc)"$'\n'"$out"
+
+  printf 'b' >> "$tmp/repo/AGENTS.md"
+  rc=0
+  out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" 2>&1) || rc=$?
+  [ "$rc" -ne 0 ] || fail "lint accepted an AGENTS.md over the Codex project-doc limit"$'\n'"$out"
+  assert_contains "$out" "AGENTS.md is 32769 bytes, over the 32768-byte Codex project-doc limit" \
+    "lint did not name the oversized AGENTS.md"
+
+  rc=0
+  out=$(cd "$tmp/repo" && CI=true PATH="$fakebin:$PATH" "$lint_copy" --partition 1of2 2>&1) || rc=$?
+  [ "$rc" -ne 0 ] || fail "partition lint accepted an AGENTS.md over the Codex project-doc limit"$'\n'"$out"
+  assert_contains "$out" "over the 32768-byte Codex project-doc limit" \
+    "partition lint did not name the oversized AGENTS.md"
+  pass "fm-lint.sh keeps AGENTS.md within Codex's 32 KiB project-doc limit"
+}
+
 test_rejects_direct_beads_cli_in_explicit_core_path() {
   local tmp fakebin log lint_copy target spelling out rc
   tmp=$(fm_test_tmproot fm-lint-explicit-backend-purity)
@@ -1885,6 +1919,7 @@ test_rejects_wrong_shellcheck_version
 test_catches_a_real_lint_defect
 test_rejects_direct_beads_cli_invocations
 test_rejects_direct_beads_cli_in_explicit_core_path
+test_enforces_agents_md_codex_size_limit
 test_ignores_ambient_shellcheck_opts
 test_clean_fixture_passes
 test_jobs_are_deterministic_and_complete

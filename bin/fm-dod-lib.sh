@@ -19,7 +19,11 @@
 # accepted while the named head exists only in the worker's disposable copy.
 # The check tests that head, not whether some branch moved. In no-mistakes
 # mode the pre-validation `done: {summary}` is the pipeline handoff and is
-# not gated; only the later CI-ready `done: PR <url> checks green` is, or on a
+# not gated; the worker follows it with a declared `paused: ... until <UTC>`
+# wait for firstmate's /no-mistakes instruction, bounded 15 minutes out to
+# match the inactive-reconcile cadence, so an idle handoff pane reads as that
+# wait rather than an unexplained stale and a missed handoff is rechecked when
+# the bound passes; only the later CI-ready `done: PR <url> checks green` is, or on a
 # Gerrit project the later `done: PR <change url> published for review`. The
 # named head is the worker copy's HEAD, except that a done naming the task's
 # recorded pr= passes when the forge holds that head: a forge-reported
@@ -374,6 +378,7 @@ The task is complete only when committed on your branch.
 When you believe it is complete, append \`done [at=<epoch>]: {summary}\` to the status file and stop.
 Firstmate will then instruct you to run /no-mistakes to validate.
 That first \`done:\` is the handoff that starts the pipeline; it is not a request to publish.
+Right after that handoff \`done:\`, append \`paused [at=<epoch>]: awaiting firstmate's /no-mistakes instruction until <YYYY-MM-DDTHH:MMZ>\`, with the UTC time 15 minutes after that \`done:\`, so the idle wait reads as declared and a stalled handoff is rechecked at that time; firstmate's instruction clears it.
 
 EOF
       fm_nm_driving_block "$forge"
@@ -432,6 +437,7 @@ The task is complete only when committed on your branch.
 When you believe it is complete, append \`done [at=<epoch>]: {summary}\` to the status file and stop.
 Firstmate will then instruct you to run /no-mistakes to validate and ship a PR.
 That first \`done:\` is the handoff that starts the pipeline, which owns the push; it is not a request to push from this copy.
+Right after that handoff \`done:\`, append \`paused [at=<epoch>]: awaiting firstmate's /no-mistakes instruction until <YYYY-MM-DDTHH:MMZ>\`, with the UTC time 15 minutes after that \`done:\`, so the idle wait reads as declared and a stalled handoff is rechecked at that time; firstmate's instruction clears it.
 
 EOF
       fm_nm_driving_block "$forge"
