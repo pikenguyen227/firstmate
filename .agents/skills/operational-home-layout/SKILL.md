@@ -119,7 +119,7 @@ state/               runtime records and signals; gitignored
   .lock-reanchor     last same-session line-1 move "<from-pid> <to-pid>"; written only by bin/fm-lock.sh, read through fm_session_lock_names_pid; never touch
   .watch.lock .wake-queue.lock watcher singleton and queue serialization locks
   .claude-autoarm.lock .claude-autoarm-epoch .claude-autoarm-failure-notified .claude-autoarm-failure-alarmed .turnend-claude-blocks .turnend-claude-blocks.lock   Claude Stop auto-arm single-flight, epoch, failure-episode, attended-alarm, guard-budget, and budget-lock records; never touch
-  .claude-stop-seen .turnend-foreign-owner-notified   Claude turn-end stamp read by a detached handling successor, and the once-per-outage foreign-owner notice marker; written only by bin/fm-turnend-guard.sh --claude; safe to delete
+  .claude-stop-seen.<pid> .turnend-foreign-owner-notified   per-session Claude turn-end stamp (one per stopping CLAUDE_PID) read only by that session's detached handling successor, and the once-per-outage foreign-owner notice marker; written only by bin/fm-turnend-guard.sh --claude; safe to delete
   .cursor-park-owner .cursor-park-owner.lock .turnend-cursor-blocks   Cursor stop-hook owner record, publication and commit lock, and bounded repair-nag budget; never touch
   .hash-* .count-* .stale-* .stale-since-* .churn-since-* .paused-* .wedge-escalations-* .dead-reported-* .writing-* .waiting-* .seen-* .hb-surfaced-* .last-* .heartbeat-streak .secondmate-liveness-tick .secondmate-liveness-*.lock*   watcher internals; never touch
   .secondmate-relaunch-<id> .secondmate-relaunch-bound-<id>   durable relaunch history and parked-bound state; never touch (bin/fm-secondmate-liveness-lib.sh owns the ledger contract)

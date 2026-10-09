@@ -124,7 +124,7 @@ The exception has these limits:
 - Malformed, absent, dead, or ancestry-uncertain lock records do not satisfy this Claude-specific exception and retain the ordinary guard behavior.
 - A missing or mismatched sidecar, an untrusted id, or an uncertain registry adds nothing to the verdict, so a live owner outside the ancestry still takes this exit exactly as before.
 
-Every `--claude` Stop in a home that needs supervision also stamps `state/.claude-stop-seen` with its `CLAUDE_PID` before any of these decisions; [`watcher-continuity.md`](watcher-continuity.md#claude-handling-successor) owns why.
+Every `--claude` Stop in a home that needs supervision also touches its own per-session stamp `state/.claude-stop-seen.<CLAUDE_PID>` before any of these decisions; [`watcher-continuity.md`](watcher-continuity.md#claude-handling-successor) owns why.
 
 ### Pull-warning verdict by supervision model
 

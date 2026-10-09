@@ -420,10 +420,10 @@ print_watch_output() {
 # nobody reads and leave the beacon as the home's only coverage. So such an arm
 # does not finish as successor=none: it waits until a hook visibly carries the
 # event (a fresh epoch-ledger write, an open claim, or a healthy watcher), or
-# until a Claude Stop of this arm's own session (state/.claude-stop-seen,
-# stamped with the stopping CLAUDE_PID by bin/fm-turnend-guard.sh --claude and
-# matched against the CLAUDE_PID this arm inherited) settles without any of
-# them, which proves that turn end armed nothing. Then it queues one durable
+# until a Claude Stop of this arm's own session (state/.claude-stop-seen.<pid>
+# for the CLAUDE_PID this arm inherited, touched only by
+# bin/fm-turnend-guard.sh --claude) settles without any of them, which proves
+# that turn end armed nothing. Then it queues one durable
 # "check: supervision uncovered" wake naming the close, so the outage is on
 # record for whichever session drains next. A home that stops needing
 # supervision or enters away mode is carried by definition; a wait that sees no
@@ -460,10 +460,10 @@ await_close_carrier() {  # <closed-at-epoch> <reason-line>
     fi
     now=$(date +%s)
     stop_at=0
-    if [ -n "${CLAUDE_PID:-}" ] \
-      && [ "$(head -n 1 "$STATE/.claude-stop-seen" 2>/dev/null || true)" = "$CLAUDE_PID" ]; then
-      stop_at=$(fm_path_mtime "$STATE/.claude-stop-seen" 2>/dev/null || echo 0)
-    fi
+    case "${CLAUDE_PID:-}" in
+      ''|*[!0-9]*) ;;
+      *) stop_at=$(fm_path_mtime "$STATE/.claude-stop-seen.$CLAUDE_PID" 2>/dev/null || echo 0) ;;
+    esac
     if [ "${stop_at:-0}" -gt "$closed_at" ] && [ $(( now - stop_at )) -gt "$UNCARRIED_SETTLE" ]; then
       stamp=$(date -u -r "$closed_at" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
         || date -u -d "@$closed_at" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '%s' "$closed_at")

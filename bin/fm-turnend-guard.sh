@@ -194,14 +194,18 @@ if [ "$FM_SUP_NEEDED" = false ]; then
   [ -e "$FAILURE_NOTICE" ] || budget_reset
   exit 0
 fi
-# Every Claude turn end in a home that needs supervision is stamped with the
-# stopping session's CLAUDE_PID, whatever this guard then decides, so a
-# detached handling successor whose close no turn-end hook carried can tell "its
-# own session's turn ended and armed nothing" from "the turn is still running"
-# (bin/fm-watch-arm.sh await_close_carrier); another session's Stop proves
-# nothing about the successor's session.
+# Every Claude turn end in a home that needs supervision touches the stopping
+# session's own stamp, state/.claude-stop-seen.<CLAUDE_PID>, whatever this
+# guard then decides, so a detached handling successor whose close no turn-end
+# hook carried can tell "its own session's turn ended and armed nothing" from
+# "the turn is still running" (bin/fm-watch-arm.sh await_close_carrier). One
+# file per session means another session's Stop neither counts for nor
+# overwrites the successor's own.
 if [ "$CLAUDE_MODE" -eq 1 ]; then
-  printf '%s\n' "${CLAUDE_PID:-}" > "$STATE/.claude-stop-seen" 2>/dev/null || true
+  case "${CLAUDE_PID:-}" in
+    ''|*[!0-9]*) ;;
+    *) touch "$STATE/.claude-stop-seen.$CLAUDE_PID" 2>/dev/null || true ;;
+  esac
 fi
 # One owner of the "supervision is on, let this turn end" exit contract, shared
 # by every proof of supervision below.

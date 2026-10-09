@@ -1099,6 +1099,7 @@ test_arm_refuses_a_disposable_validation_checkout() {
 # as the auto-arm hook's environment gives it. Sets ARM_PID and leaves the arm
 # waiting for a carrier after the close.
 UNREAD_SESSION_PID=424242
+UNREAD_SETTLE=3
 start_unread_successor_and_close() {  # <dir> <arm-out>
   local dir=$1 armout=$2 state fakebin i
   state="$dir/state"
@@ -1106,7 +1107,7 @@ start_unread_successor_and_close() {  # <dir> <arm-out>
   printf 'project=x\n' > "$state/task.meta"
   PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" \
     FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
-    FM_ARM_CONFIRM_TIMEOUT="$REARM_CONFIRM_SECONDS" FM_ARM_UNCARRIED_SETTLE=1 \
+    FM_ARM_CONFIRM_TIMEOUT="$REARM_CONFIRM_SECONDS" FM_ARM_UNCARRIED_SETTLE="$UNREAD_SETTLE" \
     FM_ARM_UNCARRIED_POLL=0.2 FM_WATCH_ARM_UNREAD=1 CLAUDE_PID="$UNREAD_SESSION_PID" \
     "$WATCH_ARM" > "$armout" 2>&1 &
   ARM_PID=$!
@@ -1125,11 +1126,28 @@ start_unread_successor_and_close() {  # <dir> <arm-out>
   grep -q '^signal:' "$armout" || fail "the successor's watcher never closed on the wake: $(cat "$armout")"
 }
 
+# Run the real Claude turn-end guard Stop for the case home as the session whose
+# model loop is CLAUDE_PID <pid>. Its exit is the guard's own business here;
+# only the stamp it leaves matters to the successor.
+claude_guard_stop() {  # <dir> <pid>
+  local dir=$1 root="$1/guard-root"
+  if [ ! -d "$root/bin" ]; then
+    mkdir -p "$root/bin"
+    : > "$root/AGENTS.md"
+    git init -q "$root"
+  fi
+  printf '{"session_id":"stop-%s","stop_hook_active":false}\n' "$2" \
+    | PATH="$dir/fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$dir/state" FM_ROOT_OVERRIDE="$root" \
+      FM_CLAUDE_AUTOARM_SYNC_WAIT_MS=0 CLAUDE_PID="$2" \
+      "$ROOT/bin/fm-turnend-guard.sh" --claude >/dev/null 2>&1 || true
+}
+
 # The 2026-10-09 stall's second failure: the handling successor's close went to
 # a file nobody reads while no turn end could arm. The arm must not finish as
-# successor=none; once a Claude Stop of its own session settles without arming
-# anything, it queues one supervision-uncovered check naming the close. A Stop
-# stamped by another (read-only) session in the same home proves nothing.
+# successor=none; once a real Claude Stop of its own session settles without
+# arming anything, it queues one supervision-uncovered check naming the close.
+# A Stop of another (read-only) session in the same home proves nothing, and
+# one landing right after the successor's own Stop must not hide it.
 test_unread_successor_reports_a_close_no_turn_end_carried() {
   local dir state armout status
   dir=$(make_case unread-successor-uncovered)
@@ -1140,12 +1158,13 @@ test_unread_successor_reports_a_close_no_turn_end_carried() {
   is_live_non_zombie "$ARM_PID" || fail "the successor exited as soon as its uncarried close landed: $(cat "$armout")"
   grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
     && fail "the successor reported an outage before any turn end proved one"
-  printf '%s\n' "$((UNREAD_SESSION_PID + 1))" > "$state/.claude-stop-seen"
-  sleep 2.5
+  claude_guard_stop "$dir" "$((UNREAD_SESSION_PID + 1))"
+  sleep "$((UNREAD_SETTLE + 2))"
   is_live_non_zombie "$ARM_PID" || fail "another session's Stop ended the successor's wait: $(cat "$armout")"
   grep -q 'supervision-uncovered' "$state/.wake-queue" 2>/dev/null \
     && fail "another session's Stop was read as this session's turn end arming nothing"
-  printf '%s\n' "$UNREAD_SESSION_PID" > "$state/.claude-stop-seen"
+  claude_guard_stop "$dir" "$UNREAD_SESSION_PID"
+  claude_guard_stop "$dir" "$((UNREAD_SESSION_PID + 1))"
   wait_for_exit "$ARM_PID" 150
   status=$?
   expect_code 0 "$status" "the successor must close cleanly after reporting the outage"
