@@ -1,0 +1,23 @@
+tests/fm-fleet-sync.test.sh
+  s_78e84cf7b51400::t_43a4b5dc264e54 31,34
+bin/fm-bootstrap.sh
+  s_78e84cf7b51400::t_43a4b5dc264e54 85,346
+bin/fm-fleet-sync.sh
+  s_78e84cf7b51400::t_43a4b5dc264e54 57,505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d0e887342df675fc5686a01a38388c8cfd3f204",
+  "prompts": {},
+  "sessions": {
+    "s_78e84cf7b51400": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cb0a388-2a2d-4d35-a5ed-124946731fa3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
