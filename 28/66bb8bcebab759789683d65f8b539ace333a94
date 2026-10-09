@@ -1,0 +1,19 @@
+tests/fm-backend-herdr-presentation-e2e.test.sh
+  s_07c718a7cecf4d::t_6e2d96039efe78 1404-1411,1480,1517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2866bb8bcebab759789683d65f8b539ace333a94",
+  "prompts": {},
+  "sessions": {
+    "s_07c718a7cecf4d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ec43443-6a1b-4a6f-ae65-f1059a08b23d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
