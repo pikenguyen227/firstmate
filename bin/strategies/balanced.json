@@ -153,6 +153,7 @@
     "dispatch": "light-standard",
     "automatic_fix_rounds": 1,
     "fresh_starts": true,
-    "fleet_reviews": false
+    "fleet_reviews": false,
+    "step_up": "ask"
   }
 }
