@@ -1,0 +1,50 @@
+bin/fm-turnend-guard.sh
+  s_d6357bce7e20eb::t_61b3bb34c3115e 197-202,204,272-273,296-299
+tests/fm-session-lock-claude-registry-live-e2e.test.sh
+  s_d6357bce7e20eb::t_957c3da8db2646 4,10-14,73-75,80
+tests/fm-session-start.test.sh
+  s_d6357bce7e20eb::t_c2f4a17062d4d9 936-946
+  s_d6357bce7e20eb::t_669c010bf6174d 925-935,947-952,954-970,3045
+  s_d6357bce7e20eb::t_44f9897217f855 953
+bin/fm-session-start.sh
+  s_d6357bce7e20eb::t_61b3bb34c3115e 704-708
+docs/turnend-guard.md
+  s_d6357bce7e20eb::t_d2c94d8dd6827a 111-113,119,127
+bin/fm-watch-arm.sh
+  s_d6357bce7e20eb::t_61b3bb34c3115e 423-426,462-466
+tests/fm-session-lock-ancestry.test.sh
+  s_d6357bce7e20eb::t_1c96f90fffad62 441-443,454,463,482-488,506,518,972,998,1009-1010,1012,1014-1019,1021,1026
+tests/fm-turnend-foreign-owner-repro.py
+  s_d6357bce7e20eb::t_669c010bf6174d 184-200
+bin/fm-session-lock-lib.sh
+  s_d6357bce7e20eb::t_61b3bb34c3115e 414
+  s_d6357bce7e20eb::t_d2c94d8dd6827a 382,384-389
+docs/verification/runtime-backends.md
+  s_d6357bce7e20eb::t_d2c94d8dd6827a 2409,2423
+  s_d6357bce7e20eb::t_f8affd8841bb86 2419
+docs/verification/supervision.md
+  s_d6357bce7e20eb::t_d2c94d8dd6827a 347,352,366,369
+  s_d6357bce7e20eb::t_f8affd8841bb86 353,370
+tests/fm-watch-arm.test.sh
+  s_d6357bce7e20eb::t_e10e0c61106b62 1098-1101,1110,1130-1132,1143-1148
+docs/watcher-continuity.md
+  s_d6357bce7e20eb::t_dfb231e9f63c31 182
+bin/fm-lock.sh
+  s_d6357bce7e20eb::t_d2c94d8dd6827a 29-30,319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f00be1b20f1b417b5200a73a951d2b0f17de3b55",
+  "prompts": {},
+  "sessions": {
+    "s_d6357bce7e20eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57697a7b-7f5e-43e2-bcb9-ec6762c5311b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
