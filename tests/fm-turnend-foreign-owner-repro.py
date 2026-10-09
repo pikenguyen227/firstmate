@@ -181,13 +181,21 @@ try:
     require(auto.returncode == 0, "foreign-owner auto-arm must exit safely")
     require(not (root / "state/.claude-autoarm-epoch").exists(), "foreign-owner auto-arm must not claim a generation")
 
-    for number in range(1, 6):
+    # The beacon is past grace, so the first Stop of this outage blocks exactly
+    # once to make the model tell the captain, naming the owner and the unblock.
+    notice = guard(env, "nonowner stop 1")
+    require(notice.returncode == 2, "the first foreign-owner Stop of a supervision outage must raise the captain notice")
+    require("SUPERVISION IS DOWN AND ANOTHER LIVE SESSION HOLDS THIS HOME" in notice.stderr, "the outage notice lost its headline")
+    require(f"live pid {lock_owner} holds the session lock" in notice.stderr, "the outage notice did not name the live owner")
+    require(f"kill -TERM {lock_owner}" in notice.stderr and "bin/fm-session-start.sh" in notice.stderr, "the outage notice did not name the exact unblock")
+    for number in range(2, 7):
         result = guard(env, f"nonowner stop {number}")
         require(result.returncode == 0, f"foreign-owner Stop {number} must end safely")
         require("SUPERVISION IS OWNED BY ANOTHER LIVE SESSION" in result.stdout, "foreign-owner Stop lost its clear diagnostic")
         require("cannot and should not arm or repair" in result.stdout, "diagnostic did not explain the safe ownership boundary")
+        require("last watcher beat" in result.stdout and "Unblock:" in result.stdout, "the status message lost the beacon age or the unblock")
     require(not (root / "state/.turnend-claude-blocks").exists(), "foreign-owner guard must not consume its block budget")
-    print("FIXED repeated non-owner Stops: all five ended safely", flush=True)
+    print("FIXED repeated non-owner Stops: one captain notice per outage, then every Stop ended safely", flush=True)
 
     beat.touch()
     fresh = guard(env, "fresh-beat-only counterfactual")
@@ -240,28 +248,48 @@ try:
     same_beat = same / "state/.last-watcher-beat"
     same_beat.touch()
     os.utime(same_beat, (old_time, old_time))
-    accepted = run(
+    # The same session's model loop confirming from outside the recorded pid's
+    # ancestry (a background session after its helper chain recycled) is
+    # accepted and re-anchors line 1 onto itself, recording the move.
+    accepted = start(
         same_env,
-        'export CLAUDE_PID=$$; "$FM_ROOT_OVERRIDE/bin/fm-lock.sh"; rc=$?; printf "lock_rc=%s\\n" "$rc"; true',
+        'export CLAUDE_PID=$$; "$FM_ROOT_OVERRIDE/bin/fm-lock.sh"; printf "lock_rc=%s\\n" "$?"; '
+        'touch "$FM_HOME/state/accepted-ready"; while :; do sleep 1; done',
+        "same-accepted.txt",
     )
-    print("same-session acquisition", "rc=" + str(accepted.returncode), "stdout=" + repr(accepted.stdout), "stderr=" + repr(accepted.stderr), flush=True)
-    require("lock_rc=0" in accepted.stdout, "the same session id was refused as a foreign live owner")
-    require(session_lock_text(same_lock) == same_lock_owner, "a same-session confirmation rewrote the live owner's lock line")
+    until(
+        lambda: (same / "state/accepted-ready").exists(),
+        message=lambda: "the same-session confirmation never finished; log=" + (OUT / "same-accepted.txt").read_text(errors="replace"),
+    )
+    accepted_out = (OUT / "same-accepted.txt").read_text(errors="replace")
+    print("same-session acquisition", repr(accepted_out), flush=True)
+    require("lock_rc=0" in accepted_out, "the same session id was refused as a foreign live owner")
+    require(session_lock_text(same_lock) == str(accepted.pid), "a same-session confirmation did not re-anchor line 1 onto its model loop")
+    require(
+        (same / "state/.lock-reanchor").read_text().strip() == f"{same_lock_owner} {accepted.pid}",
+        "the same-session re-anchor was not recorded",
+    )
     require((same / "state/.lock-session").read_text().strip() == "synthetic-same", "a same-session confirmation changed the recorded id")
+    same_lock_owner = str(accepted.pid)
     refused = run(
         same_env | {"CLAUDE_CODE_SESSION_ID": "synthetic-other"},
         'export CLAUDE_PID=$$; "$FM_ROOT_OVERRIDE/bin/fm-lock.sh"; rc=$?; printf "lock_rc=%s\\n" "$rc"; true',
     )
     print("other-session acquisition", "rc=" + str(refused.returncode), "stdout=" + repr(refused.stdout), "stderr=" + repr(refused.stderr), flush=True)
     require("lock_rc=1" in refused.stdout, "a different session id acquired a live owner's lock")
-    require("session synthetic-same" in refused.stderr, "the refusal did not name the recorded session id")
+    require(f"pid {same_lock_owner}, session synthetic-same" in refused.stderr, "the refusal did not name the re-anchored owner and recorded session id")
     same_stop = guard(same_env, "same-session stop", prefix="export CLAUDE_PID=$$; ")
     require(same_stop.returncode == 2, "a same-session Stop must be held to the owner's own guard, not ended as a foreign session")
     require("SUPERVISION IS OWNED BY ANOTHER LIVE SESSION" not in same_stop.stdout, "a same-session Stop took the foreign-owner exit")
-    other_stop = guard(same_env | {"CLAUDE_CODE_SESSION_ID": "synthetic-other"}, "other-session stop", prefix="export CLAUDE_PID=$$; ")
+    other_env = same_env | {"CLAUDE_CODE_SESSION_ID": "synthetic-other"}
+    other_notice = guard(other_env, "other-session stop 1", prefix="export CLAUDE_PID=$$; ")
+    require(other_notice.returncode == 2, "a different-session Stop during an outage must raise the captain notice once")
+    require(f"pid {same_lock_owner}, session synthetic-same" in other_notice.stderr, "the outage notice did not name the owner")
+    other_stop = guard(other_env, "other-session stop 2", prefix="export CLAUDE_PID=$$; ")
     require(other_stop.returncode == 0, "a different-session Stop must still end safely")
     require("SUPERVISION IS OWNED BY ANOTHER LIVE SESSION" in other_stop.stdout, "a different-session Stop lost the foreign-owner diagnostic")
     print("FIXED same-session id owns the lock; a different id is still foreign", flush=True)
+    stop(accepted)
     stop(same_owner)
 
     single, single_env = make("single-idle")

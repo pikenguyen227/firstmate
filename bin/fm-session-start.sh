@@ -285,6 +285,8 @@ stage() {  # <stage-name>: breadcrumb for the parent's truncation banner
 . "$SCRIPT_DIR/fm-timeout-lib.sh"
 # shellcheck source=bin/fm-session-lock-lib.sh
 . "$SCRIPT_DIR/fm-session-lock-lib.sh"
+# shellcheck source=bin/fm-supervision-lib.sh
+. "$SCRIPT_DIR/fm-supervision-lib.sh"
 
 if [ -z "${FM_SESSION_START_STAGE_FILE:-}" ]; then
   SESSION_START_BUDGET=${FM_SESSION_START_TIMEOUT:-120}
@@ -694,6 +696,20 @@ if [ "$LOCK_RC" -ne 0 ]; then
     printf '●  diagnostics and the rest of this read-only-safe digest still ran below.\n'
     printf '●  Operate read-only until this resolves - do not spawn, steer, merge, or\n'
     printf '●  otherwise mutate fleet state from this session.\n'
+    # A live holder is the case a captain can unblock: name the supervision
+    # state and the exact way out, so the session does not just sit read-only.
+    fm_session_lock_inspect "$STATE"
+    if [ "$FM_LOCK_INSPECT_STATE" = held ]; then
+      fm_supervision_status "$STATE" "${FM_GUARD_GRACE:-300}"
+      if [ "$FM_SUP_NEEDED" = true ] && [ "$FM_SUP_WATCHER_FRESH" = false ]; then
+        printf '●  SUPERVISION IS DOWN: the watcher last beat %s (grace %ss) and only the\n' \
+          "$FM_SUP_BEACON_DESC" "${FM_GUARD_GRACE:-300}"
+        printf '●  lock holder can restore it. Tell the captain now, with the unblock below.\n'
+      elif [ "$FM_SUP_WATCHER_FRESH" = true ]; then
+        printf '●  The watcher last beat %s, so the holder is still supervising.\n' "$FM_SUP_BEACON_DESC"
+      fi
+      printf '●  To unblock: %s\n' "$(fm_session_lock_unblock_hint "$FM_LOCK_INSPECT_PID" "$FM_ROOT")"
+    fi
     printf '%s\n' "$BAR"
   }
 fi

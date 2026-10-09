@@ -204,6 +204,8 @@ DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
 # deferred network stage sets, so an ordinary bootstrap run records nothing.
 # shellcheck source=bin/fm-timing-lib.sh disable=SC1091
 . "$SCRIPT_DIR/fm-timing-lib.sh"
+# shellcheck source=bin/fm-session-lock-lib.sh disable=SC1091
+. "$SCRIPT_DIR/fm-session-lock-lib.sh"
 
 # Network-phase selection (see the header). An unrecognized value resolves to
 # `all` so a malformed override runs every step rather than silently dropping a
@@ -215,13 +217,12 @@ esac
 local_phase() { [ "$FM_BOOTSTRAP_NETWORK_PHASE" != only ]; }
 network_phase() { [ "$FM_BOOTSTRAP_NETWORK_PHASE" != skip ]; }
 
+# The deferred worker's lock pid must still name the requesting session; a
+# same-session line-1 re-anchor is not a takeover (bin/fm-lock.sh header).
 network_mutation_authorized() {
-  local expected=${FM_BOOTSTRAP_NETWORK_LOCK_PID:-} current
+  local expected=${FM_BOOTSTRAP_NETWORK_LOCK_PID:-}
   [ -n "$expected" ] || return 0
-  case "$expected" in *[!0-9]*) return 1 ;; esac
-  [ -f "$STATE/.lock" ] && [ ! -L "$STATE/.lock" ] || return 1
-  current=$(cat "$STATE/.lock" 2>/dev/null) || return 1
-  [ "$current" = "$expected" ]
+  fm_session_lock_names_pid "$STATE" "$expected"
 }
 
 network_sweep_authorized() {

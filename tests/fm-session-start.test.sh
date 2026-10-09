@@ -889,6 +889,10 @@ EOF
   assert_contains "$out" "READ-ONLY SESSION" "read-only banner missing on lock refusal"
   assert_contains "$out" "another live firstmate session holds the lock" "read-only banner did not surface fm-lock.sh's own error text"
   assert_contains "$out" "Skipping every mutating step" "read-only banner did not explain what was skipped"
+  assert_contains "$out" "SUPERVISION IS DOWN: the watcher last beat never" "read-only banner did not say supervision is down"
+  assert_contains "$out" "Tell the captain now, with the unblock below." "read-only banner did not ask for the captain to be told"
+  assert_contains "$out" "To unblock: if pid $holder_pid is an idle or abandoned firstmate session, end it (type /exit in its window, or run kill -TERM $holder_pid once you have confirmed it is idle), then run $root/bin/fm-session-start.sh" \
+    "read-only banner did not name the exact unblock"
   assert_contains "$out" "skipped (read-only session)" "wake-queue section did not report itself skipped"
   assert_contains "$out" "WATCHER DOWN - SUPERVISION IS OFF" "read-only guard did not surface watcher-liveness alarm"
   assert_contains "$out" "queued wakes pending - left untouched because this session lacks verified fleet-lock ownership" "read-only guard did not leave queued wakes untouched without verified lock ownership"

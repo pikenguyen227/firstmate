@@ -15,10 +15,20 @@
 # sidecar written only here and only under the claim lock: refreshed on every
 # confirmed-own acquisition, including the early already-mine exit that waits
 # for the claim lock, removed when the acquiring session proves no trusted id,
-# and left byte-identical when it already names that id. A same-session
-# confirmation never rewrites line 1 while the recorded pid is alive, because
-# bin/fm-startup-network.sh compares that pid across its deferred sweeps; a dead
-# recorded pid is reclaimed and rewritten to this session's anchor.
+# and left byte-identical when it already names that id.
+#
+# A confirmed-own acquisition by a trusted Claude session whose line 1 records
+# any pid other than its model-loop anchor - typically the front-end that
+# started a background session - re-anchors line 1 onto CLAUDE_PID, so the
+# ancestry signal survives a later daemon restart and /clear re-key. The move is
+# recorded first in state/.lock-reanchor as "<from-pid> <to-pid>", which
+# fm_session_lock_names_pid reads so bin/fm-startup-network.sh, bootstrap's
+# sweep guard, leases, and the session-start completion record do not mistake
+# it for a takeover; a takeover removes that record. Every other confirmation
+# leaves a live line 1 untouched. A dead recorded pid is reclaimed and
+# rewritten to this session's anchor, and so is a live Claude owner that
+# fm_session_lock_owner_reclaimable proves holds no live conversation of the
+# lock.
 #
 # Usage: fm-lock.sh           acquire; exit 1 unless ownership is verified
 #        fm-lock.sh status    print holder and liveness; always exits 0.
@@ -56,6 +66,10 @@ if [ "${1:-}" = "status" ]; then
 fi
 
 me=$(fm_session_lock_anchor_pid) || { echo "error: cannot locate harness process in ancestry" >&2; exit 1; }
+ME_TRUSTED=0
+fm_session_lock_trusted_session_id >/dev/null && ME_TRUSTED=1
+LOCK_REANCHOR="$STATE/.lock-reanchor"
+RECLAIMED_FROM=
 probe=$(mktemp "$STATE/.lock-write.XXXXXX" 2>/dev/null) || {
   echo "error: cannot write session lock; operate read-only until resolved" >&2
   exit 1
@@ -149,15 +163,36 @@ publish_lock_session_or_die() {
   exit 1
 }
 
-# This session already holds the lock, recorded as pid $1. Line 1 stays exactly
-# as recorded while that pid is alive; only the sidecar is refreshed, under the
-# claim lock, so a /clear re-key inside the same process replaces the old id.
-# A same-session confirmation waits for the claim lock so the sidecar refresh
-# completes. After the wait, the lock is re-read and the sidecar is refreshed
-# only when this session still owns it; otherwise the claim lock is released
-# and the caller continues with the ordinary live-owner or reclaim path. The
-# prior-session-sweep-is-finishing refusal is a takeover rule and does not
-# apply here.
+# Move line 1 of this session's own lock from recorded pid $1 onto its trusted
+# model-loop anchor, recording the move first (header). Called only under the
+# claim lock after ownership is confirmed; a no-op for an untrusted session or a
+# line 1 already on the anchor. Returns 1 when the rewrite did not land, which
+# leaves ownership resting on the recorded pid exactly as before.
+reanchor_own_lock() {  # <recorded-pid>
+  local recorded=$1 tmp
+  [ "$ME_TRUSTED" -eq 1 ] && [ "$recorded" != "$me" ] || return 0
+  tmp=$(mktemp "$STATE/.lock-reanchor.XXXXXX" 2>/dev/null) || return 1
+  if ! { printf '%s %s\n' "$recorded" "$me" > "$tmp" && mv -f "$tmp" "$LOCK_REANCHOR"; } 2>/dev/null; then
+    rm -f "$tmp" 2>/dev/null
+    return 1
+  fi
+  tmp=$(mktemp "$STATE/.lock.reanchor.XXXXXX" 2>/dev/null) || return 1
+  if ! { printf '%s\n' "$me" > "$tmp" && mv -f "$tmp" "$LOCK"; } 2>/dev/null; then
+    rm -f "$tmp" 2>/dev/null
+    return 1
+  fi
+  [ "$(cat "$LOCK" 2>/dev/null)" = "$me" ]
+}
+
+# This session already holds the lock, recorded as pid $1. The sidecar is
+# refreshed under the claim lock, so a /clear re-key inside the same process
+# replaces the old id, and line 1 is re-anchored onto a trusted session's
+# model-loop pid (header). A same-session confirmation waits for the claim lock
+# so both writes complete. After the wait, the lock is re-read and the writes
+# happen only when this session still owns it; otherwise the claim lock is
+# released and the caller continues with the ordinary live-owner or reclaim
+# path. The prior-session-sweep-is-finishing refusal is a takeover rule and
+# does not apply here.
 confirm_own_lock() {  # <recorded-pid>
   local recorded waited=0
   if [ "$CLAIM_LOCK_HELD" -ne 1 ]; then
@@ -169,6 +204,11 @@ confirm_own_lock() {  # <recorded-pid>
   if [ "$recorded" = "$me" ] || fm_session_lock_owned_by_self "$STATE"; then
     publish_lock_session_or_die
     commit_lock_session
+    if reanchor_own_lock "$recorded"; then
+      recorded=$(cat "$LOCK" 2>/dev/null || true)
+    else
+      echo "warning: could not re-anchor the session lock from pid $recorded to model-loop pid $me; ownership still rests on pid $recorded" >&2
+    fi
     release_claim_lock
     echo "lock acquired: harness pid $recorded"
     exit 0
@@ -195,7 +235,7 @@ if [ -f "$LOCK" ] && [ ! -L "$LOCK" ]; then
     confirm_own_lock "$old"
     old=$(cat "$LOCK" 2>/dev/null || true)
   fi
-  if fm_harness_pid_alive "$old"; then
+  if fm_harness_pid_alive "$old" && ! fm_session_lock_owner_reclaimable "$STATE"; then
     refuse_live_owner "$old"
   fi
 fi
@@ -223,7 +263,10 @@ if [ -e "$LOCK" ] || [ -L "$LOCK" ]; then
     fm_session_lock_owned_by_self "$STATE" && confirm_own_lock "$old"
     old=$(cat "$LOCK" 2>/dev/null || true)
     if [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
-      refuse_live_owner "$old"
+      if ! fm_session_lock_owner_reclaimable "$STATE"; then
+        refuse_live_owner "$old"
+      fi
+      RECLAIMED_FROM="$old $(fm_session_lock_recorded_session_id "$STATE" 2>/dev/null || true)"
     fi
   fi
 fi
@@ -245,6 +288,7 @@ if [ -f "$LOCK" ]; then
   fi
 fi
 LOCK_SESSION_PHASE=2
+rm -f "$LOCK_REANCHOR" 2>/dev/null || true
 if ! { printf '%s\n' "$me" > "$LOCK"; } 2>/dev/null; then
   lock_unchanged=0
   if [ -n "$LOCK_LINE_PRE" ] && cmp -s "$LOCK_LINE_PRE" "$LOCK"; then
@@ -272,4 +316,7 @@ if [ ! -f "$LOCK" ] || [ -L "$LOCK" ] || [ "$written" != "$me" ]; then
 fi
 commit_lock_session
 release_claim_lock
+if [ -n "$RECLAIMED_FROM" ]; then
+  echo "lock reclaimed: pid ${RECLAIMED_FROM%% *} is a Claude process that no longer runs recorded session ${RECLAIMED_FROM#* }"
+fi
 echo "lock acquired: harness pid $me"

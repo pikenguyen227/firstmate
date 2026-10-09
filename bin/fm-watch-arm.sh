@@ -101,6 +101,8 @@ if [ "${FM_GATE_REFUSE_BYPASS:-}" != 1 ]; then
 fi
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
+# shellcheck source=bin/fm-supervision-lib.sh
+. "$SCRIPT_DIR/fm-supervision-lib.sh"
 
 WATCH="$SCRIPT_DIR/fm-watch.sh"
 WATCH_LOCK="$STATE/.watch.lock"
@@ -410,6 +412,70 @@ print_watch_output() {
   [ -s "$out" ] && cat "$out"
 }
 
+# A Claude Stop hook detaches its handling successor and reads only that arm's
+# first status line (FM_WATCH_ARM_UNREAD=1), so this arm's actionable close
+# reaches the model only through a later turn-end hook: one attached to this
+# cycle, or one that arms afresh and resurfaces the queued wake. When no hook
+# can arm - a session-identity break - the close would vanish into a file
+# nobody reads and leave the beacon as the home's only coverage. So such an arm
+# does not finish as successor=none: it waits until a hook visibly carries the
+# event (a fresh epoch-ledger write, an open claim, or a healthy watcher), or
+# until a Claude Stop in this home (state/.claude-stop-seen, stamped by
+# bin/fm-turnend-guard.sh --claude) settles without any of them, which proves
+# the turn end armed nothing. Then it queues one durable
+# "check: supervision uncovered" wake naming the close, so the outage is on
+# record for whichever session drains next. A home that stops needing
+# supervision or enters away mode is carried by definition; a wait that sees no
+# Stop at all ends quietly at FM_ARM_UNCARRIED_MAX_WAIT. The wait runs in this
+# shell, never a command substitution, so a TERM still reaches the arm's trap
+# within one poll. Sets CARRIER_DISPOSITION to the cycle ledger's successor
+# field.
+UNCARRIED_MAX_WAIT=${FM_ARM_UNCARRIED_MAX_WAIT:-21600}
+case "$UNCARRIED_MAX_WAIT" in ''|*[!0-9]*) UNCARRIED_MAX_WAIT=21600 ;; esac
+UNCARRIED_SETTLE=${FM_ARM_UNCARRIED_SETTLE:-$CONFIRM_TIMEOUT}
+case "$UNCARRIED_SETTLE" in ''|*[!0-9]*) UNCARRIED_SETTLE=$CONFIRM_TIMEOUT ;; esac
+UNCARRIED_POLL=${FM_ARM_UNCARRIED_POLL:-1}
+CARRIER_DISPOSITION=none
+await_close_carrier() {  # <closed-at-epoch> <reason-line>
+  local closed_at=$1 reason=$2 deadline stop_at ledger_at now stamp
+  deadline=$(( closed_at + UNCARRIED_MAX_WAIT ))
+  while :; do
+    if [ -e "$STATE/.afk" ]; then
+      CARRIER_DISPOSITION=carried:away-mode
+      return 0
+    fi
+    if ! fm_supervision_needed "$STATE" "$GRACE"; then
+      CARRIER_DISPOSITION=carried:no-supervision-needed
+      return 0
+    fi
+    if healthy_watcher; then
+      CARRIER_DISPOSITION="carried:watcher:$HEALTHY_PID"
+      return 0
+    fi
+    ledger_at=$(fm_path_mtime "$STATE/.claude-autoarm-epoch" 2>/dev/null || echo 0)
+    if [ "${ledger_at:-0}" -gt "$closed_at" ] || fm_autoarm_claim_open "$STATE" "$GRACE"; then
+      CARRIER_DISPOSITION=carried:turn-end-hook
+      return 0
+    fi
+    now=$(date +%s)
+    stop_at=$(fm_path_mtime "$STATE/.claude-stop-seen" 2>/dev/null || echo 0)
+    if [ "${stop_at:-0}" -gt "$closed_at" ] && [ $(( now - stop_at )) -gt "$UNCARRIED_SETTLE" ]; then
+      stamp=$(date -u -r "$closed_at" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+        || date -u -d "@$closed_at" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '%s' "$closed_at")
+      fm_wake_append check supervision-uncovered \
+        "check: supervision uncovered: the handling watcher closed on '$reason' at $stamp, but the next turn end in this home armed no watcher, so nothing has delivered wakes since; check the session lock owner with $SCRIPT_DIR/fm-lock.sh status and restore supervision from the session that holds it" \
+        >/dev/null 2>&1 || true
+      CARRIER_DISPOSITION=uncovered:published
+      return 0
+    fi
+    if [ "$now" -ge "$deadline" ]; then
+      CARRIER_DISPOSITION=uncarried:no-turn-end-seen
+      return 0
+    fi
+    sleep "$UNCARRIED_POLL"
+  done
+}
+
 handling_successor_generation() {
   [ -n "${FM_WATCH_PREDECESSOR_ARM_PID:-}" ] || return 0
   fm_recovery_marker_snapshot "$STATE/.watcher-down" || return 1
@@ -559,12 +625,18 @@ cycle_begin "$child" started "$(fm_pid_identity "$child" 2>/dev/null || true)"
 child_done=0
 
 owned_child_finished() {
-  local rc=$1 signal reason_type status
+  local rc=$1 signal reason_type status successor
   signal=$(cycle_signal_name "$rc")
   if [ "$rc" -eq 0 ] && watch_output_has_wake "$child_out"; then
     reason_type=$(watch_output_reason_type "$child_out")
-    cycle_log_append "$rc" "$signal" "$reason_type" none
     print_watch_output "$child_out"
+    successor=none
+    if [ "${FM_WATCH_ARM_UNREAD:-0}" = 1 ]; then
+      await_close_carrier "$(date +%s)" \
+        "$(grep -E '^(signal:|stale:|check:|heartbeat($|:))' "$child_out" 2>/dev/null | head -n 1)"
+      successor=$CARRIER_DISPOSITION
+    fi
+    cycle_log_append "$rc" "$signal" "$reason_type" "$successor"
     rm -f "$child_out" 2>/dev/null || true
     child=
     child_out=

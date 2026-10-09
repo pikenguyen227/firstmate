@@ -348,6 +348,7 @@ family_for_basename() {
     fm-afk-pi-herdr-return-e2e.test.sh|\
     fm-bearings-board-lavish-live-e2e.test.sh|\
     fm-claude-stop-autoarm-live-e2e.test.sh|fm-fresh-start-claude-live-e2e.test.sh|\
+    fm-session-lock-claude-registry-live-e2e.test.sh|\
     fm-cmux-claude-composer-live-e2e.test.sh|\
     fm-composer-matrix-live-e2e.test.sh|\
     fm-composer-codex-idle-live-e2e.test.sh|\
@@ -817,6 +818,7 @@ tests/fm-send-resolve-key.test.sh 28685
 tests/fm-send-secondmate-marker-herdr-e2e.test.sh 52
 tests/fm-send-secondmate-marker.test.sh 5309
 tests/fm-session-lock-ancestry.test.sh 2857
+tests/fm-session-lock-claude-registry-live-e2e.test.sh 40
 tests/fm-session-start.test.sh 179350
 tests/fm-sessionstart-hook-live-e2e.test.sh 97
 tests/fm-sessionstart-instruction-refresh-live-e2e.test.sh 46
@@ -1370,6 +1372,10 @@ families_for_changed_path() {
     tests/fm-backend-herdr-eventwait.test.py)
       printf '%s\n' real-herdr-gated
       printf '%s\n' backend-dispatch
+      ;;
+    tests/fm-turnend-foreign-owner-repro.py)
+      # Executed only by its shell wrapper.
+      printf '%s\n' "__script__:fm-turnend-foreign-owner-arm-fix.test.sh"
       ;;
     tests/*.test.sh)
       # A single test file change selects only that script via basename family

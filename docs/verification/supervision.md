@@ -342,12 +342,16 @@ The secondmate-home scope and manual-repair wake path were measured with Claude 
 The current Stop-owned main/secondmate inclusion and child-worktree exclusion are covered deterministically by `tests/fm-claude-stop-autoarm.test.sh`.
 Session-lock ownership in `bin/fm-session-lock-lib.sh` is decided against a session's whole contiguous harness ancestry rather than one chosen pid, so the Stop auto-arm reaches its lock owner wherever that owner sits: a pid of Claude Code's multi-level `bg-spare` hook worker chain, or an inner pid when a harness-named daemon parents the session.
 A background Claude session whose transient helper chain is recycled loses that contiguity while its recorded owner stays alive, so the library also accepts a trusted same-session id: `CLAUDE_CODE_SESSION_ID` counts only when `CLAUDE_PID` is a Claude-shaped member of the current run, it must equal the id `bin/fm-lock.sh` recorded in `state/.lock-session`, and the recorded pid must still be a live harness, while every weaker combination (no id, no sidecar, an untrusted id, a different id, a dead recorded pid) leaves the ancestry verdict unchanged.
-For such a session `bin/fm-lock.sh` records `CLAUDE_PID` on lock line 1 instead of the outermost chain pid, so a shared daemon or front-end that outlives the session never keeps a dead session's lock alive, and a same-session confirmation never rewrites a live line 1.
+For such a session `bin/fm-lock.sh` records `CLAUDE_PID` on lock line 1 instead of the outermost chain pid, so a shared daemon or front-end that outlives the session never keeps a dead session's lock alive.
+A confirmed acquisition whose line 1 still names another pid, such as the front-end that started a background session, re-anchors line 1 onto `CLAUDE_PID` and records the move in `state/.lock-reanchor`, so a later daemon restart plus `/clear` re-key still owns the lock through ancestry, and readers that captured the old pid follow the move through `fm_session_lock_names_pid`.
+A lock written before that re-anchor existed is covered by `fm_session_lock_owner_reclaimable`: a live Claude owner is reclaimed only when Claude's session registry shows no live process running the recorded conversation, and [`runtime-backends.md`](runtime-backends.md#claude-session-registry) records that registry's live verification.
 Harness identity is read from the executable path and `argv[0]` as well as the command basename, because Claude Code's native installer names the per-session executable by its version (`.../share/claude/versions/2.1.220`): `ps -o comm=` reports that path on macOS and the bare version string on Linux, and neither basename names a harness.
 `tests/fm-session-lock-ancestry.test.sh` pins both platforms' reporting semantics behind a deterministic process table and runs the real Stop auto-arm in version-named, daemon-parented, and combined real process trees.
-The same suite drives the ancestry and session-id signals apart in that table, asserting the divergence itself so no case is vacuous, and runs a real orphaned front-end, daemon, pty-host, and bg-spare tree whose daemon is ended mid-run: the same id keeps arming through the real `bin/fm-lock.sh`, `bin/fm-claude-stop-autoarm.sh`, and `bin/fm-turnend-guard.sh --claude` with lock line 1 and the sidecar untouched, a different id, an untrusted id, and no id each keep the live-owner refusal naming the recorded id, and the dead front-end is reclaimed onto the spare's pid rather than the outermost pty-host.
-`tests/fm-turnend-foreign-owner-repro.py` keeps the genuinely foreign live owner as the negative control and adds the same-id positive control.
-Both ran on 2026-09-18 on macOS with bash 3.2.57 as the fake harness interpreter:
+The same suite drives the ancestry, session-id, and reclaim verdicts apart in that table, asserting the divergence itself so no case is vacuous, and runs two real orphaned front-end, daemon, pty-host, and bg-spare trees through the real `bin/fm-lock.sh`, `bin/fm-claude-stop-autoarm.sh`, and `bin/fm-turnend-guard.sh --claude`.
+In the first, the forked session's first Stop re-anchors line 1 onto the spare; after the daemon ends and the id is re-keyed as `/clear` does, the spare still prints `lock acquired`, and an outside session carrying the old id is refused naming the spare and the new id.
+In the second, line 1 still names the live front-end when the daemon ends and the id is re-keyed: no registry, a front-end still running the recorded id, the recorded id live in another process, and a registry not yet re-keyed for this session each keep the live-owner refusal, the first Stop of that outage raises the captain notice, and only full registry proof lets the Stop hook reclaim the lock onto the spare.
+`tests/fm-turnend-foreign-owner-repro.py` keeps the genuinely foreign live owner as the negative control, now with one captain notice per outage, and adds the same-id positive control, which re-anchors line 1 onto the confirming model loop.
+Both ran on 2026-10-09 on macOS with bash 3.2.57 as the fake harness interpreter:
 
 ```sh
 tests/fm-session-lock-ancestry.test.sh
@@ -359,9 +363,11 @@ Observed output, bounded to the lines the new coverage adds:
 ```text
 ok - session-lock: a trusted same-session id keeps owning a recycled background chain, and nothing weaker does
 ok - session-lock: a trusted id anchors the lock on the model-loop process, anything else on the outermost pid
-ok - session-lock e2e: a background session keeps its lock and its supervision across a recycled helper chain
-same-session acquisition rc=0 stdout='lock acquired: harness pid 41994\nlock_rc=0\n' stderr=''
-other-session acquisition rc=0 stdout='lock_rc=1\n' stderr='error: another live firstmate session holds the lock (pid 41994, session synthetic-same); operate read-only until resolved\n'
+ok - session-lock: an idle Claude front-end is reclaimable only when the session registry proves it holds no live conversation of the lock
+ok - session-lock: only a trusted session whose line 1 is off its model loop needs a re-anchor
+ok - session-lock e2e: a forked background session re-anchors its lock and still acquires it after a recycled chain and a /clear re-key
+ok - session-lock e2e: a live front-end that no longer runs the recorded session is reclaimed after a re-key, and nothing weaker is
+FIXED repeated non-owner Stops: one captain notice per outage, then every Stop ended safely
 FIXED same-session id owns the lock; a different id is still foreign
 COMPLETE
 ```

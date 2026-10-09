@@ -10,7 +10,10 @@
 # is a member of this process's contiguous harness ancestry, or the trusted
 # Claude session id below matches the id recorded beside a live lock. Neither
 # signal ever fails open: no id, no sidecar, an untrusted id, or a different
-# recorded id leaves the ancestry verdict exactly as it was.
+# recorded id leaves the ancestry verdict exactly as it was. A third verdict,
+# fm_session_lock_owner_reclaimable, never grants ownership: it only lets a
+# trusted Claude session take over, through bin/fm-lock.sh, a live owner pid
+# that provably holds no live conversation of the lock.
 # This file is sourced by scripts and has no side effects on source.
 
 # Cursor process identity is NOT expressible as a command-name pattern and is
@@ -247,10 +250,12 @@ fm_session_lock_same_session() {  # <state> [<ancestry-pids>]
 # Claude session with a trusted id that is CLAUDE_PID, the model-loop process:
 # never the shared transient daemon and never a front-end that outlives the
 # session, so "recorded pid dead" keeps meaning "session gone" instead of
-# wedging a home behind a live daemon whose session died. A replaced background
-# helper leaves a dead pid that its own session's next hook reclaims, because
-# the sidecar still names that session. Every other session records the
-# outermost pid of its contiguous run, exactly as before.
+# wedging a home behind a live daemon whose session died. Because every hook of
+# the session runs below that process, an anchor on CLAUDE_PID keeps the
+# ancestry signal valid across a daemon restart and a /clear re-key alike. A
+# replaced background helper leaves a dead pid that its own session's next hook
+# reclaims, because the sidecar still names that session. Every other session
+# records the outermost pid of its contiguous run, exactly as before.
 fm_session_lock_anchor_pid() {
   local pids
   pids=$(fm_harness_ancestry_pids) || return 1
@@ -312,9 +317,119 @@ fm_session_lock_foreign_owner_live() {
 $pids
 EOF
   fm_session_lock_same_session "$state" "$pids" && return 1
+  fm_session_lock_owner_reclaimable "$state" "$pids" && return 1
   # shellcheck disable=SC2034 # Output global, read by the sourcing guard caller.
   FM_SESSION_LOCK_FOREIGN_OWNER_PID=$lock_pid
   return 0
+}
+
+# --- line-1 re-anchoring -------------------------------------------------------
+# bin/fm-lock.sh moves line 1 of a lock this trusted Claude session already owns
+# onto its model-loop anchor (fm_session_lock_anchor_pid) when the recorded pid
+# is anything else, such as the front-end that started a background session.
+# Before that rewrite it records the move as "<from-pid> <to-pid>" in
+# state/.lock-reanchor; a takeover removes the record. Readers that captured
+# line 1 earlier and later ask "does the lock still name that session?" use
+# fm_session_lock_names_pid, so a same-session re-anchor is not misread as a
+# takeover.
+
+# True when this process runs a trusted Claude session whose lock line 1 in
+# state dir $1 is a numeric pid other than its model-loop anchor. Ownership is
+# the caller's question; this only says a confirmation would rewrite line 1.
+fm_session_lock_needs_reanchor() {  # <state>
+  local lock_pid pids
+  lock_pid=$(cat "$1/.lock" 2>/dev/null || true)
+  case "$lock_pid" in ''|*[!0-9]*) return 1 ;; esac
+  pids=$(fm_harness_ancestry_pids) || return 1
+  fm_session_lock_trusted_session_id "$pids" >/dev/null || return 1
+  [ "$lock_pid" != "$CLAUDE_PID" ]
+}
+
+# True when lock line 1 in state dir $1 still names the session recorded as pid
+# $2: line 1 is that pid, or the re-anchor record moved exactly that pid to the
+# current line 1. A missing, symlinked, or unreadable lock is false.
+fm_session_lock_names_pid() {  # <state> <pid>
+  local state=$1 expected=$2 current record from to
+  case "$expected" in ''|*[!0-9]*) return 1 ;; esac
+  [ -f "$state/.lock" ] && [ ! -L "$state/.lock" ] || return 1
+  current=$(cat "$state/.lock" 2>/dev/null) || return 1
+  [ "$current" = "$expected" ] && return 0
+  [ -f "$state/.lock-reanchor" ] && [ ! -L "$state/.lock-reanchor" ] || return 1
+  record=$(head -n 1 "$state/.lock-reanchor" 2>/dev/null) || return 1
+  from=${record%% *}
+  to=${record#* }
+  [ "$from" = "$expected" ] && [ "$to" = "$current" ]
+}
+
+# --- reclaimable idle Claude owner ---------------------------------------------
+# Claude Code keeps a per-process session registry: one
+# <CLAUDE_CONFIG_DIR or ~/.claude>/sessions/<pid>.json per live Claude process,
+# naming the conversation id that process runs now ("pid", "sessionId"), and
+# it follows a /clear re-key (docs/verification/runtime-backends.md "Claude
+# session registry"). A front-end whose conversation moved into a background
+# session keeps running and keeps the lock's line 1 alive, but it no longer runs
+# the conversation the sidecar records. Once a /clear re-keys that background
+# conversation and a daemon restart has already broken the ancestry to the
+# front-end, neither ownership signal holds, and the home would sit read-only
+# behind a process that holds nothing.
+#
+# True when the lock in state dir $1 is held by such an owner, judged by a
+# trusted Claude session (never by any other harness):
+#   - line 1 is a live Claude-shaped harness outside this process's ancestry;
+#   - the sidecar records a session id other than this session's;
+#   - the registry is readable with jq, this session's own record names its
+#     current id (proof the registry is current for this Claude build), and the
+#     owner pid has its own record naming a different conversation;
+#   - no live process's record names the sidecar's session id.
+# Every uncertainty - no jq, no registry, a malformed record, no record for the
+# owner or for this session - is false, so a live owner stays foreign. A
+# session that genuinely still runs the recorded conversation, wherever it
+# lives, keeps the lock.
+fm_session_lock_owner_reclaimable() {  # <state> [<ancestry-pids>]
+  local state=$1 pids=${2:-} lock_pid trusted recorded dir rows pid sid owner_seen=0 self_seen=0
+  lock_pid=$(cat "$state/.lock" 2>/dev/null || true)
+  case "$lock_pid" in ''|*[!0-9]*) return 1 ;; esac
+  if [ -z "$pids" ]; then
+    pids=$(fm_harness_ancestry_pids) || return 1
+  fi
+  trusted=$(fm_session_lock_trusted_session_id "$pids") || return 1
+  recorded=$(fm_session_lock_recorded_session_id "$state") || return 1
+  [ "$recorded" != "$trusted" ] || return 1
+  printf '%s\n' "$pids" | grep -qx "$lock_pid" && return 1
+  fm_harness_pid_alive "$lock_pid" || return 1
+  [ "$FM_HARNESS_IS_CLAUDE" -eq 1 ] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/sessions"
+  [ -d "$dir" ] || return 1
+  # One jq pass over every record: a malformed record aborts the pass, which
+  # is uncertainty and therefore not reclaimable.
+  rows=$(find "$dir" -maxdepth 1 -type f -name '*.json' -exec jq -r \
+    '[(.pid | tostring), (.sessionId // "")] | @tsv' {} + 2>/dev/null) || return 1
+  while IFS="$(printf '\t')" read -r pid sid; do
+    case "$pid" in ''|*[!0-9]*) continue ;; esac
+    if [ "$pid" = "$lock_pid" ]; then
+      owner_seen=1
+      [ "$sid" != "$recorded" ] || return 1
+    fi
+    if [ "$pid" = "$CLAUDE_PID" ] && [ "$sid" = "$trusted" ]; then
+      self_seen=1
+    fi
+    if [ "$sid" = "$recorded" ] && kill -0 "$pid" 2>/dev/null; then
+      return 1
+    fi
+  done <<EOF
+$rows
+EOF
+  [ "$owner_seen" -eq 1 ] && [ "$self_seen" -eq 1 ]
+}
+
+# Print the one-line unblock instruction for a home whose session lock is held
+# by live pid $1, naming firstmate root $2's session-start script. Shared by the
+# read-only session-start banner and the turn-end guard's supervision-down
+# notice, so the two never drift.
+fm_session_lock_unblock_hint() {  # <owner-pid> <fm-root>
+  printf 'if pid %s is an idle or abandoned firstmate session, end it (type /exit in its window, or run kill -TERM %s once you have confirmed it is idle), then run %s/bin/fm-session-start.sh in this session to take over; if it is a working session, switch to it and let it restore supervision.\n' \
+    "$1" "$1" "$2"
 }
 
 # Read-only classification of state/.lock for machine-readable callers.
