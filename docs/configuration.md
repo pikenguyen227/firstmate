@@ -1397,6 +1397,7 @@ The locked session-start deferred network stage runs bootstrap's best-effort pro
 
 - It emits `FLEET_SYNC:` for skipped refreshes that may matter, recovered self-heals, and `STUCK:` alarms.
 - Normal completed runs keep local-only and no-origin skips silent.
+- A clone with nothing checked out and no local default branch is skipped before its fetch and reported as needing setup once; later refreshes stay silent about it until it is checked out or removed.
 - If bootstrap kills a timed-out refresh, it replays any completed `fm-fleet-sync.sh` output before the aggregate timeout skip so no finished result is lost.
 
 **Stale Git lock recovery**

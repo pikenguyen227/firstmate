@@ -85,6 +85,7 @@
 #          max(20, 5 + 3 * origin-backed project clone count). A timed-out
 #          refresh relays any completed fm-fleet-sync.sh output before the
 #          aggregate timeout skip line with timeout and elapsed seconds.
+#          A clone already reported as needing setup is not relayed again.
 #          Set FM_FLEET_PRUNE=0 to skip branch pruning during that refresh.
 #          BACKLOG_RECONCILE lines report what backlog_record_reconcile could not
 #          settle in THIS home. Every ordinary dispatch and completion now moves
@@ -317,6 +318,7 @@ fleet_sync_relay_filtered_output() {
     case "$line" in
       *': skipped: local-only project') ;;
       *': skipped: no origin remote') ;;
+      *': skipped: needs setup (already reported)') ;;
       *': skipped:'*) echo "FLEET_SYNC: $line" ;;
       *': STUCK:'*) echo "FLEET_SYNC: $line" ;;
       *': recovered:'*) echo "FLEET_SYNC: $line" ;;

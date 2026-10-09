@@ -27,6 +27,11 @@
 # worktree dir as its cwd also blocks removal (the clone-dir liveness check); a
 # transient lock that self-clears is retried without a force-remove; and any
 # non-packed-refs.lock fetch failure keeps today's behavior with no retry.
+#
+# It also pins the fleet-cost guard: a clone with nothing checked out and no
+# local default branch is skipped before any fetch and reported as needing setup
+# once (bootstrap stops relaying it after the first report, and fixing the clone
+# re-arms the report).
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -35,15 +40,14 @@ set -u
 fm_git_identity fmtest fmtest@example.invalid
 
 TMP_ROOT=$(fm_test_tmproot fm-fleet-sync-tests)
-HOME_N=0
-
 # --- fixtures ---------------------------------------------------------------
 
 # new_home: fresh isolated FM_HOME with an empty projects/ dir. Each test gets its
-# own so the whole-fleet form never sees another test's clones.
+# own so the whole-fleet form never sees another test's clones. Callers use it in
+# a command substitution, so the name must be unique without parent-shell state.
 new_home() {
-  HOME_N=$((HOME_N + 1))
-  local h="$TMP_ROOT/home-$HOME_N"
+  local h
+  h=$(mktemp -d "$TMP_ROOT/home-XXXXXX")
   mkdir -p "$h/projects"
   printf '%s\n' "$h"
 }
@@ -232,6 +236,17 @@ run_sync_guarded() {
   PATH="$fakebin:$PATH" REAL_GIT_FOR_TEST="$realgit" \
   FM_HOME="$home" FM_ROOT_OVERRIDE="$ROOT" \
     "$ROOT/bin/fm-fleet-sync.sh" "$@" >"$outf" 2>"$errf"
+}
+
+# make_unchecked_out <clone>: turn a clone into the .git-only shape a never
+# checked-out clone has - HEAD names refs/heads/main, which does not exist, and
+# there is no working tree or index - while origin/main stays fetched.
+make_unchecked_out() {
+  local clone=$1
+  git -C "$clone" checkout --quiet --detach
+  git -C "$clone" update-ref -d refs/heads/main
+  git -C "$clone" symbolic-ref HEAD refs/heads/main
+  rm -f "$clone/.git/index" "$clone/file.txt"
 }
 
 # --- tests ------------------------------------------------------------------
@@ -715,6 +730,45 @@ test_non_signature_fetch_failure_is_not_retried() {
   pass "a non-packed-refs.lock fetch failure keeps today's behavior (no retry)"
 }
 
+test_unchecked_out_clone_needs_setup_once_without_fetch() {
+  local home clone out origin_before
+  home=$(new_home)
+  clone=$(build_pair "$home" bare-ish)
+  make_unchecked_out "$clone"
+  advance_origin "$home" bare-ish C1
+  origin_before=$(git -C "$clone" rev-parse origin/main)
+
+  out=$(run_sync "$home")
+  assert_contains "$out" "bare-ish: skipped: needs setup: nothing checked out and no local main" "first run reports the clone as needing setup"
+  [ "$(git -C "$clone" rev-parse origin/main)" = "$origin_before" ] || fail "a needs-setup clone was fetched"
+
+  out=$(run_sync "$home" bare-ish)
+  assert_contains "$out" "bare-ish: skipped: needs setup (already reported)" "later runs do not repeat the full report"
+  assert_not_contains "$out" "needs setup:" "the full report is printed only once"
+
+  # Setting the clone up clears the once-marker, so a later relapse reports again.
+  git -C "$clone" checkout --quiet -B main origin/main
+  out=$(run_sync "$home")
+  assert_contains "$out" "bare-ish: synced" "a set-up clone syncs normally"
+  make_unchecked_out "$clone"
+  out=$(run_sync "$home")
+  assert_contains "$out" "bare-ish: skipped: needs setup: nothing checked out" "a relapse after setup is reported again"
+  pass "a never-checked-out clone is skipped before fetch and reported as needing setup once"
+}
+
+test_bootstrap_relays_needs_setup_once() {
+  local home clone out
+  home=$(new_home)
+  clone=$(build_pair "$home" setup-clone)
+  make_unchecked_out "$clone"
+
+  out=$(FM_HOME="$home" FM_ROOT_OVERRIDE="$ROOT" "$ROOT/bin/fm-bootstrap.sh" 2>/dev/null)
+  assert_contains "$out" "FLEET_SYNC: setup-clone: skipped: needs setup:" "bootstrap relays the first needs-setup report"
+  out=$(FM_HOME="$home" FM_ROOT_OVERRIDE="$ROOT" "$ROOT/bin/fm-bootstrap.sh" 2>/dev/null)
+  assert_not_contains "$out" "setup-clone" "bootstrap does not relay an already-reported needs-setup clone"
+  pass "bootstrap relays a needs-setup clone once, not every session start"
+}
+
 test_detached_clean_ancestor_recovers
 test_detached_unique_commit_is_stuck_untouched
 test_detached_clean_ancestor_with_diverged_local_default_is_stuck_untouched
@@ -741,3 +795,5 @@ test_non_signature_fetch_failure_is_not_retried
 test_non_clone_dir_never_syncs_the_enclosing_repo
 test_non_clone_dir_named_directly_never_syncs_the_enclosing_repo
 test_symlinked_clone_still_syncs
+test_unchecked_out_clone_needs_setup_once_without_fetch
+test_bootstrap_relays_needs_setup_once

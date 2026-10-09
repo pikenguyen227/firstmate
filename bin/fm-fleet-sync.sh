@@ -12,7 +12,14 @@
 # ... - needs attention" warning rather than a quiet drift. Nothing is ever forced,
 # stashed, or discarded.
 # Still skips (benignly) local-only/no-origin projects, missing remotes/branches,
-# and fetch failures. A project whose registry entry bin/fm-project-mode.sh
+# and fetch failures.
+# A clone with nothing to sync - no commit checked out and no local default
+# branch, such as a bare-looking .git-only clone that was never checked out - is
+# skipped BEFORE its fetch, so it costs the fleet no network time. It is reported
+# as "skipped: needs setup: ..." once; later runs print "skipped: needs setup
+# (already reported)", which bootstrap does not relay, until the clone is set up.
+# The once-marker lives under $FM_HOME/state/fleet-sync-needs-setup/ and is
+# cleared the first time that clone gets past this check. A project whose registry entry bin/fm-project-mode.sh
 # refuses is skipped too, naming that command so its refusal is readable, rather
 # than synced under a guessed posture.
 # A candidate under projects/ must be the root of its own work tree: git discovery
@@ -46,6 +53,7 @@ PROJECTS="${FM_PROJECTS_OVERRIDE:-$FM_HOME/projects}"
 # shellcheck source=bin/fm-timing-lib.sh
 . "$SCRIPT_DIR/fm-timing-lib.sh"
 FM_LOCK_LOG_PREFIX=fleet-sync
+NEEDS_SETUP_DIR="$FM_HOME/state/fleet-sync-needs-setup"
 "$FM_ROOT/bin/fm-guard.sh" || true
 
 # Bounded recovery for an orphaned .git/packed-refs.lock. A git ref rewrite
@@ -131,6 +139,39 @@ default_branch() {
     fi
   done
   return 1
+}
+
+# needs_setup_marker: this clone's once-marker path, keyed by its physical path
+# so the bare-name and full-path invocation forms share one marker.
+needs_setup_marker() {
+  local key
+  key=$(printf '%s' "$proj_abs" | cksum | awk '{print $1}')
+  printf '%s/%s.%s\n' "$NEEDS_SETUP_DIR" "$(basename "$proj_abs")" "$key"
+}
+
+# True (and reported) when the clone has nothing a sync could act on: no commit
+# checked out and no local default branch. Read from local refs only, so it runs
+# before the fetch. A clone that merely sits off its default branch has HEAD at a
+# commit and keeps the ordinary recovery and STUCK paths.
+skip_needs_setup() {
+  local default marker
+  if git -C "$PROJ" rev-parse --verify --quiet 'HEAD^{commit}' >/dev/null; then
+    rm -f "$(needs_setup_marker)" 2>/dev/null || true
+    return 1
+  fi
+  default=$(default_branch) || default=""
+  if [ -n "$default" ] && git -C "$PROJ" rev-parse --verify --quiet "refs/heads/$default^{commit}" >/dev/null; then
+    rm -f "$(needs_setup_marker)" 2>/dev/null || true
+    return 1
+  fi
+  marker=$(needs_setup_marker)
+  if [ -e "$marker" ]; then
+    echo "$label: skipped: needs setup (already reported)"
+    return 0
+  fi
+  echo "$label: skipped: needs setup: nothing checked out and no local ${default:-default branch}; check it out or remove the clone"
+  { mkdir -p "$NEEDS_SETUP_DIR" && : > "$marker"; } 2>/dev/null || true
+  return 0
 }
 
 first_line() {
@@ -337,6 +378,9 @@ sync_project() {
   fi
   if ! git -C "$PROJ" remote get-url origin >/dev/null 2>&1; then
     echo "$label: skipped: no origin remote"
+    return 0
+  fi
+  if skip_needs_setup; then
     return 0
   fi
 
