@@ -1,0 +1,25 @@
+.agents/skills/stuck-crewmate-recovery/SKILL.md
+  s_8caaeed5a89891::t_73b607ca993d25 93
+bin/fm-step-up.sh
+  s_8caaeed5a89891::t_3037e621986a45 36-39,61-63,158-160,250-251,253,259
+docs/configuration.md
+  s_8caaeed5a89891::t_73b607ca993d25 1320
+tests/fm-step-up.test.sh
+  s_8caaeed5a89891::t_acd933dcbb6ad4 169-176,211-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b71a9d026ea85b7c79b2be6755b0258c8eaf640d",
+  "prompts": {},
+  "sessions": {
+    "s_8caaeed5a89891": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71070cb3-ddac-49ba-86af-9a3208c27130",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
