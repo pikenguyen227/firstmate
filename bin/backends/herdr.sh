@@ -25,7 +25,8 @@
 # endpoint after metadata, home, session, workspace, tab, pane, parent, shape,
 # focus, and agent-absence checks all agree under the session lock.
 # Every ambiguous recovered launch uses the default flat home workspace when
-# duplicate-agent risk is independently absent.
+# duplicate-agent risk is independently absent, unless its old projection is
+# confirmed gone, when bin/fm-spawn.sh projects a fresh child instead.
 # Target resolution stays parallel to the tmux adapter in both layouts.
 # Projected create, move, and cleanup operations capture the named session's
 # exact active workspace and tab. On Herdr 0.7.5, an explicit close that
