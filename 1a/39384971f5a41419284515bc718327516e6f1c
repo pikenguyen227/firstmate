@@ -1,0 +1,27 @@
+tests/fm-crew-state.test.sh
+  s_8192e493e180f3::t_7d9914be468c43 2437
+tests/fm-brief.test.sh
+  s_8192e493e180f3::t_7d9914be468c43 265
+bin/fm-dod-lib.sh
+  s_8192e493e180f3::t_7d9914be468c43 22-26,381,440
+tests/fm-watch-triage.test.sh
+  s_8192e493e180f3::t_7d9914be468c43 6557-6558,6564-6565,6636-6657
+  s_8192e493e180f3::t_d15d4ff3f49f5c 6810
+  s_8192e493e180f3::t_3c7e81ce6eb351 6658-6659
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a39384971f5a41419284515bc718327516e6f1c",
+  "prompts": {},
+  "sessions": {
+    "s_8192e493e180f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4813bbea-f764-49bc-962a-63fc632c139b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
