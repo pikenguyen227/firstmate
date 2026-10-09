@@ -1,0 +1,19 @@
+docs/scripts.md
+  s_3d735cbf12911a::t_64c9038972673a 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e954f7002af3dd408da172c447286ea62c9fb81",
+  "prompts": {},
+  "sessions": {
+    "s_3d735cbf12911a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bfd2b462-5af5-4f80-929f-2bf118260de0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
