@@ -251,8 +251,9 @@ print_autonomy() {
     "  dispatch: \(.dispatch)",
     "  automatic fix rounds: \(if .automatic_fix_rounds == null then "within existing pipeline limits" else .automatic_fix_rounds end)",
     "  automatic fresh starts: \(.fresh_starts)",
-    "  automatic fleet reviews: \(.fleet_reviews)"' "$(template "$1")"
-  echo "  coordinator: load strategy-autonomy to apply the session policy; no automatic model step-up"
+    "  automatic fleet reviews: \(.fleet_reviews)",
+    "  one-tier model step-up after a worker failure: \(.step_up // "ask")"' "$(template "$1")"
+  echo "  coordinator: load strategy-autonomy to apply the session policy"
 }
 
 # print_resolved <mode> <providers>: the per-role result.

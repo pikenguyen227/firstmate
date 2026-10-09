@@ -323,16 +323,16 @@ SH
 
 
 test_autonomy_transitions() {
-  local home mode out expected rounds dispatch reviews
+  local home mode out expected rounds dispatch reviews step
   home=$(new_home autonomy)
   printf '%s\n' '{"enabled":false,"idle_minutes":180,"nightly_at":null,"context_windows":{"custom":200000}}' > "$home/config/fresh-start.json"
   printf 'unchanged approval settings\n' > "$home/config/safety-sentinel"
   printf 'kind=secondmate\n' > "$home/state/mate.meta"
   for mode in full balanced lean full; do
     case "$mode" in
-      full) expected=true; rounds='within existing pipeline limits'; dispatch=automatic; reviews=true ;;
-      balanced) expected=true; rounds=1; dispatch=light-standard; reviews=false ;;
-      lean) expected=false; rounds=0; dispatch=confirm; reviews=false ;;
+      full) expected=true; rounds='within existing pipeline limits'; dispatch=automatic; reviews=true; step=automatic ;;
+      balanced) expected=true; rounds=1; dispatch=light-standard; reviews=false; step=ask ;;
+      lean) expected=false; rounds=0; dispatch=confirm; reviews=false; step=ask ;;
     esac
     out=$(strat "$home" set "$mode" --providers codex --yes) || fail "$mode apply failed: $out"
     assert_contains "$(cat "$home/config/strategy")" "autonomy=$mode" "persist $mode autonomy"
@@ -343,6 +343,7 @@ test_autonomy_transitions() {
     assert_contains "$out" "dispatch: $dispatch" "$mode dispatch policy"
     assert_contains "$out" "automatic fix rounds: $rounds" "$mode fix policy"
     assert_contains "$out" "automatic fleet reviews: $reviews" "$mode review policy"
+    assert_contains "$out" "one-tier model step-up after a worker failure: $step" "$mode step-up policy"
     assert_contains "$out" $'drift:\n  none' "$mode converges"
     out=$(strat "$home" show)
     assert_contains "$out" "automatic fresh starts: $expected" "$mode preview"

@@ -32,7 +32,7 @@ Fresh starts retain that owner's supported-reader, idle, persist, and cooldown r
 ## Decide when to dispatch
 
 Apply the level before starting a new ship, scout, promotion to implementation, or routing new work to a second mate, including queued work whose dependency just cleared.
-When routing to a second mate, include the request's autonomy level, approval already obtained, and fix-round count, and require it to carry those constraints into its own dispatch and worker instructions.
+When routing to a second mate, include the request's autonomy level, approval already obtained, and fix-round count, and require it to carry those constraints into its own dispatch, worker instructions, and step-up decisions.
 Classification uses the existing light/standard/hard tier descriptions even when a requested-model rule or custom rule wins routing.
 Full permits automatic dispatch of authorized work, including unblocked queued work.
 Balanced permits light and standard dispatch automatically; before hard or unusually expensive work, present the bounded plan and rough cost and obtain the captain's word.
@@ -69,4 +69,4 @@ No level changes delivery mode, validation rigor, merge authority, yolo, ask-use
 Review-ready work, findings, decisions, failures, credentials, and every other captain-relevant event still reach the coordinator through the existing routing; balanced batching and lean's reduced routine turns both use quiet's bounded batching, never a new event filter.
 Drain before handling and acknowledge only after handling exactly as the supervision contract requires.
 An approval wait is never permission to abandon monitoring, hide a result, or discard work.
-Do not change model strength automatically; model step-up is a separate decision outside this policy.
+Change a worker's model strength only through the one-tier step-up `stuck-crewmate-recovery` owns: the selected template's `autonomy.step_up` makes it automatic under full and a captain decision under balanced and lean.

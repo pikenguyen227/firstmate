@@ -4,6 +4,7 @@ description: >-
   Agent-only playbook for stuck or missing ordinary Firstmate direct reports.
   Use when the session-start digest reports an ordinary direct report's endpoint dead or its metadata has no window, or after a stale wake, looping pane, repeated confusion, an answered-by-brief question, an unresponsive crewmate, or a failed steer.
   Also use on the inverse case: a live crewmate reporting the no-mistakes pipeline dead, unreachable, or timed out.
+  Also use on a ship or scout's terminal failed: report and on a reported no-mistakes Test-step failure, which own the one-tier model step-up.
   Reconciles recorded work before escalating from targeted inspection through safe relaunch or failure.
 user-invocable: false
 metadata:
@@ -79,4 +80,22 @@ Escalate in order:
    Genuine wedging means looping, unresponsive, repeating the same obstacle, or truly dead.
    A low context reading is not wedging; modern harnesses auto-compact and keep going.
    The worktree and commits persist, so relaunch is cheap.
-5. If a second relaunch fails too, write `failed` to the backlog and tell the captain the plain failure, preserved work, and consequence using `AGENTS.md` section 9; do not mention metadata, harness, window, or worktree unless the path itself is needed for action.
+5. If the worker is still blocked after that relaunch and the cause is its capability, try the one-tier step-up below before calling the task failed.
+6. If a second relaunch fails too, write `failed` to the backlog and tell the captain the plain failure, preserved work, and consequence using `AGENTS.md` section 9; do not mention metadata, harness, window, or worktree unless the path itself is needed for action.
+
+## One-tier model step-up
+
+A real worker failure earns one relaunch of the same task one tier up the ladder (check, light, standard, hard), in the same local copy, branch, and validation run; [`bin/fm-step-up.sh`](../../../bin/fm-step-up.sh) owns every deterministic gate and [`docs/configuration.md`](../../../docs/configuration.md#automatic-one-tier-step-up-binfm-step-upsh) the operator contract.
+The judgment is yours: pick the trigger only when the evidence fits it.
+
+- `--trigger failed` for a terminal `failed:` whose cause is not an external system (CI, Azure, a vendor outage, disk, the daemon, quota, credentials, or a tool the instructions could not have avoided).
+- `--trigger blocked` for a `blocked:` the escalation above could not clear whose cause is the worker's capability: it misread its instructions, cannot explain a failure, loops, or asks what its instructions already answer.
+- `--trigger test-failure` after each reported Test-step failure is recorded with `bin/fm-step-up.sh <id> test-failure --cause '<what failed>'`; the second one for the same task triggers.
+
+Run `plan` with that trigger and a plain `--cause`, and act on its verdict.
+On `no-step`, follow its reason: a hard-tier failure, a second failure after a step, or a refused step goes to the captain with the evidence through step 6, and a research scout is never stepped.
+On `step`, resolve a next tier with several candidates through `quota-array-dispatch` exactly as at intake, then run `apply` with the eligible candidate's `--harness`, `--model`, and `--effort`; with no eligible candidate, report the blocker instead of stepping.
+In a second mate home, pass the autonomy level the routed request carried as `--autonomy`.
+When the posture is `ask`, put the step to the captain as one decision and pass `--captain-approved` only after their word.
+A relaunch failure after `apply` (exit 3) has used the step and opened a blocker; recover the worker through the steps above without stepping again.
+When the stepped task finishes, its final status names the tier it finished on, and so does the captain-facing outcome.

@@ -1122,7 +1122,7 @@ This single-provider table is separate from the frozen legacy mapping used by `f
 - `ultra` is native-only: the model-aware validation contract and launch mapping are owned by `bin/fm-harness.sh validate-native-effort` and `bin/fm-spawn.sh` respectively.
 - Codex `max` is valid when the profile selects `gpt-5.6-luna`, whose installed catalog entry supports that reasoning level.
 - An omitted model or effort means the selected harness uses its own default for that axis, except on Codex: [`bin/fm-codex-launch-lib.sh`](../bin/fm-codex-launch-lib.sh) fills each omitted axis and raises the per-launch project-document budget until the effective instruction chain fits the default.
-- A rule may carry a `strategy` key naming the slot [token strategies](#token-strategies-binfm-strategysh-configstrategy) manage; routing ignores it.
+- A rule may carry a `strategy` key naming the slot [token strategies](#token-strategies-binfm-strategysh-configstrategy) manage; routing ignores it, and the [one-tier step-up](#automatic-one-tier-step-up-binfm-step-upsh) reads the `check`, `light`, `standard`, `hard`, and `research` slots as its ladder.
 - OpenCode receives the effort as its default `build` agent's `variant`, keyed to the resolved model, inside the `OPENCODE_CONFIG_CONTENT` JSON its launch already writes (the per-model reasoning-effort field of the config schema, verified on opencode 1.18.32); with no model resolved, the effort is recorded in task metadata but omitted from the launch.
 - Every profile array is an implicit quota-aware choice resolved through `quota-array-dispatch`.
 - If no dispatch rule fits, firstmate resolves `default` through the same object-or-array path before falling back to `config/crew-harness`.
@@ -1283,16 +1283,17 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Automatic fix rounds per task | existing pipeline limits | one, then ask | none; ask before fixes or retries |
 | Automatic fresh starts | enabled | enabled | disabled |
 | Extra discretionary fleet reviews | enabled | disabled | disabled |
+| [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
 | While the captain is present | normal supervision | `/quiet`, with bounded batching | `/quiet`, routine turns suppressed |
 
 `full` keeps the strongest hard-work routing and automatic starts; `balanced` removes Astra from routine routing and asks before costly starts; `lean` makes starts and retries manual while retaining the same quality requirements.
 `config/strategy` records `mode=`, `providers=`, and `autonomy=`; autonomy matches the selected mode, and legacy selections without that key keep existing behavior until `set` applies it.
-The templates' `autonomy` object owns the rendered level, dispatch policy, automatic fix-round allowance (`null` means existing pipeline limits), fresh-start enablement, and discretionary fleet-review choice.
+The templates' `autonomy` object owns the rendered level, dispatch policy, automatic fix-round allowance (`null` means existing pipeline limits), fresh-start enablement, discretionary fleet-review choice, and step-up posture.
 [`strategy-autonomy`](../.agents/skills/strategy-autonomy/SKILL.md) owns coordinator application, approval reuse, round accounting, and session transitions, using the existing quiet lifecycle instead of new notification filtering.
 A confirmed selection requests that posture; the command records it but does not itself launch or stop quiet supervision, and later explicit session choices win.
 Quiet batches only within its existing bound and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
 Fix-round limits pause for approval rather than bypassing validation, and indivisible tool-internal retry boundaries must be disclosed rather than represented as enforceable caps.
-There is no automatic step-up to a stronger model.
+A stronger model is reached only through the [one-tier step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a real worker failure.
 
 `set` preserves fresh-start trigger tuning and changes only `enabled`, validates through `fm-fresh-start.sh validate`, and arms or disarms the existing check after confirmation without restarting any agent.
 Reapplying an unchanged mode with `--yes` also reconciles that check, so a failed application can be retried without rewriting settings.
@@ -1307,6 +1308,21 @@ The script never edits the user's global Claude, Codex, or no-mistakes settings 
 The primary coordinator's launch flags and the no-mistakes `agent_config` live there, so `show` prints the exact value to apply by hand instead.
 `set` refuses in a second mate home, keeps custom rules and fields in `config/crew-dispatch.json`, writes atomically, and runs `bin/fm-config-push.sh` after a routing change so live second mates inherit it.
 A mode template is one JSON object with a section per concern, so a later setting joins as a new section without reshaping the command.
+
+## Automatic one-tier step-up (bin/fm-step-up.sh)
+
+A real worker failure earns one relaunch of the same task on the next tier of `config/crew-dispatch.json`, so cheap tiers stay cheap without leaving a dead end.
+[`stuck-crewmate-recovery`](../.agents/skills/stuck-crewmate-recovery/SKILL.md) owns when firstmate or a second mate reaches for it and the judgment calls, and [`bin/fm-step-up.sh`](../bin/fm-step-up.sh)'s header owns the verbs, output, and exit codes.
+
+- **Triggers:** a terminal `failed:` whose cause is not an external system, a `blocked:` that recovery could not clear and whose cause is the worker's capability, or the second recorded Test-step failure for the task.
+  A cause or status note that names CI, Azure, a vendor or outage, disk, the daemon, quota or rate limits, credentials or login, or the network never steps.
+- **Ladder:** the rules whose `strategy` slot is `check`, `light`, `standard`, then `hard`, skipping a rung the home does not configure.
+  The task's tier is the rung whose profiles hold its recorded harness, model, and effort; a hard-tier failure goes to the captain with the evidence, and a `research` scout is never stepped.
+- **Action:** an in-place relaunch through `bin/fm-control.sh <id> relaunch` on a next-tier profile, which may change harness, in the same local copy, branch, and validation run, with a note naming the cause.
+  A next tier with several profiles is resolved through `quota-array-dispatch` first, so quota eligibility picks the candidate.
+- **Limits:** at most one step per task, recorded in its status log and so in the lifecycle feed, and never a second validation run: a branch whose run has concluded is not stepped, and a live run stays with the task.
+  The stepped task's final status names the tier it finished on.
+- **Posture:** the strategy template's `autonomy.step_up` makes it automatic under full and a captain decision under balanced, lean, or no selection; a second mate uses the autonomy level its routed request carried.
 
 ## Toolchain
 

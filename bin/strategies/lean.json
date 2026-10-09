@@ -153,6 +153,7 @@
     "dispatch": "confirm",
     "automatic_fix_rounds": 0,
     "fresh_starts": false,
-    "fleet_reviews": false
+    "fleet_reviews": false,
+    "step_up": "ask"
   }
 }
