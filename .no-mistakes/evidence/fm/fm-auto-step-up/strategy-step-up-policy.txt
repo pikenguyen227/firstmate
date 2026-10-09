@@ -1,0 +1,28 @@
+$ fm-strategy.sh set full --providers claude,codex --yes
+  Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+autonomy: full
+  one-tier model step-up after a worker failure: automatic
+  coordinator: load strategy-autonomy to apply the session policy
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
++autonomy=full
+$ fm-strategy.sh set balanced --providers claude,codex --yes
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+autonomy: balanced
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+-autonomy=full
++autonomy=balanced
+$ fm-strategy.sh set lean --providers claude,codex --yes
+  Manual starts and retries with unchanged validation; Sol on Codex, Opus on Claude, one coordinator by default, quiet while present.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+autonomy: lean
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+-autonomy=balanced
++autonomy=lean

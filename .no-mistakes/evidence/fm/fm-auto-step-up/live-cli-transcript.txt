@@ -1,0 +1,208 @@
+
+=================== S1 terminal capability failed: on light (full) steps once to standard, in place ===================
+autonomy=full
+
+$ fm-step-up.sh t1 plan --trigger failed --cause cannot explain a failure
+step-up:
+  task: t1
+  verdict: step
+  trigger: failed
+  cause: cannot explain a failure
+  from: light (claude claude-sonnet-5-5 low)
+  to: standard
+  candidate: --harness claude --model claude-opus-5-5 --effort medium
+  candidate: --harness codex --model gpt-6-sol --effort medium
+  validation: none
+  posture: automatic (autonomy full)
+[exit 0]
+
+$ fm-step-up.sh t1 apply --trigger failed --cause cannot explain a failure
+step-up:
+  task: t1
+  verdict: no-step
+  reason: the standard tier has several profiles; resolve them through quota-array-dispatch and pass the eligible one as --harness/--model/--effort
+[exit 1]
+
+$ fm-step-up.sh t1 apply --trigger failed --cause cannot explain a failure --harness codex --model gpt-6-sol --effort medium
+relaunched t1 (recording control stub)
+stepped-up t1 light -> standard (codex gpt-6-sol medium)
+[exit 0]
+--- relaunch argv handed to fm-control ---
+  t1
+  relaunch
+  --harness
+  codex
+  --model
+  gpt-6-sol
+  --effort
+  medium
+  --note
+  Automatic one-tier step-up: you replace the light-tier worker (claude claude-sonnet-5-5 low) as the standard tier (codex gpt-6-sol medium) after a terminal failure: cannot explain a failure
+  Continue the same task in this same local copy and branch; earlier commits and uncommitted changes are preserved.
+  Validate exactly once when the work is ready, as your instructions say; there is no second validation run.
+  Name the tier you finished on in your final done: or failed: status line, for example "(tier: standard, stepped up from light)".
+  There is no further automatic step: report another failure or blocker plainly.
+--- fm-lab.fuVSi1/state/t1.status (tail) ---
+  working: implementing parser
+  failed: could not explain why the parser test fails
+  working [at=1791521817]: stepped up from light to standard (codex gpt-6-sol medium) after a terminal failure: cannot explain a failure
+
+=================== S2 one step per task: second step on the same task refused ===================
+
+$ fm-step-up.sh t1 apply --trigger failed --cause still cannot explain
+step-up:
+  task: t1
+  verdict: no-step
+  reason: already stepped up once; report a further failure to the captain with the evidence
+[exit 1]
+
+=================== S3 external failure (CI / quota) never steps ===================
+
+$ fm-step-up.sh t1 apply --trigger failed --cause tests could not run
+step-up:
+  task: t1
+  verdict: no-step
+  reason: the cause names an external system, which a stronger model cannot fix
+[exit 1]
+
+$ fm-step-up.sh t1 apply --trigger failed --cause hit the API rate limit / quota
+step-up:
+  task: t1
+  verdict: no-step
+  reason: the cause names an external system, which a stronger model cannot fix
+[exit 1]
+(no relaunch issued)
+
+=================== S4 non-terminal latest event does not trigger failed ===================
+
+$ fm-step-up.sh t1 plan --trigger failed --cause misread the brief
+step-up:
+  task: t1
+  verdict: no-step
+  reason: the latest status event is not failed:
+[exit 1]
+
+=================== S5 blocked: capability blocker (recovery could not clear) steps and resolves the blocker ===================
+
+$ fm-step-up.sh t1 apply --trigger blocked --cause looping; asks questions the brief answered --harness claude --model claude-opus-5-5 --effort medium
+relaunched t1 (recording control stub)
+stepped-up t1 light -> standard (claude claude-opus-5-5 medium)
+[exit 0]
+--- fm-lab.GVvcdT/state/t1.status (tail) ---
+  blocked [key=loop]: looping on the same edit, asks what the brief already answered
+  resolved [key=loop] [at=1791521859]: stepped up from light to standard (claude claude-opus-5-5 medium) after a blocker recovery could not clear: looping; asks questions the brief answered
+
+$ fm-step-up.sh t1 plan --trigger blocked --cause looping
+step-up:
+  task: t1
+  verdict: no-step
+  reason: decision 'scope' is open; settle it before any step-up
+[exit 1]
+
+=================== S6 second Test-step failure triggers; first does not; recording never masks a terminal failed: ===================
+
+$ fm-step-up.sh t1 test-failure --cause Test step red: parser spec
+recorded test-step failure 1 for t1
+[exit 0]
+
+$ fm-step-up.sh t1 plan --trigger test-failure --cause Test step red twice
+step-up:
+  task: t1
+  verdict: no-step
+  reason: only 1 Test-step failure(s) recorded; the second one triggers the step
+[exit 1]
+
+$ fm-step-up.sh t1 test-failure --cause Test step red again: parser spec
+recorded test-step failure 2 for t1
+[exit 0]
+
+$ fm-step-up.sh t1 plan --trigger test-failure --cause Test step red twice
+step-up:
+  task: t1
+  verdict: step
+  trigger: test-failure
+  cause: Test step red twice
+  from: light (claude claude-sonnet-5-5 low)
+  to: standard
+  candidate: --harness claude --model claude-opus-5-5 --effort medium
+  candidate: --harness codex --model gpt-6-sol --effort medium
+  validation: none
+  posture: automatic (autonomy full)
+[exit 0]
+
+$ fm-step-up.sh t1 test-failure --cause Test step red a third time
+the latest status event is terminal; step on it with --trigger failed instead
+[exit 1]
+--- fm-lab.wy1ViP/state/t1.status (tail) ---
+  failed: Test step still red
+
+=================== S7 hard tier is never stepped (goes to captain) ===================
+
+$ fm-step-up.sh t1 apply --trigger failed --cause cannot find the root cause
+step-up:
+  task: t1
+  verdict: no-step
+  reason: the hard tier is the top of the ladder; take the failure to the captain with the evidence
+[exit 1]
+
+=================== S8 research scout never stepped; a ship on the same profile still steps ===================
+
+$ fm-step-up.sh t1 apply --trigger failed --cause could not answer --harness claude --model claude-opus-5-5 --effort high
+step-up:
+  task: t1
+  verdict: no-step
+  reason: a research scout is never stepped up
+[exit 1]
+
+$ fm-step-up.sh t1 apply --trigger failed --cause misread instructions --harness claude --model claude-opus-5-5 --effort high
+relaunched t1 (recording control stub)
+stepped-up t1 standard -> hard (claude claude-opus-5-5 high)
+[exit 0]
+  record: stepped up from standard to hard (claude claude-opus-5-5 high) after a terminal failure: misread instructions
+
+=================== S9 validation custody: concluded run refuses; live run is reattached, never a second run ===================
+
+$ fm-step-up.sh t1 plan --trigger failed --cause misread instructions
+step-up:
+  task: t1
+  verdict: no-step
+  reason: validation run 01RUNDONE already failed; finishing after a step would need a second validation run
+[exit 1]
+
+$ fm-step-up.sh t1 apply --trigger failed --cause misread instructions --harness claude --model claude-opus-5-5 --effort medium
+relaunched t1 (recording control stub)
+stepped-up t1 light -> standard (claude claude-opus-5-5 medium)
+[exit 0]
+  note: A validation run already owns this branch: reattach with `no-mistakes axi run` (no flags) and keep driving it; never start a second validation run, abort it, or hand-edit while it is active.
+
+=================== S10 posture: balanced asks the captain; --captain-approved then steps ===================
+
+$ fm-step-up.sh t1 apply --trigger failed --cause misread instructions
+step-up:
+  task: t1
+  verdict: no-step
+  reason: autonomy balanced does not step automatically; ask the captain, then pass --captain-approved
+[exit 1]
+
+$ fm-step-up.sh t1 apply --trigger failed --cause misread instructions --captain-approved --harness claude --model claude-opus-5-5 --effort medium
+relaunched t1 (recording control stub)
+stepped-up t1 light -> standard (claude claude-opus-5-5 medium)
+[exit 0]
+
+=================== S11 real fm-control.sh relaunch failure still uses the step and surfaces a blocker ===================
+
+$ fm-step-up.sh t1 apply --trigger failed --cause cannot explain a failure --harness claude --model claude-opus-5-5 --effort medium
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.3iJhOr
+REFUSED: task t1 has a missing, empty, or ambiguous window endpoint; preserving task state.
+error: the step-up was recorded but the relaunch failed; see the output above
+[exit 3]
+--- fm-lab.3iJhOr/state/t1.status (tail) ---
+  working [at=1791521926]: stepped up from light to standard (claude claude-opus-5-5 medium) after a terminal failure: cannot explain a failure
+  blocked [key=step-up] [at=1791521927]: step-up relaunch to standard (claude claude-opus-5-5 medium) failed; the step is used, so take it to the captain with the evidence
+
+$ fm-step-up.sh t1 plan --trigger failed --cause cannot explain a failure
+step-up:
+  task: t1
+  verdict: no-step
+  reason: already stepped up once; report a further failure to the captain with the evidence
+[exit 1]

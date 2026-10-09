@@ -1,0 +1,9 @@
+ok - a terminal failure steps light to standard once, on a chosen next-tier profile
+ok - a single-profile tier needs no caller choice
+ok - a capability blocker steps up and is closed by the step record
+ok - the second Test-step failure for a task triggers the step
+ok - external failures, hard, research, and unproven triggers never step
+ok - a failed relaunch still uses the one step and surfaces a blocker
+ok - a step never needs a second validation run
+ok - only an automatic strategy steps without the captain
+# all fm-step-up tests passed
