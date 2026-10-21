@@ -147,8 +147,9 @@ fm_pid_identity_matches() {
   case "$current" in
     proc-starttime=*|linux-starttime=*) return 1 ;;
   esac
-  legacy=$(_fm_ps_lstart_identity "$pid") || return 1
-  [ -n "$legacy" ] && [ "$legacy" = "$recorded" ]
+  legacy=$(_fm_ps_lstart_identity "$pid") || return 2
+  [ -n "$legacy" ] || return 2
+  [ "$legacy" = "$recorded" ]
 }
 
 fm_path_mtime() {
