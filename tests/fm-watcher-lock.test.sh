@@ -1445,6 +1445,102 @@ test_pid_identity_is_terminal_width_invariant() {
   pass "fm_pid_identity ps fallback is terminal-width-invariant"
 }
 
+test_pid_identity_is_time_zone_invariant() {
+  # ps renders lstart in the caller's local time zone, so a watcher identity
+  # recorded before a time-zone change (GMT+7 -> KST) stopped matching the live
+  # watcher afterwards and supervision looped on a "missing" watcher it could not
+  # replace. The ps fallback must read identically across time zones, still
+  # reject a reused pid, and keep accepting an exact legacy ambient-zone record.
+  local no_proc fakebin recorded reread reused legacy status live dir state lockdir
+  no_proc="$TMP_ROOT/no-tz-proc"
+  fakebin="$TMP_ROOT/tz-ps"
+  mkdir -p "$fakebin"
+  # The stub renders its start stamp through date under whatever TZ it inherits,
+  # so dropping the TZ pin in fm_pid_identity breaks the equality below on every host.
+  cat > "$fakebin/ps" <<'SH'
+#!/usr/bin/env bash
+[ -z "${FAKE_PS_FAIL:-}" ] || exit 1
+start=${FAKE_PS_START:-1784094040}
+stamp=$(date -d "@$start" '+%a %b %e %H:%M:%S %Y' 2>/dev/null) \
+  || stamp=$(date -r "$start" '+%a %b %e %H:%M:%S %Y' 2>/dev/null) \
+  || exit 1
+printf '%s %s\n' "$stamp" "${FAKE_PS_COMMAND:-bash fm-watch.sh}"
+SH
+  chmod +x "$fakebin/ps"
+  tz_identity() {  # <tz> [env...]
+    local tz=$1
+    shift
+    # shellcheck disable=SC2016 # The child bash expands its own positional args.
+    env "$@" PATH="$fakebin:$PATH" FM_PROC_ROOT_OVERRIDE="$no_proc" TZ="$tz" \
+      bash -c '. "$1"; fm_pid_identity 4242' _ "$LIB" 2>/dev/null
+  }
+  tz_matches() {  # <tz> <recorded> [env...]
+    local tz=$1 rec=$2
+    shift 2
+    # shellcheck disable=SC2016 # The child bash expands its own positional args.
+    env "$@" PATH="$fakebin:$PATH" FM_PROC_ROOT_OVERRIDE="$no_proc" TZ="$tz" \
+      bash -c '. "$1"; fm_pid_identity_matches 4242 "$2"' _ "$LIB" "$rec" 2>/dev/null
+  }
+  recorded=$(tz_identity Asia/Ho_Chi_Minh) || fail "could not record identity under Asia/Ho_Chi_Minh"
+  reread=$(tz_identity Asia/Seoul) || fail "could not re-read identity under Asia/Seoul"
+  [ -n "$recorded" ] || fail "fm_pid_identity recorded an empty identity"
+  [ "$reread" = "$recorded" ] \
+    || fail "fm_pid_identity varied with the time zone (recorded '$recorded', re-read '$reread')"
+  tz_matches Asia/Seoul "$recorded" || fail "a live owner did not match its record after a time-zone change"
+  pass "fm_pid_identity ps fallback is time-zone-invariant"
+
+  reused=$(tz_identity Asia/Seoul FAKE_PS_START=1784094041) || fail "could not read reused-pid identity"
+  [ "$reused" != "$recorded" ] || fail "fm_pid_identity missed a reused pid's later start time"
+  status=0
+  tz_matches Asia/Seoul "$recorded" FAKE_PS_START=1784094041 || status=$?
+  [ "$status" -eq 1 ] || fail "a reused pid (later start) matched the recorded identity (status $status)"
+  status=0
+  tz_matches Asia/Seoul "$recorded" FAKE_PS_COMMAND='sleep 300' || status=$?
+  [ "$status" -eq 1 ] || fail "a reused pid (other command) matched the recorded identity (status $status)"
+  status=0
+  tz_matches Asia/Seoul "$recorded" FAKE_PS_FAIL=1 || status=$?
+  [ "$status" -eq 2 ] || fail "an unreadable identity was not reported as uncertain (status $status)"
+  pass "fm_pid_identity_matches rejects a reused pid and reports an unreadable one as uncertain"
+
+  # A record written before the pin holds the ambient-zone rendering.
+  legacy=$(env PATH="$fakebin:$PATH" TZ=Asia/Seoul LC_ALL=C ps -p 4242 -o lstart= -o command=)
+  [ "$legacy" != "$recorded" ] || fail "legacy fixture is indistinguishable from the UTC identity"
+  tz_matches Asia/Seoul "$legacy" || fail "an exact legacy ambient-zone record no longer matched its live owner"
+  status=0
+  tz_matches Asia/Seoul "$legacy" FAKE_PS_START=1784094041 || status=$?
+  [ "$status" -eq 1 ] || fail "a reused pid matched a legacy ambient-zone record (status $status)"
+  status=0
+  tz_matches Asia/Ho_Chi_Minh "$legacy" || status=$?
+  [ "$status" -eq 1 ] || fail "a legacy record matched across a time-zone change (status $status)"
+  pass "legacy ambient-zone identity records are read conservatively"
+
+  # End to end through the real ps where it supports the portable fields: a
+  # watcher lock recorded under one zone still verifies its live owner under another.
+  if ! LC_ALL=C ps -p "$$" -o lstart= -o command= >/dev/null 2>&1; then
+    pass "real ps time-zone check skipped where ps -o lstart= is unsupported"
+    return
+  fi
+  dir=$(make_case tz-watcher-lock)
+  state="$dir/state"
+  lockdir="$state/.watch.lock"
+  mkdir -p "$lockdir"
+  sleep 300 &
+  live=$!
+  printf '%s\n' "$dir" > "$lockdir/fm-home"
+  printf '%s\n' "$WATCH" > "$lockdir/watcher-path"
+  FM_PROC_ROOT_OVERRIDE="$no_proc" TZ=Asia/Ho_Chi_Minh bash -c '. "$1"; fm_pid_identity "$2"' _ "$LIB" "$live" \
+    > "$lockdir/pid-identity" 2>/dev/null
+  status=0
+  FM_PROC_ROOT_OVERRIDE="$no_proc" TZ=Asia/Seoul FM_STATE_OVERRIDE="$state" \
+    bash -c '. "$1"; fm_watcher_lock_matches_pid "$2" "$3" "$4" "$5"' _ "$LIB" "$state" "$WATCH" "$live" "$dir" \
+    || status=$?
+  kill "$live" 2>/dev/null || true
+  wait "$live" 2>/dev/null || true
+  [ -s "$lockdir/pid-identity" ] || fail "could not record a real watcher identity"
+  [ "$status" -eq 0 ] || fail "real watcher lock stopped matching its live owner after a time-zone change"
+  pass "real watcher lock identity survives a time-zone change"
+}
+
 write_fake_proc_identity() {
   local proc_root=$1 pid=$2 starttime=$3
   mkdir -p "$proc_root/$pid"
@@ -1550,6 +1646,7 @@ test_wait_deadline_reaps_a_stopped_child
 test_singleton_start
 test_pid_identity_is_locale_invariant
 test_pid_identity_is_terminal_width_invariant
+test_pid_identity_is_time_zone_invariant
 test_proc_pid_identity_ignores_wall_clock_and_detects_pid_reuse
 test_msys_pid_identity_uses_proc
 test_stale_watch_lock_reclaimed

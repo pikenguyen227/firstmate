@@ -911,9 +911,9 @@ async function sleep(milliseconds) {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function capturedProcessOutput(command, args, maxBytes = 8192) {
+async function capturedProcessOutput(command, args, maxBytes = 8192, extraEnv = {}) {
   const child = spawn(command, args, {
-    env: { PATH: sanitizedPath(), LANG: "C", LC_ALL: "C" },
+    env: { ...extraEnv, PATH: sanitizedPath(), LANG: "C", LC_ALL: "C" },
     shell: false,
     stdio: ["ignore", "pipe", "ignore"],
   });
@@ -933,7 +933,10 @@ async function capturedProcessOutput(command, args, maxBytes = 8192) {
   return Buffer.concat(chunks).toString("utf8").trim();
 }
 
-async function pidIdentity(pid) {
+// Mirrors bin/fm-wake-lib.sh fm_pid_identity, whose records this compares:
+// the ps fallback renders lstart in UTC so a time-zone change cannot evict a
+// live owner. Omitting timeZone gives the ambient legacy rendering.
+async function pidIdentity(pid, timeZone = "UTC0") {
   if (process.platform === "linux") {
     const stat = await readFile(`/proc/${pid}/stat`, "utf8").catch(() => fail("process-identity-uncertain", "cannot inspect extension process identity"));
     const cmdline = await readFile(`/proc/${pid}/cmdline`).catch(() => fail("process-identity-uncertain", "cannot inspect extension process identity"));
@@ -944,7 +947,16 @@ async function pidIdentity(pid) {
     }
     return `linux-starttime=${fields[19]} cmdline-hex=${cmdline.toString("hex")}`;
   }
-  return capturedProcessOutput("/bin/ps", ["-p", String(pid), "-o", "lstart=", "-o", "command="]);
+  return capturedProcessOutput("/bin/ps", ["-p", String(pid), "-o", "lstart=", "-o", "command="], 8192, timeZone ? { TZ: timeZone } : {});
+}
+
+// Mirrors fm_pid_identity_matches: a record written before the UTC pin still
+// matches its exact ambient-time-zone rendering, so an upgrade keeps live owners.
+async function pidIdentityMatches(pid, expected) {
+  const actual = await pidIdentity(pid);
+  if (actual === expected) return true;
+  if (process.platform === "linux") return false;
+  return await pidIdentity(pid, null) === expected;
 }
 
 async function selfIdentity() {
@@ -977,13 +989,13 @@ async function processIdentityState(pid, expected) {
       return pidAlive(pid) ? 2 : 1;
     }
   }
-  let actual;
+  let matches;
   try {
-    actual = await pidIdentity(pid);
+    matches = await pidIdentityMatches(pid, expected);
   } catch {
     return pidAlive(pid) ? 2 : 1;
   }
-  return actual === expected ? 0 : 2;
+  return matches ? 0 : 2;
 }
 
 async function barrierProcessGroupState(pid, expectedIdentity) {
@@ -1011,13 +1023,13 @@ async function processGroupState(pid, expectedIdentity = null, trustedChild = fa
   if (!pidAlive(pid)) return groupAlive(pid) ? 3 : 1;
   if (expectedIdentity?.startsWith("barrier-token:")) return barrierProcessGroupState(pid, expectedIdentity);
   if (expectedIdentity) {
-    let actual;
+    let matches;
     try {
-      actual = await pidIdentity(pid);
+      matches = await pidIdentityMatches(pid, expectedIdentity);
     } catch {
       return pidAlive(pid) ? 2 : (groupAlive(pid) ? 3 : 1);
     }
-    if (actual !== expectedIdentity) return 2;
+    if (!matches) return 2;
   } else if (!trustedChild) {
     return 2;
   }
