@@ -1,0 +1,19 @@
+bin/fm-wake-lib.sh
+  s_b238e4c8835b69::t_423fa656005b58 150-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92a313e4befa2f7926fd58005f66ae3aa9698f86",
+  "prompts": {},
+  "sessions": {
+    "s_b238e4c8835b69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a1fb57d-3f80-4dc6-8b89-8b05d517c31b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
