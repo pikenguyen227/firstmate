@@ -1,0 +1,17 @@
+=== [base 372f905] lab=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.7xWJqi
+--- arm watcher under TZ=Asia/Ho_Chi_Minh (GMT+7)
+watcher: started pid=38192 (beacon fresh)
+lock pid=38192
+lock pid-identity: Wed Oct 21 17:58:07 2026     bash /tmp/fmtz-driver/base/bin/fm-watch.sh
+ps lstart under GMT+7: Wed Oct 21 17:58:07 2026    
+ps lstart under KST  : Wed Oct 21 19:58:07 2026    
+--- under TZ=Asia/Seoul (KST): re-arm (expect attach to live watcher)
+watcher: already running pid 38192
+--- under TZ=Asia/Seoul: lock-matches-pid via lock library
+NO MATCH: live watcher NOT recognised
+/tmp/fmtz-driver/drive.sh: line 8: 39496 Terminated: 15          run TZ=Asia/Seoul "$BIN/fm-watch-arm.sh" > "$LAB/arm2.out" 2>&1
+--- under TZ=Asia/Seoul: fm-guard.sh
+(guard exit: 0)
+--- teardown
+/tmp/fmtz-driver/drive.sh: line 31: 37869 Terminated: 15          run TZ=Asia/Ho_Chi_Minh "$BIN/fm-watch-arm.sh" > "$LAB/arm1.out" 2>&1
+lab removed

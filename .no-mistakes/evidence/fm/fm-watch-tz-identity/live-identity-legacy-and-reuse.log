@@ -1,0 +1,9 @@
+=== upgrade: legacy ambient record written by base build (GMT+7), checked by fixed lib
+legacy record: Wed Oct 21 17:58:33 2026     sleep 300
+fixed lib, same zone=Asia/Ho_Chi_Minh, live owner pid=86999 -> status 0
+fixed lib, same zone=Asia/Seoul, live owner pid=86999 -> status 1
+=== reuse guard: UTC record of pid 86999 compared against different live process pid 89080
+UTC record: Wed Oct 21 10:58:33 2026     sleep 300
+different process (later start) -> status 1 (1=mismatch)
+same process after tz change -> status 0 (0=match)
+exited process -> status 2 (2=unreadable/uncertain)
