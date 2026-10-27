@@ -57,7 +57,7 @@ At a limit, wait for approval with validation still required; never skip a check
 
 ## Second mates and fleet reviews
 
-Use the existing second-mate model pin; full permits second mates, balanced makes them optional when the benefit justifies the standing cost, and lean creates none without a concrete captain override.
+Use the existing second-mate model pin; full permits second mates, balanced makes them optional when the benefit justifies the standing cost, and lean, or a selected subscription plan whose `bin/fm-strategy.sh status` reports second mates off by default, creates none without a concrete captain override.
 Selecting lean does not retire running second mates or abandon their tasks; report that the one-coordinator target requires their ordinary approved retirement after work finishes.
 Full permits proactive fleet reviews of authorized work and re-evaluation of queued work.
 Balanced and lean do not start extra discretionary fleet audits or review sweeps; required heartbeat reconciliation, stale-worker recovery, safety scans, and queue bookkeeping still run through their existing owners.

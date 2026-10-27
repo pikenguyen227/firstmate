@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Select a token and autonomy strategy (full, balanced, or lean) for this firstmate home.
-# Usage: fm-strategy.sh list
-#        fm-strategy.sh show [<mode>] [--providers <set>]
-#        fm-strategy.sh set <mode> [--providers <set>] [--dry-run] [--yes]
+# Usage: fm-strategy.sh list [--plans <plans>]
+#        fm-strategy.sh show [<mode>] [--providers <set>] [--plans <plans>]
+#        fm-strategy.sh set <mode> [--providers <set>] [--plans <plans>] [--dry-run] [--yes]
 #        fm-strategy.sh status
 #
 # A strategy is a named bundle of settings Firstmate already has. Each mode is a
@@ -20,6 +20,20 @@
 # and a rule left with no profile (the other provider's requested-worker or
 # requested-model rule) is dropped with it.
 #
+# Plans: <plans> is claude=<plan>, codex=<plan>, or both comma-separated, naming
+# the subscription plan behind each provider, or none to clear a recorded set.
+# Plan names and profiles are data in bin/strategies/plans.json. A named plan
+# lays its profile for the mode over the template for that provider only: the
+# coordinator, second-mate pin, validation, the light, standard, hard, and
+# requested-worker routes, the default, the light and standard floors (the
+# plan's own, or none when it has none), and the Claude requested-model why
+# text. A plan that turns second mates off does so when its provider is the one
+# new second mates launch on. Without --plans, show, set, and status reuse the
+# plans recorded in config/strategy for providers still in the set; with no
+# plan every file renders exactly as the template does. A plan for a provider
+# outside the set is a usage error. show and set warn, never refuse, when full
+# is chosen on a plan marked full_warning, and list marks full for it.
+#
 # Files set writes, each atomically (temp file in config/ then rename, with the
 # earlier renames restored if a later one fails):
 #   config/crew-dispatch.json  worker routing. Rules the strategy manages carry a
@@ -33,7 +47,8 @@
 #   config/secondmate-harness  "<harness> <model> <effort>" for new second mates:
 #                              the Claude pin when claude is in the provider set,
 #                              else the Codex pin; comment lines are kept.
-#   config/strategy            mode=, providers=, autonomy= lines (not inherited).
+#   config/strategy            mode=, providers=, autonomy= lines, and plans=
+#                              when a plan is named (not inherited).
 #   config/fresh-start.json    enabled from the mode; all trigger tuning is kept.
 # The coordinator applies the session policy through the strategy-autonomy skill;
 # this command never launches or stops quiet supervision or second mates.
@@ -52,7 +67,7 @@
 # to apply by hand; this script never edits the user's global Claude, Codex, or
 # no-mistakes settings, any launcher, hook trust, or permissions.
 #
-# status prints the selected mode and provider set, drift of each managed file
+# status prints the selected mode, provider set, and plans, drift of each managed file
 # from what that mode renders today, custom rules whose routes do not name an
 # explicit model and effort, recorded second mates a mode without second mates
 # leaves running, and the manual settings above.
@@ -70,6 +85,7 @@ FM_HOME="${FM_HOME:-${FM_ROOT_OVERRIDE:-$FM_ROOT}}"
 CONFIG="${FM_CONFIG_OVERRIDE:-$FM_HOME/config}"
 STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 TEMPLATES="$SCRIPT_DIR/strategies"
+PLANS_FILE="$TEMPLATES/plans.json"
 MODES="full balanced lean"
 
 # shellcheck source=bin/fm-codex-launch-lib.sh
@@ -82,13 +98,16 @@ FRESH_START="$CONFIG/fresh-start.json"
 
 usage() {
   cat <<'EOF'
-Usage: fm-strategy.sh list
-       fm-strategy.sh show [<mode>] [--providers claude|codex|claude,codex]
-       fm-strategy.sh set <mode> [--providers claude|codex|claude,codex] [--dry-run] [--yes]
+Usage: fm-strategy.sh list [--plans <plans>]
+       fm-strategy.sh show [<mode>] [--providers claude|codex|claude,codex] [--plans <plans>]
+       fm-strategy.sh set <mode> [--providers claude|codex|claude,codex] [--plans <plans>] [--dry-run] [--yes]
        fm-strategy.sh status
 
-Modes: full, balanced, lean. See docs/configuration.md "Token strategies".
+Modes: full, balanced, lean.
+Plans: none, or claude=<plan>,codex=<plan> (either or both), where <plan> is
 EOF
+  printf '  claude: %s\n  codex: %s\n' "$(plan_names claude)" "$(plan_names codex)"
+  echo 'See docs/configuration.md "Token strategies".'
 }
 
 die() { echo "fm-strategy: $*" >&2; exit 1; }
@@ -165,6 +184,164 @@ providers_json() {
   jq -cn --arg p "$1" '$p | split(",")'
 }
 
+plan_names() {  # <harness>
+  jq -r --arg h "$1" '.[$h] | keys_unsorted | join(", ")' "$PLANS_FILE"
+}
+
+# plan_field <harness> <plan> <field>: label and full_warning belong to the
+# named plan itself; every other field follows same_as to the shared profile.
+plan_field() {
+  jq -r --arg h "$1" --arg p "$2" --arg f "$3" '
+    .[$h] as $v | $v[$p] as $e
+    | if $f == "label" or $f == "full_warning" then ($e[$f] // false)
+      else ($v[$e.same_as // $p][$f] // "") end
+  ' "$PLANS_FILE"
+}
+
+# Normalize a plan list to "claude=<plan>", "codex=<plan>", or both in that
+# order; "none" normalizes to the empty set. Fail on anything else.
+normalize_plans() {
+  local raw=${1//[[:space:]]/} item h p claude='' codex='' out=''
+  local -a items=()
+  if [ "$raw" = none ]; then
+    printf '\n'
+    return 0
+  fi
+  IFS=',' read -r -a items <<<"$raw"
+  for item in "${items[@]}"; do
+    [ -n "$item" ] || continue
+    case "$item" in *=*) ;; *) return 1 ;; esac
+    h=${item%%=*}
+    p=${item#*=}
+    case "$h" in claude | codex) ;; *) return 1 ;; esac
+    jq -e --arg h "$h" --arg p "$p" '.[$h] | has($p)' "$PLANS_FILE" >/dev/null 2>&1 || return 1
+    case "$h" in
+      claude) [ -z "$claude" ] || return 1; claude=$p ;;
+      codex) [ -z "$codex" ] || return 1; codex=$p ;;
+    esac
+  done
+  [ -z "$claude" ] || out=claude=$claude
+  if [ -n "$codex" ]; then
+    out=${out:+$out,}codex=$codex
+  fi
+  [ -n "$out" ] || return 1
+  printf '%s\n' "$out"
+}
+
+plans_usage() {
+  printf -- '--plans must be none or claude=<plan>,codex=<plan> (claude: %s; codex: %s); got '"'"'%s'"'" \
+    "$(plan_names claude)" "$(plan_names codex)" "$1"
+}
+
+# resolve_plans <explicit-or-empty> [<providers>]: sets PLANS. An explicit set
+# must name only providers in <providers>; a recorded set keeps only those.
+# Without <providers> (list), every named plan is kept.
+resolve_plans() {
+  local explicit=$1 providers=${2:-claude,codex} recorded normalized item kept=
+  PLANS=
+  if [ -n "$explicit" ]; then
+    PLANS=$(normalize_plans "$explicit") || usage_die "$(plans_usage "$explicit")"
+    for item in ${PLANS//,/ }; do
+      case ",$providers," in
+        *",${item%%=*},"*) ;;
+        *) usage_die "--plans names a ${item%%=*} plan, but ${item%%=*} is not in the provider set ($providers)" ;;
+      esac
+    done
+    return 0
+  fi
+  recorded=$(selection_get plans)
+  [ -n "$recorded" ] || return 0
+  normalized=$(normalize_plans "$recorded") || die "config/strategy names unknown plans '$recorded'; rerun set with --plans"
+  for item in ${normalized//,/ }; do
+    case ",$providers," in *",${item%%=*},"*) kept=${kept:+$kept,}$item ;; esac
+  done
+  PLANS=$kept
+}
+
+plan_of() {  # <harness> <plans>: that harness's plan name, or nothing
+  local item
+  for item in ${2//,/ }; do
+    [ "${item%%=*}" != "$1" ] || printf '%s\n' "${item#*=}"
+  done
+}
+
+plans_json() {
+  jq -cn --arg p "$1" '$p | split(",") | map(split("=") | {key: .[0], value: .[1]}) | from_entries'
+}
+
+# effective_template <mode> <providers> <plans>: print the mode template with
+# each named plan's profile laid over its provider; with no plan, the template.
+effective_template() {
+  local mode=$1 providers=$2 plans=$3
+  if [ -z "$plans" ]; then
+    cat "$(template "$mode")"
+    return
+  fi
+  jq --arg mode "$mode" --arg mate "$(mate_harness "$providers")" \
+    --argjson sel "$(plans_json "$plans")" --slurpfile plans "$PLANS_FILE" '
+    $plans[0] as $P
+    | def profile($s): ($s | split(" ")) as $w | {model: $w[0], effort: $w[1]};
+      def resolved($h; $name): $P[$h][$name] as $e | $P[$h][$e.same_as // $name];
+    reduce ($sel | to_entries[]) as $e (.;
+      $e.key as $h | resolved($h; $e.value) as $p | $p.modes[$mode] as $m
+      | .coordinator[$h] = profile($m.coordinator)
+      | .validation[$h] = profile($m.validation)
+      | .secondmates[$h] = profile($m.secondmates)
+      | (if $h == $mate and $m.secondmates_allowed == false then .secondmates.allowed = false else . end)
+      | .dispatch.rules |= map(
+          .strategy as $s
+          | if $s == "light" or $s == "standard" or $s == "hard" then
+              .use |= map(if .harness == $h then
+                {harness: $h} + profile($m[$s])
+                + (($p.floors // {})[$s] as $f | if $f == null then {} else {floor: {scope: "all_models", min_percent: $f}} end)
+              else . end)
+            elif $s == "\($h)-requested" then .use = {harness: $h} + profile($m.requested)
+            elif $s == "\($h)-model-requested" and $p.model_requested_why != null then .why = $p.model_requested_why
+            else . end)
+      | .dispatch.default |= map(if .harness == $h then {harness: $h} + profile($m.standard) else . end)
+    )
+  ' "$(template "$mode")"
+}
+
+# full_warnings <mode> <plans>: one stderr warning per named plan that full is
+# not recommended on. A warning, never a refusal.
+full_warnings() {
+  local item
+  [ "$1" = full ] || return 0
+  for item in ${2//,/ }; do
+    [ "$(plan_field "${item%%=*}" "${item#*=}" full_warning)" = true ] || continue
+    printf 'warning: full is not recommended on %s (%s): automatic starts, fresh starts, and fleet reviews reach its five-hour and weekly limits first; lean or balanced fits it better\n' \
+      "$item" "$(plan_field "${item%%=*}" "${item#*=}" label)" >&2
+  done
+}
+
+# suggest_primary <plans>: which provider should host the primary coordinator
+# and no-mistakes validation when both providers have a plan.
+suggest_primary() {
+  local c x cp xp
+  c=$(plan_of claude "$1")
+  x=$(plan_of codex "$1")
+  [ -n "$c" ] && [ -n "$x" ] || return 0
+  cp=$(plan_field claude "$c" pool)
+  xp=$(plan_field codex "$x" pool)
+  printf 'suggested primary (coordinator and no-mistakes validation): '
+  if [ "$cp" = api ] && [ "$xp" = api ]; then
+    echo "either; both bill per token, so lean fits best"
+  elif [ "$cp" = api ]; then
+    echo "codex; the Claude API key is pay-per-token overflow"
+  elif [ "$xp" = api ]; then
+    echo "claude; the Codex API key is pay-per-token overflow"
+  elif [ "$cp" = small ] && [ "$xp" = large ]; then
+    echo "codex; its pool is the larger one, and Claude takes light and hard work as a second pool"
+  elif [ "$cp" = small ]; then
+    echo "claude, with Codex mainly for light work; both pools are small, so lean or balanced fits"
+  elif [ "$xp" = large ]; then
+    echo "claude; both pools are large, so switch to codex if it has more headroom"
+  else
+    echo "claude; Codex mainly takes light and requested work"
+  fi
+}
+
 # Every "when" text any template manages, mapped to its slot, so a rule written
 # before the strategy markers existed is still recognized.
 known_whens_json() {
@@ -174,9 +351,10 @@ known_whens_json() {
 }
 
 # render_dispatch <mode> <providers> <current-file-or-empty>: print the new
-# config/crew-dispatch.json.
+# config/crew-dispatch.json under the plans in PLANS.
 render_dispatch() {
-  local mode=$1 providers=$2 current=$3 cur_json
+  local mode=$1 providers=$2 current=$3 cur_json tpl
+  tpl=$(effective_template "$mode" "$providers" "$PLANS") || die "cannot render the $mode template"
   if [ -n "$current" ] && [ -f "$current" ]; then
     cur_json=$(jq -c . "$current" 2>/dev/null) || die "config/crew-dispatch.json is not valid JSON; fix or remove it before selecting a strategy"
     [ "$(jq -r 'type' <<<"$cur_json")" = object ] || die "config/crew-dispatch.json is not a JSON object; fix or remove it before selecting a strategy"
@@ -202,7 +380,7 @@ render_dispatch() {
         | ($prior + $t)] as $managed
     | [$old[] | select(slot(.) == null)] as $custom
     | $c + {rules: ($managed + $custom), default: filter_use(.dispatch.default)}
-  ' "$(template "$mode")"
+  ' <<<"$tpl"
 }
 
 # The harness a new second mate launches on: Claude when available.
@@ -216,12 +394,14 @@ render_secondmate_harness() {
   if [ -f "$SM_HARNESS" ]; then
     grep -E '^[[:space:]]*(#|$)' "$SM_HARNESS" || true
   fi
-  jq -r --arg h "$h" '"\($h) \(.secondmates[$h].model) \(.secondmates[$h].effort)"' "$(template "$mode")"
+  effective_template "$mode" "$providers" "$PLANS" \
+    | jq -r --arg h "$h" '"\($h) \(.secondmates[$h].model) \(.secondmates[$h].effort)"'
 }
 
-render_selection() {
+render_selection() {  # <mode> <providers> <plans>
   printf '# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".\n'
   printf 'mode=%s\nproviders=%s\nautonomy=%s\n' "$1" "$2" "$(jq -r .autonomy.level "$(template "$1")")"
+  [ -z "$3" ] || printf 'plans=%s\n' "$3"
 }
 
 # Preserve the fresh-start owner's optional trigger settings; it validates the
@@ -256,73 +436,108 @@ print_autonomy() {
   echo "  coordinator: load strategy-autonomy to apply the session policy"
 }
 
-# print_resolved <mode> <providers>: the per-role result.
+# print_resolved <mode> <providers>: the per-role result under PLANS.
 print_resolved() {
-  local mode=$1 providers=$2 tpl dispatch p mate_h
-  tpl=$(template "$mode")
+  local mode=$1 providers=$2 tpl dispatch p item mate_h mate_pin
+  tpl=$(effective_template "$mode" "$providers" "$PLANS") || die "cannot render the $mode template"
   dispatch=$(render_dispatch "$mode" "$providers" "$DISPATCH")
   printf 'strategy: %s (providers: %s, %s)\n' "$mode" "$providers" "$PROVIDERS_SOURCE"
-  printf '  %s\n' "$(jq -r .summary "$tpl")"
+  printf '  %s\n' "$(jq -r .summary <<<"$tpl")"
+  if [ -n "$PLANS" ]; then
+    printf 'plans:'
+    for item in ${PLANS//,/ }; do
+      printf ' %s (%s)' "$item" "$(plan_field "${item%%=*}" "${item#*=}" label)"
+    done
+    echo "; each plan's profile replaces the template's models, efforts, and floors for its provider"
+    full_warnings "$mode" "$PLANS"
+  fi
   echo "primary coordinator (set where you start the primary; this tool never edits launchers or global settings):"
   for p in ${providers//,/ }; do
     case "$p" in
       claude)
-        jq -r '.coordinator.claude | "  claude: \(.model) effort \(.effort)\n    start with: claude --model \(.model) --effort \(.effort)"' "$tpl"
+        jq -r '.coordinator.claude | "  claude: \(.model) effort \(.effort)\n    start with: claude --model \(.model) --effort \(.effort)"' <<<"$tpl"
         ;;
       codex)
-        jq -r --arg doc "$FM_CODEX_PROJECT_DOC_MAX_BYTES" '.coordinator.codex | "  codex: \(.model) effort \(.effort)\n    start with: codex -m \(.model) -c model_reasoning_effort=\"\(.effort)\" -c project_doc_max_bytes=\($doc)"' "$tpl"
+        jq -r --arg doc "$FM_CODEX_PROJECT_DOC_MAX_BYTES" '.coordinator.codex | "  codex: \(.model) effort \(.effort)\n    start with: codex -m \(.model) -c model_reasoning_effort=\"\(.effort)\" -c project_doc_max_bytes=\($doc)"' <<<"$tpl"
         ;;
     esac
   done
+  [ "$providers" != claude,codex ] || suggest_primary "$PLANS"
   print_autonomy "$mode"
   mate_h=$(mate_harness "$providers")
-  if [ "$(jq -r .secondmates.allowed "$tpl")" = true ]; then
-    printf 'second mates: allowed (optional in balanced); new ones launch as %s (config/secondmate-harness)\n' \
-      "$(jq -r --arg h "$mate_h" '.secondmates[$h] | "\($h) \(.model) \(.effort)"' "$tpl")"
+  mate_pin=$(jq -r --arg h "$mate_h" '.secondmates[$h] | "\($h) \(.model) \(.effort)"' <<<"$tpl")
+  if [ "$(jq -r .secondmates.allowed <<<"$tpl")" != true ]; then
+    printf 'second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as %s (config/secondmate-harness)\n' "$mate_pin"
+  elif [ "$mode" = balanced ]; then
+    printf 'second mates: allowed when the benefit justifies the standing cost; new ones launch as %s (config/secondmate-harness)\n' "$mate_pin"
   else
-    printf 'second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as %s (config/secondmate-harness)\n' \
-      "$(jq -r --arg h "$mate_h" '.secondmates[$h] | "\($h) \(.model) \(.effort)"' "$tpl")"
+    printf 'second mates: allowed; new ones launch as %s (config/secondmate-harness)\n' "$mate_pin"
   fi
   echo "worker tiers (config/crew-dispatch.json, one line per candidate):"
   jq -r '
     def profiles($u): if ($u | type) == "array" then $u else [$u] end;
     def slotname($r): ($r.strategy // "custom");
     def txt($p): "\($p.harness) \($p.model // "(harness default model)") \($p.effort // "(harness default effort)")";
-    (.rules // [])[] as $r | profiles($r.use)[] | "  \(slotname($r)): \(txt(.))",
+    def floor($p): if $p.floor then ", floor \($p.floor.min_percent)%" else "" end;
+    (.rules // [])[] as $r | profiles($r.use)[] | "  \(slotname($r)): \(txt(.))\(floor(.))",
     (profiles(.default // [])[] | "  default: \(txt(.))")
   ' <<<"$dispatch"
+  if grep -q '"gpt-6.1-terra"' <<<"$dispatch"; then
+    echo "  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later"
+  fi
+  if grep -q '"gpt-6.1-sol"' <<<"$dispatch"; then
+    echo "  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback"
+  fi
   echo "validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):"
   echo "  agent_config:"
   for p in ${providers//,/ }; do
-    jq -r --arg p "$p" '.validation[$p] | "    \($p):\n      model: \(.model)\n      effort: \(.effort)"' "$tpl"
+    jq -r --arg p "$p" '.validation[$p] | "    \($p):\n      model: \(.model)\n      effort: \(.effort)"' <<<"$tpl"
   done
-  case "$(jq -r .present_mode "$tpl")" in
+  case "$(jq -r .present_mode <<<"$tpl")" in
     quiet) echo "while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)" ;;
     *) echo "while the captain is present: normal supervision" ;;
   esac
-  echo "unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem"
+  echo "unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem"
 }
 
 cmd_list() {
-  local selected m marker
+  local selected m marker item plans_arg=
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --plans) [ "$#" -ge 2 ] || usage_die "--plans needs a value"; plans_arg=$2; shift ;;
+      --plans=*) plans_arg=${1#--plans=} ;;
+      *) usage_die "list takes only --plans" ;;
+    esac
+    shift
+  done
+  resolve_plans "$plans_arg"
   selected=$(selection_get mode)
   for m in $MODES; do
     marker=
     [ "$m" = "$selected" ] && marker=' (selected)'
+    if [ "$m" = full ]; then
+      for item in ${PLANS//,/ }; do
+        [ "$(plan_field "${item%%=*}" "${item#*=}" full_warning)" != true ] || marker="$marker (not recommended on $item)"
+      done
+    fi
     printf '%-9s %s%s\n' "$m" "$(jq -r .summary "$(template "$m")")" "$marker"
   done
+  [ -z "$PLANS" ] || echo "plans: $PLANS; show <mode> prints each role under them"
 }
 
 parse_mode_flags() {
-  # Sets MODE_ARG, PROVIDERS_ARG, DRY_RUN, ASSUME_YES from "$@".
+  # Sets MODE_ARG, PROVIDERS_ARG, PLANS_ARG, DRY_RUN, ASSUME_YES from "$@".
   MODE_ARG=
   PROVIDERS_ARG=
+  PLANS_ARG=
   DRY_RUN=0
   ASSUME_YES=0
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --providers) [ "$#" -ge 2 ] || usage_die "--providers needs a value"; PROVIDERS_ARG=$2; shift ;;
       --providers=*) PROVIDERS_ARG=${1#--providers=} ;;
+      --plans) [ "$#" -ge 2 ] || usage_die "--plans needs a value"; PLANS_ARG=$2; shift ;;
+      --plans=*) PLANS_ARG=${1#--plans=}; [ -n "$PLANS_ARG" ] || usage_die "--plans needs a value" ;;
       --dry-run) DRY_RUN=1 ;;
       --yes | -y) ASSUME_YES=1 ;;
       -*) usage_die "unknown flag $1" ;;
@@ -338,11 +553,12 @@ parse_mode_flags() {
 
 cmd_show() {
   parse_mode_flags "$@"
-  [ "$DRY_RUN" -eq 0 ] && [ "$ASSUME_YES" -eq 0 ] || usage_die "show takes only a mode and --providers"
+  [ "$DRY_RUN" -eq 0 ] && [ "$ASSUME_YES" -eq 0 ] || usage_die "show takes only a mode, --providers, and --plans"
   [ -n "$MODE_ARG" ] || MODE_ARG=$(selection_get mode)
   [ -n "$MODE_ARG" ] || usage_die "no strategy selected yet; name a mode (full, balanced, or lean)"
   valid_mode "$MODE_ARG" || die "config/strategy names unknown mode '$MODE_ARG'"
   resolve_providers "$PROVIDERS_ARG"
+  resolve_plans "$PLANS_ARG" "$PROVIDERS"
   print_resolved "$MODE_ARG" "$PROVIDERS"
 }
 
@@ -373,6 +589,7 @@ cmd_set() {
     die "this is a second mate home, which inherits its routing from the primary; select a strategy in the primary home"
   fi
   resolve_providers "$PROVIDERS_ARG"
+  resolve_plans "$PLANS_ARG" "$PROVIDERS"
   mkdir -p "$CONFIG" || die "cannot create $CONFIG"
   for f in "$DISPATCH" "$SM_HARNESS" "$SELECTION" "$FRESH_START"; do check_target "$f"; done
 
@@ -381,7 +598,7 @@ cmd_set() {
   trap "rm -rf '$tmpdir'" EXIT
   render_dispatch "$mode" "$PROVIDERS" "$DISPATCH" > "$tmpdir/crew-dispatch.json" || exit 1
   render_secondmate_harness "$mode" "$PROVIDERS" > "$tmpdir/secondmate-harness" || exit 1
-  render_selection "$mode" "$PROVIDERS" > "$tmpdir/strategy" || exit 1
+  render_selection "$mode" "$PROVIDERS" "$PLANS" > "$tmpdir/strategy" || exit 1
 
   render_fresh_start "$mode" > "$tmpdir/fresh-start.json" || exit 1
   FM_HOME="$FM_HOME" FM_CONFIG_OVERRIDE="$tmpdir" "$SCRIPT_DIR/fm-fresh-start.sh" validate || exit 1
@@ -461,12 +678,17 @@ cmd_status() {
   fi
   valid_mode "$mode" || die "config/strategy names unknown mode '$mode'"
   resolve_providers ""
+  resolve_plans "" "$PROVIDERS"
   printf 'strategy: %s (providers: %s)\n' "$mode" "$PROVIDERS"
   printf '  %s\n' "$(jq -r .summary "$(template "$mode")")"
+  [ -z "$PLANS" ] || printf 'plans: %s\n' "$PLANS"
+  if [ "$(effective_template "$mode" "$PROVIDERS" "$PLANS" | jq -r .secondmates.allowed)" != true ]; then
+    echo "second mates: off by default; create one only when the captain asks"
+  fi
 
   print_autonomy "$mode"
   echo "drift:"
-  if ! cmp -s "$SELECTION" <(render_selection "$mode" "$PROVIDERS"); then
+  if ! cmp -s "$SELECTION" <(render_selection "$mode" "$PROVIDERS" "$PLANS"); then
     echo "  config/strategy differs from $mode (autonomy selection)"; drift=1
   fi
   if [ ! -f "$FRESH_START" ] || ! FM_HOME="$FM_HOME" FM_CONFIG_OVERRIDE="$CONFIG" "$SCRIPT_DIR/fm-fresh-start.sh" validate >/dev/null 2>&1; then
@@ -516,10 +738,10 @@ cmd_status() {
   for h in ${PROVIDERS//,/ }; do
     command -v "$h" >/dev/null 2>&1 || echo "  $h is in the provider set but not on PATH"
   done
-  if [ "$(jq -r .secondmates.allowed "$(template "$mode")")" != true ]; then
+  if [ "$(effective_template "$mode" "$PROVIDERS" "$PLANS" | jq -r .secondmates.allowed)" != true ]; then
     recorded_mates=$(grep -l '^kind=secondmate$' "$STATE"/*.meta 2>/dev/null | wc -l | tr -d ' ')
     [ "$recorded_mates" = 0 ] \
-      || echo "  $mode turns second mates off by default, but $recorded_mates recorded second mate(s) keep running until the captain retires them"
+      || echo "  $mode${PLANS:+ on $PLANS} turns second mates off by default, but $recorded_mates recorded second mate(s) keep running until the captain retires them"
   fi
   echo "  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show $mode"
   if [ "$(jq -r .present_mode "$(template "$mode")")" = quiet ]; then
@@ -528,7 +750,7 @@ cmd_status() {
 }
 
 case "${1:-}" in
-  list) shift; [ "$#" -eq 0 ] || usage_die "list takes no arguments"; cmd_list ;;
+  list) shift; cmd_list "$@" ;;
   show) shift; cmd_show "$@" ;;
   set) shift; cmd_set "$@" ;;
   status) shift; cmd_status "$@" ;;

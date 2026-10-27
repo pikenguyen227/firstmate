@@ -10,9 +10,10 @@
 #      harness, model, and effort from the declared providers only, keeps one
 #      single-profile requested-model rule per declared provider and none for a
 #      missing one, and pins new second mates on an available provider.
-#   2. Mode contents: full keeps today's tiers, balanced and lean move the hard
-#      Codex tier from Astra to Sol, lean turns second mates off and requests
-#      /quiet, and every Codex coordinator runs Sol at high effort.
+#   2. Mode contents: full routes hard Codex work to Astra at medium, balanced
+#      and lean move it to 6.1 Sol high, light Codex work runs Luna high, lean
+#      turns second mates off and requests /quiet, and every Codex coordinator
+#      runs 6.1 Sol at high effort.
 #   3. set on an older unmarked file pins the requested-worker rules, adds the
 #      requested-model rules, keeps custom rules, custom top-level keys, and
 #      extra keys on managed rules, and is idempotent.
@@ -30,6 +31,13 @@
 #   9. In a Codex-only home a brief naming a Claude model is offered no
 #      requested-model rule, so bin/fm-dispatch-resolve.sh (with Jev and
 #      quota-axi stubbed) resolves it through the tier rules.
+#  10. Plans: every plan in every mode and provider shape resolves explicitly;
+#      the plan profiles, floors, equivalences, Terra placement, second-mate
+#      switch, and Fable why text follow the approved matrix; no plan leaves the
+#      template output unchanged; Codex and API plans write no floor.
+#  11. Plans are recorded, reused, reported by status, narrowed with the
+#      provider set, and cleared with none; full warns without refusing on the
+#      small plans; bad plan input is a usage error.
 set -u
 
 # shellcheck source=tests/lib.sh
@@ -103,8 +111,8 @@ test_every_mode_and_shape_is_explicit() {
       case "$shape" in
         codex)
           assert_not_contains "$(profiles "$home")" "claude-requested" "$mode: a Codex-only home keeps no Claude-requested rule"
-          expected_mate="codex gpt-6-sol high"
-          expected_named="codex-model-requested codex gpt-6-sol high"
+          expected_mate="codex gpt-6.1-sol medium"
+          expected_named="codex-model-requested codex gpt-6.1-sol high"
           ;;
         claude)
           assert_not_contains "$(profiles "$home")" "codex-requested" "$mode: a Claude-only home keeps no Codex-requested rule"
@@ -113,7 +121,7 @@ test_every_mode_and_shape_is_explicit() {
           ;;
         *)
           expected_mate="claude claude-opus-5-5 medium"
-          expected_named="claude-model-requested claude claude-opus-5-5 high"$'\n'"codex-model-requested codex gpt-6-sol high"
+          expected_named="claude-model-requested claude claude-opus-5-5 high"$'\n'"codex-model-requested codex gpt-6.1-sol high"
           ;;
       esac
       assert_equals "$expected_named" "$(profiles "$home" | grep -E '^(claude|codex)-model-requested ')" \
@@ -129,35 +137,37 @@ test_mode_contents() {
   local home out
   home=$(new_home contents)
   out=$(strat "$home" show full --providers claude,codex)
-  assert_contains "$out" "hard: codex gpt-6-astra high" "full keeps today's hard Codex tier"
+  assert_contains "$out" "hard: codex gpt-6-astra medium" "full routes hard Codex work to Astra at medium effort"
   assert_contains "$out" "light: claude claude-sonnet-5-5 low" "full keeps today's light Claude tier"
-  assert_contains "$out" "codex-requested: codex gpt-6-sol high" "a requested Codex worker is pinned to Sol high"
+  assert_contains "$out" "codex-requested: codex gpt-6.1-sol high" "a requested Codex worker is pinned to 6.1 Sol high"
+  assert_contains "$out" "light: codex gpt-6-luna high" "light Codex work runs Luna at high effort"
   assert_contains "$out" "claude: claude-opus-5-5 effort high" "the Claude coordinator stays on Opus"
-  assert_contains "$out" "codex -m gpt-6-sol -c model_reasoning_effort=\"high\" -c project_doc_max_bytes=" \
-    "a Codex coordinator runs Sol at high effort with the full contract loaded"
-  assert_contains "$out" "second mates: allowed" "full allows second mates"
+  assert_contains "$out" "codex -m gpt-6.1-sol -c model_reasoning_effort=\"high\" -c project_doc_max_bytes=" \
+    "a Codex coordinator runs 6.1 Sol at high effort with the full contract loaded"
+  assert_contains "$out" "second mates: allowed; new ones launch as claude claude-opus-5-5 medium" "full allows second mates"
   assert_contains "$out" "normal supervision" "full keeps normal supervision"
   for mode in balanced lean; do
     out=$(strat "$home" show "$mode" --providers claude,codex)
-    assert_contains "$out" "hard: codex gpt-6-sol high" "$mode moves the hard Codex tier to Sol high"
+    assert_contains "$out" "hard: codex gpt-6.1-sol high" "$mode moves the hard Codex tier to 6.1 Sol high"
     assert_not_contains "$out" "gpt-6-astra" "$mode never routes to Astra"
     assert_contains "$out" "hard: claude claude-opus-5-5 high" "$mode keeps the hard Claude tier on Opus high"
     assert_contains "$out" "claude: claude-opus-5-5 effort high" "$mode keeps an Opus coordinator"
-    assert_contains "$out" "codex: gpt-6-sol effort high" "$mode runs a Codex coordinator on Sol high"
+    assert_contains "$out" "codex: gpt-6.1-sol effort high" "$mode runs a Codex coordinator on 6.1 Sol high"
     assert_not_contains "$out" "claude-sonnet-5-5 effort" "$mode never runs a Sonnet coordinator"
   done
   out=$(strat "$home" show lean --providers codex)
-  assert_contains "$out" "light: codex gpt-6-luna medium" "lean's light Codex tier is Luna"
-  assert_contains "$out" "standard: codex gpt-6-sol medium" "lean's standard Codex tier is Sol medium"
+  assert_contains "$out" "light: codex gpt-6-luna high" "lean's light Codex tier is Luna high"
+  assert_contains "$out" "standard: codex gpt-6.1-sol medium" "lean's standard Codex tier is 6.1 Sol medium"
+  assert_not_contains "$out" "gpt-6.1-terra" "without a plan nothing routes to Terra"
   assert_contains "$out" "second mates: off by default" "lean turns second mates off"
   assert_contains "$out" "/quiet requested" "lean requests /quiet while present"
   assert_not_contains "$out" "  claude:" "a Codex-only show prints no Claude coordinator or validation"
   out=$(strat "$home" show balanced --providers claude)
-  assert_contains "$out" "second mates: allowed" "balanced allows second mates"
+  assert_contains "$out" "second mates: allowed when the benefit justifies the standing cost" "balanced allows second mates when they earn their cost"
   assert_not_contains "$out" "codex" "a Claude-only show prints nothing for Codex"
   for mode in full balanced lean; do
     out=$(strat "$home" show "$mode" --providers claude,codex)
-    assert_contains "$out" "unchanged by every mode: delivery mode, yolo and merge authority, ask-user authority" \
+    assert_contains "$out" "unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority" \
       "$mode states the unchanged safety floor"
   done
   pass "mode contents follow the captain's decisions"
@@ -168,14 +178,14 @@ test_set_merges_legacy_file() {
   home=$(new_home legacy)
   write_legacy_dispatch "$home"
   out=$(strat "$home" set full --providers claude,codex --yes) || fail "set full failed: $out"
-  assert_contains "$out" '+        "model": "gpt-6-sol",' "the diff shows the new Codex pin"
+  assert_contains "$out" '+        "model": "gpt-6.1-sol",' "the diff shows the new Codex pin"
   assert_equals "kept by the captain" "$(jq -r '."$comment"' "$home/config/crew-dispatch.json")" "custom top-level key kept"
   assert_equals "captain" "$(jq -r '.rules[] | select(.strategy == "hard") | .approval' "$home/config/crew-dispatch.json")" \
     "an extra key on a managed rule is kept"
   assert_equals "Anything about the design system." "$(jq -r '.rules[-1].when' "$home/config/crew-dispatch.json")" \
     "the custom rule is kept after the managed rules"
   assert_equals 8 "$(jq '.rules | length' "$home/config/crew-dispatch.json")" "legacy rules are replaced, not duplicated"
-  assert_equals "codex gpt-6-sol high" \
+  assert_equals "codex gpt-6.1-sol high" \
     "$(jq -r '.rules[] | select(.strategy == "codex-requested") | .use | "\(.harness) \(.model) \(.effort)"' "$home/config/crew-dispatch.json")" \
     "the requested Codex rule is pinned"
   out=$(strat "$home" set full --yes)
@@ -316,7 +326,7 @@ SH
   assert_not_contains "$(cat "$home/request.json")" "exact Claude model" \
     "a Codex-only home offers the resolver no Claude-model rule to match"
   assert_contains "$out" "status: clear" "the brief resolves through a tier rule"
-  assert_contains "$out" "profile: --harness 'codex' --model 'gpt-6-sol' --effort 'high'" \
+  assert_contains "$out" "profile: --harness 'codex' --model 'gpt-6.1-sol' --effort 'high'" \
     "a Claude model named in a Codex-only home resolves to the hard Codex tier, not a requested-model rule"
   pass "a model from a missing provider matches no requested-model rule and falls to the tier rules"
 }
@@ -404,6 +414,209 @@ test_real_fresh_start_owner() {
   pass 'strategy uses real fresh-start registration without restarting agents'
 }
 
+# plan_profile <home> <slot> <harness>: "model effort floor" for one route.
+plan_profile() {
+  jq -r --arg s "$2" --arg h "$3" '
+    def profiles($u): if ($u | type) == "array" then $u else [$u] end;
+    [.rules[] | select(.strategy == $s) | profiles(.use)[] | select(.harness == $h)
+      | "\(.model) \(.effort) \(.floor.min_percent // "-")"] | first // "absent"
+  ' "$1/config/crew-dispatch.json"
+}
+
+test_plans_render_matrix() {
+  local mode cp xp home out bad
+  for mode in full balanced lean; do
+    for cp in pro max5x max20x api; do
+      for xp in plus pro api; do
+        home=$(new_home "plans-$mode-$cp-$xp")
+        out=$(strat "$home" set "$mode" --providers claude,codex --plans "claude=$cp,codex=$xp" --yes) \
+          || fail "set $mode claude=$cp,codex=$xp failed: $out"
+        bad=$(profiles "$home" | awk '$3 == "-" || $4 == "-" || $3 ~ /fable/')
+        [ -z "$bad" ] || fail "$mode claude=$cp,codex=$xp left an unpinned or Fable route: $bad"
+        bad=$(jq -r '.rules[] | select(.strategy == "light" or .strategy == "standard" or .strategy == "hard")
+          | select([.use[].harness] != ["claude", "codex"]) | .strategy' "$home/config/crew-dispatch.json")
+        [ -z "$bad" ] || fail "$mode claude=$cp,codex=$xp does not pair Claude and Codex in tier: $bad"
+        bad=$(jq -r '[.rules[].use, .default] | map(if type == "array" then .[] else . end)
+          | .[] | select(.harness == "codex" and .floor != null) | .model' "$home/config/crew-dispatch.json")
+        [ -z "$bad" ] || fail "$mode codex=$xp wrote a Codex floor on an unconfirmed quota scope: $bad"
+      done
+    done
+  done
+  for mode in full balanced lean; do
+    for cp in pro max5x max20x api; do
+      home=$(new_home "plans-claude-only-$mode-$cp")
+      strat "$home" set "$mode" --providers claude --plans "claude=$cp" --yes >/dev/null || fail "claude-only $mode $cp failed"
+      assert_not_contains "$(profiles "$home")" " codex " "a Claude-only $cp home routes nothing to Codex"
+    done
+    for xp in plus pro api; do
+      home=$(new_home "plans-codex-only-$mode-$xp")
+      strat "$home" set "$mode" --providers codex --plans "codex=$xp" --yes >/dev/null || fail "codex-only $mode $xp failed"
+      assert_not_contains "$(profiles "$home")" " claude " "a Codex-only $xp home routes nothing to Claude"
+    done
+  done
+  pass "every plan in every mode and provider shape resolves explicitly, pairs providers per tier, and floors no Codex route"
+}
+
+test_plan_profiles() {
+  local home out mode slot
+  home=$(new_home plan-pro-lean)
+  out=$(strat "$home" set lean --providers claude,codex --plans claude=pro,codex=plus --yes) || fail "pro/plus lean failed: $out"
+  assert_equals "claude-haiku-5-5 medium 30" "$(plan_profile "$home" light claude)" "Pro light work runs Haiku medium above a 30% floor"
+  assert_equals "claude-sonnet-5-5 medium 20" "$(plan_profile "$home" standard claude)" "Pro standard work runs Sonnet medium above a 20% floor"
+  assert_equals "claude-opus-5-5 high -" "$(plan_profile "$home" hard claude)" "Pro hard work stays on Opus high, unfloored"
+  assert_equals "claude-opus-5-5 medium -" "$(plan_profile "$home" claude-requested claude)" "a requested Claude worker on Pro lean runs Opus medium"
+  assert_equals "gpt-6-luna high -" "$(plan_profile "$home" light codex)" "Plus light work runs Luna high"
+  assert_equals "gpt-6.1-terra medium -" "$(plan_profile "$home" standard codex)" "Plus lean standard work runs Terra"
+  assert_equals "gpt-6.1-sol high -" "$(plan_profile "$home" hard codex)" "Plus hard work runs 6.1 Sol high"
+  assert_equals "gpt-6.1-sol medium -" "$(plan_profile "$home" codex-requested codex)" "a requested Codex worker on Plus lean runs 6.1 Sol medium"
+  assert_equals "claude claude-sonnet-5-5 medium" "$(grep -v '^#' "$home/config/secondmate-harness")" "Pro pins a created second mate to Sonnet medium"
+  out=$(strat "$home" show)
+  assert_contains "$out" "claude: claude-opus-5-5 effort medium" "the Pro coordinator runs Opus at medium"
+  assert_contains "$out" "codex: gpt-6.1-sol effort medium" "the Plus coordinator runs 6.1 Sol at medium"
+  assert_contains "$out" $'    claude:\n      model: claude-opus-5-5\n      effort: high' "Pro validation stays Opus high"
+  assert_contains "$out" $'    codex:\n      model: gpt-6.1-sol\n      effort: high' "Plus validation stays 6.1 Sol high"
+  assert_contains "$out" "second mates: off by default" "Pro lean turns second mates off"
+  assert_contains "$out" "gpt-6.1-terra needs Codex CLI 0.159.0 or later" "a Terra route names its Codex CLI minimum"
+  assert_contains "$(jq -r '.rules[] | select(.strategy == "claude-model-requested") | .why' "$home/config/crew-dispatch.json")" \
+    "bills usage credits" "the requested-model rule on Pro says a Fable request bills usage credits"
+
+  out=$(strat "$home" show balanced)
+  assert_contains "$out" "standard: codex gpt-6.1-terra medium" "Plus balanced standard work runs Terra"
+  assert_contains "$out" "second mates: off by default" "Pro balanced turns second mates off"
+  out=$(strat "$home" show full)
+  assert_contains "$out" "standard: codex gpt-6.1-sol medium" "Plus full standard work stays on 6.1 Sol"
+  assert_not_contains "$out" "gpt-6.1-terra" "Plus full never routes to Terra"
+  assert_contains "$out" "light: claude claude-sonnet-5-5 low, floor 30%" "Pro full light work runs Sonnet low above the Pro floor"
+  assert_contains "$out" "second mates: allowed; new ones launch as claude claude-sonnet-5-5 medium" "Pro full allows Sonnet second mates"
+
+  for mode in full balanced lean; do
+    out=$(strat "$home" show "$mode" --plans codex=pro)
+    assert_not_contains "$out" "gpt-6.1-terra" "Codex Pro $mode never routes to Terra"
+    case "$mode" in
+      full) assert_contains "$out" "hard: codex gpt-6-astra medium" "Codex Pro full runs hard work on Astra medium" ;;
+      *) assert_contains "$out" "hard: codex gpt-6.1-sol high" "Codex Pro $mode runs hard work on 6.1 Sol high" ;;
+    esac
+    out=$(strat "$home" show "$mode" --plans claude=max20x)
+    assert_contains "$out" "light: claude claude-sonnet-5-5 low, floor 15%" "Max 20x $mode lowers the light floor to 15%"
+    assert_contains "$out" "standard: claude claude-opus-5-5 medium, floor 5%" "Max 20x $mode lowers the standard floor to 5%"
+    out=$(strat "$home" show "$mode" --plans claude=api,codex=api)
+    assert_not_contains "$out" ", floor " "an API $mode home writes no floor"
+    case "$mode" in
+      lean) assert_contains "$out" "standard: codex gpt-6.1-terra medium" "a Codex API key in lean runs standard work on Terra" ;;
+      *) assert_not_contains "$out" "gpt-6.1-terra" "a Codex API key in $mode never routes to Terra" ;;
+    esac
+  done
+  out=$(strat "$home" show balanced --plans claude=max5x,codex=plus)
+  assert_contains "$out" "second mates: allowed when the benefit justifies the standing cost; new ones launch as claude claude-opus-5-5 medium" \
+    "a Max 5x home keeps balanced second mates although its Codex plan would turn them off"
+  assert_contains "$out" "suggested primary (coordinator and no-mistakes validation): claude" "Max 5x with Plus suggests a Claude primary"
+  out=$(strat "$home" show balanced --providers codex --plans codex=plus)
+  assert_contains "$out" "second mates: off by default" "a Codex-only Plus home turns balanced second mates off"
+  out=$(strat "$home" show balanced --plans claude=pro,codex=pro)
+  assert_contains "$out" "suggested primary (coordinator and no-mistakes validation): codex" "Claude Pro with Codex Pro suggests a Codex primary"
+  assert_contains "$(strat "$home" set balanced --plans claude=max5x --yes >/dev/null && jq -r '.rules[] | select(.strategy == "claude-model-requested") | .why' "$home/config/crew-dispatch.json")" \
+    "separate weekly Fable limit" "the requested-model rule on Max says Fable draws on its separate weekly limit"
+  pass "plan profiles follow the approved matrix for models, efforts, floors, Terra, second mates, and the suggested primary"
+}
+
+test_plan_equivalences_and_no_plan() {
+  local mode home base alias pair
+  for mode in full balanced lean; do
+    home=$(new_home "no-plan-$mode")
+    strat "$home" set "$mode" --providers claude,codex --yes >/dev/null || fail "no-plan $mode failed"
+    assert_equals "$(jq -S '.dispatch | {rules, default}' "$ROOT/bin/strategies/$mode.json")" "$(jq -S . "$home/config/crew-dispatch.json")" \
+      "$mode without a plan writes the template routing unchanged"
+    assert_not_contains "$(cat "$home/config/strategy")" "plans=" "$mode without a plan records no plans"
+    assert_equals "$(jq -r '.secondmates.claude | "claude \(.model) \(.effort)"' "$ROOT/bin/strategies/$mode.json")" \
+      "$(grep -v '^#' "$home/config/secondmate-harness")" "$mode without a plan pins the template second mate"
+  done
+  # Equivalence is data (same_as), not per-mode logic, so one mode pins it.
+  mode=balanced
+  for pair in team-standard:pro enterprise-standard:pro team-premium:max5x enterprise-premium:max5x; do
+    alias=${pair%%:*}
+    base=${pair#*:}
+    strat "$(new_home "eq-$mode-$alias")" set "$mode" --providers claude --plans "claude=$alias" --yes >/dev/null || fail "$alias failed"
+    strat "$(new_home "eq-$mode-$alias-base")" set "$mode" --providers claude --plans "claude=$base" --yes >/dev/null || fail "$base failed"
+    assert_equals "$(cat "$TMP_ROOT/eq-$mode-$alias-base/config/crew-dispatch.json")" "$(cat "$TMP_ROOT/eq-$mode-$alias/config/crew-dispatch.json")" \
+      "$mode: Claude $alias routes exactly as $base"
+  done
+  for pair in business-standard:plus business-premium:pro enterprise-edu:pro; do
+    alias=${pair%%:*}
+    base=${pair#*:}
+    strat "$(new_home "eq-$mode-x-$alias")" set "$mode" --providers codex --plans "codex=$alias" --yes >/dev/null || fail "$alias failed"
+    strat "$(new_home "eq-$mode-x-$alias-base")" set "$mode" --providers codex --plans "codex=$base" --yes >/dev/null || fail "$base failed"
+    assert_equals "$(cat "$TMP_ROOT/eq-$mode-x-$alias-base/config/crew-dispatch.json")" "$(cat "$TMP_ROOT/eq-$mode-x-$alias/config/crew-dispatch.json")" \
+      "$mode: Codex $alias routes exactly as $base"
+  done
+  pass "plan equivalences route exactly as their shared profile, and no plan leaves the template output unchanged"
+}
+
+test_plan_recording_and_warnings() {
+  local home out status plan
+  home=$(new_home plan-record)
+  out=$(strat "$home" set balanced --providers claude,codex --plans claude=max5x,codex=plus --yes) || fail "set with plans failed: $out"
+  assert_equals "plans=claude=max5x,codex=plus" "$(grep '^plans=' "$home/config/strategy")" "the plans are recorded"
+  out=$(strat "$home" show)
+  assert_contains "$out" "plans: claude=max5x (Max 5x) codex=plus (Plus)" "show reuses the recorded plans"
+  out=$(strat "$home" status)
+  assert_contains "$out" "plans: claude=max5x,codex=plus" "status reports the recorded plans"
+  assert_not_contains "$out" "second mates: off by default" "status on Max 5x balanced leaves second mates allowed"
+  strat "$home" set balanced --plans claude=pro --yes >/dev/null || fail "set Pro balanced failed"
+  assert_contains "$(strat "$home" status)" "second mates: off by default" "status says a Pro balanced home turns second mates off"
+  strat "$home" set balanced --plans claude=max5x,codex=plus --yes >/dev/null || fail "restoring Max 5x and Plus failed"
+  assert_contains "$out" $'drift:\n  none' "no drift right after a set with plans"
+  out=$(strat "$home" list)
+  assert_contains "$out" "(not recommended on codex=plus)" "list marks full as not recommended on a recorded small plan"
+  out=$(strat "$home" set lean --yes) || fail "set lean with recorded plans failed: $out"
+  assert_equals "gpt-6.1-terra medium -" "$(plan_profile "$home" standard codex)" "a mode change keeps the recorded plans"
+  out=$(strat "$home" set lean --providers claude --yes) || fail "narrowing the providers failed: $out"
+  assert_equals "plans=claude=max5x" "$(grep '^plans=' "$home/config/strategy")" "a recorded plan for a dropped provider is dropped with it"
+  out=$(strat "$home" set lean --plans none --yes) || fail "clearing the plans failed: $out"
+  assert_no_grep "plans=" "$home/config/strategy" "none clears the recorded plans"
+  assert_equals "$(jq -S '.dispatch.rules[] | select(.strategy == "light") | .use[0]' "$ROOT/bin/strategies/lean.json")" \
+    "$(jq -S '.rules[] | select(.strategy == "light") | .use[0]' "$home/config/crew-dispatch.json")" "none restores the template routing"
+
+  for plan in claude=pro claude=team-standard codex=plus codex=business-standard; do
+    home=$(new_home "warn-${plan/=/-}")
+    out=$(strat "$home" set full --providers claude,codex --plans "$plan" --yes)
+    status=$?
+    expect_code 0 "$status" "full on $plan is applied"
+    assert_contains "$out" "warning: full is not recommended on $plan" "full on $plan warns"
+    assert_contains "$(cat "$home/config/strategy")" "mode=full" "full on $plan is written despite the warning"
+    out=$(strat "$home" set balanced --yes)
+    assert_not_contains "$out" "warning:" "balanced on $plan does not warn"
+  done
+  for plan in claude=enterprise-standard claude=max5x claude=api codex=pro codex=api; do
+    out=$(strat "$(new_home "nowarn-${plan/=/-}")" show full --providers claude,codex --plans "$plan")
+    assert_not_contains "$out" "warning:" "full on $plan does not warn"
+  done
+  pass "plans are recorded, reused, narrowed, and cleared, and full on a small plan warns without refusing"
+}
+
+test_plan_refusals() {
+  local home out
+  home=$(new_home plan-refuse)
+  out=$(strat "$home" show lean --providers claude,codex --plans claude=max)
+  expect_code 2 "$?" "an unknown Claude plan"
+  assert_contains "$out" "claude: pro, team-standard, enterprise-standard, max5x, team-premium, enterprise-premium, max20x, api" "the refusal lists the Claude plans"
+  out=$(strat "$home" show lean --providers claude,codex --plans codex=go)
+  expect_code 2 "$?" "an unknown Codex plan"
+  out=$(strat "$home" show lean --providers claude --plans codex=plus)
+  expect_code 2 "$?" "a plan for a provider outside the set"
+  assert_contains "$out" "codex is not in the provider set" "the refusal names the missing provider"
+  out=$(strat "$home" set lean --providers claude,codex --plans claude=pro,claude=max5x --yes)
+  expect_code 2 "$?" "two plans for one provider"
+  out=$(strat "$home" set lean --providers claude,codex --plans pro --yes)
+  expect_code 2 "$?" "a plan without its provider"
+  out=$(strat "$home" list --plans claude=nope)
+  expect_code 2 "$?" "list with an unknown plan"
+  assert_absent "$home/config/strategy" "no refused plan input writes anything"
+  printf 'mode=lean\nproviders=claude\nautonomy=lean\nplans=claude=gold\n' > "$home/config/strategy"
+  out=$(strat "$home" status)
+  expect_code 1 "$?" "an unknown recorded plan"
+  assert_contains "$out" "unknown plans 'claude=gold'" "the unknown recorded plan is named"
+  pass "unknown, misplaced, duplicated, and unknown recorded plans are refused"
+}
 
 test_every_mode_and_shape_is_explicit
 test_mode_contents
@@ -416,4 +629,9 @@ test_missing_provider_model_falls_to_tiers
 test_autonomy_transitions
 test_autonomy_refusal_and_recovery
 test_real_fresh_start_owner
+test_plans_render_matrix
+test_plan_profiles
+test_plan_equivalences_and_no_plan
+test_plan_recording_and_warnings
+test_plan_refusals
 echo "# all fm-strategy tests passed"

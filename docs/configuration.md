@@ -1262,7 +1262,7 @@ The live rule-match evidence is recorded in [`verification/dispatch-resolve.md`]
 
 A token strategy bundles model routing and autonomy, chosen per home to match the subscriptions it runs on and how much work it should start automatically: `full`, `balanced`, or `lean`.
 Each mode is a tracked template in [`bin/strategies/`](../bin/strategies/), and [`bin/fm-strategy.sh`](../bin/fm-strategy.sh) renders it into this home's gitignored config: `config/crew-dispatch.json` for worker routing, `config/secondmate-harness` for new second mates, `config/fresh-start.json` for automatic fresh starts, and the selection itself in `config/strategy`, which is local and not inherited.
-Run `bin/fm-strategy.sh list` to compare the modes, `show <mode>` to print the exact result for each role, `set <mode>` to see the diff and apply it, and `status` for the selected mode, any drift from it, and what it could not apply; the script header owns flags, merge rules, and output.
+Run `bin/fm-strategy.sh list` to compare the modes, `show <mode>` to print the exact result for each role, `set <mode>` to see the diff and apply it, and `status` for the selected mode and plans, whether second mates are off, any drift from it, and what it could not apply; the script header owns flags, merge rules, and output.
 
 The provider set - Claude plus Codex, Claude only, or Codex only - is an input to every mode, declared with `--providers` or detected from the `claude` and `codex` executables on `PATH`, then recorded.
 Every worker route, the requested-worker rules, and the default resolve to an explicit harness, model, and effort from that set only, so nothing falls back to a harness's own default model and no route names a provider the home lacks.
@@ -1271,13 +1271,13 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Role | full | balanced | lean |
 |---|---|---|---|
 | Primary coordinator on Claude | Opus 5.5, high effort | same | same |
-| Primary coordinator on Codex | Sol, high effort | same | same |
-| Second mates | allowed | optional | off by default; one coordinator |
+| Primary coordinator on Codex | 6.1 Sol, high effort | same | same |
+| Second mates (Opus 5.5 medium or 6.1 Sol medium) | allowed | allowed when the benefit justifies the standing cost | off by default; one coordinator |
 | Light / standard / hard workers on Claude | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
-| Light / standard / hard workers on Codex | Luna medium / Sol medium / Astra high | Luna medium / Sol medium / Sol high | same as balanced |
-| A requested Claude or Codex worker | Opus 5.5 high or Sol high | same | same |
+| Light / standard / hard workers on Codex | Luna high / 6.1 Sol medium / Astra medium | Luna high / 6.1 Sol medium / 6.1 Sol high | same as balanced |
+| A requested Claude or Codex worker | Opus 5.5 high or 6.1 Sol high | same | same |
 | A requested exact Claude or Codex model | that model on claude or codex, high effort | same | same |
-| Validation (no-mistakes) | Opus 5.5 high, Sol high | same | same |
+| Validation (no-mistakes) | Opus 5.5 high, 6.1 Sol high | same | same |
 | Autonomy level (`autonomy=`) | full | balanced | lean |
 | Dispatch of authorized work, including queued work | automatic | light/standard automatic; hard or expensive needs a plan, rough cost and approval | every dispatch needs a plan and confirmation |
 | Automatic fix rounds per task | existing pipeline limits | one, then ask | none; ask before fixes or retries |
@@ -1285,6 +1285,10 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Extra discretionary fleet reviews | enabled | disabled | disabled |
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
 | While the captain is present | normal supervision | `/quiet`, with bounded batching | `/quiet`, routine turns suppressed |
+
+Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate; where an Enterprise or Edu workspace has not enabled it, `gpt-6-sol` is the fallback to route by hand.
+Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
+The template table above is what renders when no plan is named.
 
 `full` keeps the strongest hard-work routing and automatic starts; `balanced` removes Astra from routine routing and asks before costly starts; `lean` makes starts and retries manual while retaining the same quality requirements.
 `config/strategy` records `mode=`, `providers=`, and `autonomy=`; autonomy matches the selected mode, and legacy selections without that key keep existing behavior until `set` applies it.
@@ -1302,6 +1306,46 @@ The command preserves running second mates and never retires them to achieve lea
 Fable and Astra otherwise run only when the captain names them for a job, which the requested-model rules honor: one rule per provider in the home, a Claude-model rule on claude and a Codex-model rule on codex, each a single profile whose pin firstmate replaces with the named model, so no quota ranking crosses harnesses.
 A home without a provider has no rule for its models, so a brief naming a model from a missing provider matches no requested-model rule and routing resolves it through the tier rules like any other brief.
 The only guard is `AGENTS.md` section 4 intake precedence: the captain's explicit per-task override wins over every rule, so firstmate must not silently dispatch a tier substitute for a model the home cannot run.
+The Claude requested-model rule's `why` text says a Fable request bills usage credits on Pro, Team Standard, and Enterprise standard seats, so intake confirms it rather than silently spending.
+
+### Subscription plans (`--plans`)
+
+The subscription plan behind each provider is an optional input beside the provider set: `--plans claude=<plan>,codex=<plan>`, either or both, or `none` to clear it.
+`list`, `show`, and `set` accept it, `config/strategy` records it as `plans=`, and `show`, `set`, and `status` reuse the recorded plans for providers still in the set.
+Without a plan, every file renders exactly as the template table above.
+[`bin/strategies/plans.json`](../bin/strategies/plans.json) owns the plan names and each plan's profile per mode; a named plan replaces only its own provider's coordinator, second-mate pin, validation, light, standard, hard, requested-worker, and default routes, its floors, and the Claude requested-model `why` text.
+
+| Plan | Same profile as |
+|---|---|
+| Claude `pro`, `team-standard`, `enterprise-standard` | Pro |
+| Claude `max5x`, `team-premium`, `enterprise-premium` | Max 5x |
+| Claude `max20x` | Max 20x |
+| Claude `api` (an API key or usage-based Enterprise) | API |
+| Codex `plus`, `business-standard` | Plus |
+| Codex `pro`, `business-premium`, `enterprise-edu` | Pro |
+| Codex `api` | API |
+
+| Plan profile | Coordinator | Light / standard / hard | Requested worker | Validation | Second mates | Light / standard floors |
+|---|---|---|---|---|---|---|
+| Claude Pro, lean and balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | 30% / 20% |
+| Claude Pro, full | Opus 5.5 medium | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | 30% / 20% |
+| Claude Max 5x | the template | the template | the template | the template | the template | 20% / 10% |
+| Claude Max 20x | the template | the template | the template | the template | the template | 15% / 5% |
+| Claude API, lean | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none |
+| Claude API, balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none |
+| Claude API, full | the template | the template | the template | the template | the template | none |
+| Codex Plus, lean and balanced | 6.1 Sol medium | Luna high / 6.1 Terra medium / 6.1 Sol high | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | none |
+| Codex Plus, full | 6.1 Sol medium | Luna high / 6.1 Sol medium / 6.1 Sol high | 6.1 Sol high | 6.1 Sol high | 6.1 Sol medium | none |
+| Codex Pro | the template | the template | the template | the template | the template | none |
+| Codex API, lean | 6.1 Sol medium | Luna high / 6.1 Terra medium / 6.1 Sol high | 6.1 Sol medium | 6.1 Sol high | off | none |
+| Codex API, balanced and full | the template | the template | the template | the template | the template | none |
+
+Hard work and validation never drop below the template on any plan, and Fable and Astra stay off every tier where they bill credits or have a small allowance.
+Floors use the `all_models` scope; API plans write none because an unmeasured provider makes a floor escalate, and Codex plans write none until the quota-axi Codex scope name is confirmed.
+6.1 Terra routes only in Plus and Business Standard lean and balanced and Codex API lean, and needs Codex CLI 0.159.0 or later, which `show` notes.
+A plan that turns second mates off does so when its provider is the one new second mates launch on, Claude whenever the home has it.
+In a home with both providers each tier keeps one Claude and one Codex profile, so [`quota-array-dispatch`](../.agents/skills/quota-array-dispatch/SKILL.md) picks by remaining quota, and `show` suggests which provider should host the primary coordinator and the no-mistakes validation.
+Full is not recommended on `pro`, `team-standard`, `plus`, or `business-standard`, whose five-hour and weekly limits automatic starts reach first: `show` and `set` warn without refusing, and `list` marks it.
 
 Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.
 The script never edits the user's global Claude, Codex, or no-mistakes settings or any launcher.
