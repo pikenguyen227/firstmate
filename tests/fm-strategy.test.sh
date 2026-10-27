@@ -477,7 +477,7 @@ test_plans_render_matrix() {
 }
 
 test_plan_profiles() {
-  local home out mode slot
+  local home out mode
   home=$(new_home plan-pro-lean)
   out=$(strat "$home" set lean --providers claude,codex --plans claude=pro,codex=plus --yes) || fail "pro/plus lean failed: $out"
   assert_equals "claude-haiku-5-5 medium 30" "$(plan_profile "$home" light claude)" "Pro light work runs Haiku medium above a 30% floor"
