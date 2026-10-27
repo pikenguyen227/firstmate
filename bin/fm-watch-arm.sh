@@ -620,6 +620,14 @@ child_out=$(mktemp "$STATE/.watch-arm-output.XXXXXX") || {
 # date(1) exposes whole seconds. Keep the configured confirmation budget from
 # collapsing when startup begins just before the next second boundary.
 deadline=$(( $(date +%s) + CONFIRM_TIMEOUT + 1 ))
+# A child that finds a live holder with a stale beacon first observes it for
+# the interval it announces (bin/fm-watch.sh observe_stale_holder), then may
+# spend up to five seconds confirming that holder's exit after TERM. The
+# confirmation wait below extends once by that much so it does not abandon a
+# replacement that is still deciding; the signal path above keeps the original
+# startup deadline, because an observing child holds nothing a TERM could strand.
+confirm_deadline=$deadline
+observe_extended=0
 if [ -n "${FM_WATCH_PREDECESSOR_ARM_PID:-}" ]; then
   FM_WATCH_HANDLING_SUCCESSOR=1 "$WATCH" >"$child_out" &
 else
@@ -650,7 +658,13 @@ owned_child_finished() {
 
   if [ "$rc" -eq 0 ]; then
     if wait_for_healthy_successor; then
-      cycle_log_append "$rc" "$signal" unexpected-clean-exit "attached:$HEALTHY_PID"
+      reason_type=unexpected-clean-exit
+      if [ "$HEALTHY_PID" = "$(sed -n 's/^watcher: stale holder pid \([0-9][0-9]*\) resumed .*/\1/p' "$child_out" 2>/dev/null | head -n 1)" ]; then
+        # The child observed a stale holder until its beacon advanced and
+        # deferred to it: a resumed watcher, not an unexplained stand-down.
+        reason_type=stale-holder-resumed
+      fi
+      cycle_log_append "$rc" "$signal" "$reason_type" "attached:$HEALTHY_PID"
       print_watch_output "$child_out"
       rm -f "$child_out" 2>/dev/null || true
       child=
@@ -695,10 +709,11 @@ while :; do
   if healthy_watcher; then
     if [ "$HEALTHY_PID" = "$child" ]; then
       if grep -q '^watcher: replaced stalled pid ' "$child_out" 2>/dev/null; then
-        # The child evicted a live holder whose beacon stalled past the hard
-        # bound (bin/fm-watch.sh evict_stalled_holder). Ledger that as its own
-        # row - lock_before still names the evicted holder - then reopen this
-        # cycle so its ordinary close row follows as usual.
+        # The child evicted a live holder whose stale beacon stayed frozen
+        # through its observation (bin/fm-watch.sh evict_stalled_holder).
+        # Ledger that as its own row - lock_before still names the evicted
+        # holder - then reopen this cycle so its ordinary close row follows
+        # as usual.
         cycle_log_append 0 none stalled-holder-replaced "started:$child"
         cycle_begin "$child" started "$HEALTHY_IDENTITY"
       fi
@@ -734,7 +749,14 @@ while :; do
     owned_child_finished "$rc"
     exit $?
   fi
-  [ "$(date +%s)" -ge "$deadline" ] && break
+  if [ "$observe_extended" -eq 0 ]; then
+    observe_secs=$(sed -n 's/^watcher: observing stale holder pid [0-9]* (beacon [0-9]*s); waiting up to \([0-9][0-9]*\)s for it to advance$/\1/p' "$child_out" 2>/dev/null | head -n 1)
+    if [ -n "$observe_secs" ]; then
+      observe_extended=1
+      confirm_deadline=$(( $(date +%s) + observe_secs + 5 + CONFIRM_TIMEOUT + 1 ))
+    fi
+  fi
+  [ "$(date +%s)" -ge "$confirm_deadline" ] && break
   sleep 0.2
 done
 
