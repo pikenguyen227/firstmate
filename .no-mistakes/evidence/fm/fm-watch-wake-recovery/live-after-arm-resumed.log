@@ -1,0 +1,22 @@
+[08:59:32] bin=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin scenario=arm-resumed lab=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.c9MED8
+74560 S    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+[08:59:32] holder A pid=74560 (real fm-watch.sh, FM_POLL=5) lock=74560
+[08:59:32] SIGSTOP holder A (machine asleep)
+[08:59:32] beacon backdated: age now 600s
+[08:59:32] re-arm B pid=75999 started
+[08:59:36] SIGCONT holder A (machine woke) at +4s
+[08:59:44] B still running after +12s
+[08:59:44] --- B stdout
+watcher: observing stale holder pid 74560 (beacon 602s); waiting up to 20s for it to advance
+watcher: stale holder pid 74560 resumed (beacon advanced after 8s observed)
+watcher: already running pid 74560
+watcher: attached pid=74560 (beacon 1s)
+[08:59:44] --- B stderr
+[08:59:44] holder A alive: yes
+[08:59:44] lock pid now: 74560
+[08:59:44] fm-watch.sh processes running from /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin:
+74560 S    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+98227 U    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+[08:59:44] --- cycle ledger reasons
+stale-holder-resumed
+/Users/pike/.no-mistakes/evidence/01M5XH2KTS9NJK0H6W3HFD28B4/live-sleep-recovery.sh: line 22: 75999 Terminated: 15          run FM_POLL=5 FM_WATCHER_STALE_OBSERVE=20 FM_ARM_CONFIRM_TIMEOUT=2 "$BIN/fm-watch-arm.sh" > "$LAB/B.out" 2> "$LAB/B.err"

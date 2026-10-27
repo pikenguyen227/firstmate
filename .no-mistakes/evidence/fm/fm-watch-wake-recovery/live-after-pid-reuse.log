@@ -1,0 +1,16 @@
+[08:59:25] bin=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin scenario=reused lab=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.7ZPYS0
+66447 S    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+[08:59:26] holder A pid=66447 (real fm-watch.sh, FM_POLL=5) lock=66447
+[08:59:26] lock pid rewritten to unrelated live pid 67771 (sleep), recorded identity unchanged
+[08:59:26] beacon backdated: age now 600s
+[08:59:26] re-arm B pid=67832 started
+[08:59:27] B exited rc=1 after +1s
+[08:59:27] --- B stdout
+[08:59:27] --- B stderr
+watcher: lock held by live pid 67771 but heartbeat is stale for 600s (>300s); inspect or stop that watcher before re-arming.
+[08:59:27] holder A alive: yes
+[08:59:27] lock pid now: 67771
+[08:59:27] unrelated pid 67771 alive: yes
+[08:59:27] fm-watch.sh processes running from /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin:
+66447 T    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+/Users/pike/.no-mistakes/evidence/01M5XH2KTS9NJK0H6W3HFD28B4/live-sleep-recovery.sh: line 70: 67771 Terminated: 15          sleep 300

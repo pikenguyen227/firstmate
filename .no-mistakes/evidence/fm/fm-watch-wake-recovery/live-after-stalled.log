@@ -1,0 +1,14 @@
+[08:59:04] bin=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin scenario=stalled lab=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.8iEDHn
+39193 S    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+[08:59:05] holder A pid=39193 (real fm-watch.sh, FM_POLL=600) lock=39193
+[08:59:05] beacon backdated: age now 600s
+[08:59:05] re-arm B pid=40198 started
+[08:59:18] B exited rc=0 after +13s
+[08:59:18] --- B stdout
+watcher: observing stale holder pid 39193 (beacon 600s); waiting up to 10s for it to advance
+watcher: replaced stalled pid 39193 (beacon 600s stale, unchanged through 10s observed)
+check: rearm-resurface
+[08:59:18] --- B stderr
+[08:59:18] holder A alive: no
+[08:59:18] lock pid now: none
+[08:59:18] fm-watch.sh processes running from /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin:

@@ -1,0 +1,16 @@
+[08:58:43] bin=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin scenario=resumed lab=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.EVjCFL
+98205 S    bash /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M5XH2KTS9NJK0H6W3HFD28B4/bin/fm-watch.sh
+[08:58:43] holder A pid=98205 (real fm-watch.sh, FM_POLL=5) lock=98205
+[08:58:43] SIGSTOP holder A (machine asleep)
+[08:58:43] beacon backdated: age now 600s
+[08:58:43] re-arm B pid=99529 started
+[08:58:47] SIGCONT holder A (machine woke) at +4s
+[08:58:54] B exited rc=0 after +11s
+[08:58:54] --- B stdout
+watcher: observing stale holder pid 98205 (beacon 601s); waiting up to 10s for it to advance
+watcher: stale holder pid 98205 resumed (beacon advanced after 9s observed)
+watcher: already running pid 98205
+[08:58:54] --- B stderr
+[08:58:54] holder A alive: yes
+[08:58:54] lock pid now: 98205
+[08:58:54] live watcher processes holding FM_HOME=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.EVjCFL:

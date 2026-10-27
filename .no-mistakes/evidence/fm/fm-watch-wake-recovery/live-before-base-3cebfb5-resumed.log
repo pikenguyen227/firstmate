@@ -1,0 +1,15 @@
+[08:59:51] bin=/tmp/fm-base.wWoVhw/bin scenario=resumed lab=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.sHPfKI
+ 9490 S    bash /tmp/fm-base.wWoVhw/bin/fm-watch.sh
+[08:59:51] holder A pid=9490 (real fm-watch.sh, FM_POLL=5) lock=9490
+[08:59:51] SIGSTOP holder A (machine asleep)
+[08:59:51] beacon backdated: age now 600s
+[08:59:52] re-arm B pid=10430 started
+[08:59:56] SIGCONT holder A (machine woke) at +4s
+[08:59:56] B exited rc=1 after +4s
+[08:59:56] --- B stdout
+[08:59:56] --- B stderr
+watcher: lock held by live pid 9490 but heartbeat is stale for 601s (>300s); inspect or stop that watcher before re-arming.
+[08:59:56] holder A alive: yes
+[08:59:56] lock pid now: 9490
+[08:59:56] fm-watch.sh processes running from /tmp/fm-base.wWoVhw/bin:
+ 9490 S    bash /tmp/fm-base.wWoVhw/bin/fm-watch.sh
