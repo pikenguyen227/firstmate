@@ -1314,6 +1314,7 @@ The subscription plan behind each provider is an optional input beside the provi
 `list`, `show`, and `set` accept it, `config/strategy` records it as `plans=`, and `show`, `set`, and `status` reuse the recorded plans for providers still in the set.
 Without a plan, every file renders exactly as the template table above.
 [`bin/strategies/plans.json`](../bin/strategies/plans.json) owns the plan names and each plan's profile per mode; a named plan replaces only its own provider's coordinator, second-mate pin, validation, light, standard, hard, requested-worker, and default routes, its floors, and the Claude requested-model `why` text.
+With any plan named, the requested-worker and light, standard, and hard rules take their `why` text from the plan file's `why` openings completed by the rendered routes, so each names the model, effort, and floor it routes to.
 
 | Plan | Same profile as |
 |---|---|

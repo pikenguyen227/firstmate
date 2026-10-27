@@ -27,7 +27,9 @@
 # coordinator, second-mate pin, validation, the light, standard, hard, and
 # requested-worker routes, the default, the light and standard floors (the
 # plan's own, or none when it has none), and the Claude requested-model why
-# text. A plan that turns second mates off does so when its provider is the one
+# text. Any named plan also rebuilds the why text of the requested-worker and
+# tier rules from plans.json why and the rendered routes, so it names the model,
+# effort, and floor each rule routes to. A plan that turns second mates off does so when its provider is the one
 # new second mates launch on. Without --plans, show, set, and status reuse the
 # plans recorded in config/strategy for providers still in the set; with no
 # plan every file renders exactly as the template does. A plan for a provider
