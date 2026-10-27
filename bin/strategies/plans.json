@@ -1,5 +1,11 @@
 {
-  "$comment": "Subscription-plan variants for bin/fm-strategy.sh --plans. Each mode lists a role as \"<model> <effort>\"; a plan with same_as takes its profile from that plan and keeps its own label and full_warning. floors are min_percent on the all_models scope for the light and standard tiers; a plan without floors writes none. docs/configuration.md \"Token strategies\" owns the contract.",
+  "$comment": "Subscription-plan variants for bin/fm-strategy.sh --plans. why holds the rule text a plan render opens each requested-worker and tier why with; the rendered routes complete it. Each mode lists a role as \"<model> <effort>\"; a plan with same_as takes its profile from that plan and keeps its own label and full_warning. floors are min_percent on the all_models scope for the light and standard tiers; a plan without floors writes none. docs/configuration.md \"Token strategies\" owns the contract.",
+  "why": {
+    "requested": "Honor the requested worker. A requested worker skips tier routing, so it gets this plan's pin:",
+    "light": "Tier 1. Mechanical work; the cheapest capable model.",
+    "standard": "Tier 2. Most everyday work.",
+    "hard": "Tier 3. Keep the strongest reasoning where mistakes are expensive; never floored, so hard work is not silently downgraded."
+  },
   "claude": {
     "pro": {
       "label": "Pro",

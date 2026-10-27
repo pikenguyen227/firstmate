@@ -278,10 +278,13 @@ effective_template() {
     return
   fi
   jq --arg mode "$mode" --arg mate "$(mate_harness "$providers")" \
+    --argjson providers "$(providers_json "$providers")" \
     --argjson sel "$(plans_json "$plans")" --slurpfile plans "$PLANS_FILE" '
     $plans[0] as $P
     | def profile($s): ($s | split(" ")) as $w | {model: $w[0], effort: $w[1]};
       def resolved($h; $name): $P[$h][$name] as $e | $P[$h][$e.same_as // $name];
+      def route: "\(.model) at \(.effort) effort on \(.harness)"
+        + (if .floor then " while at least \(.floor.min_percent)% of its \(.floor.scope) quota remains" else "" end);
     reduce ($sel | to_entries[]) as $e (.;
       $e.key as $h | resolved($h; $e.value) as $p | $p.modes[$mode] as $m
       | .coordinator[$h] = profile($m.coordinator)
@@ -295,11 +298,16 @@ effective_template() {
                 {harness: $h} + profile($m[$s])
                 + (($p.floors // {})[$s] as $f | if $f == null then {} else {floor: {scope: "all_models", min_percent: $f}} end)
               else . end)
-            elif $s == "\($h)-requested" then .use = {harness: $h} + profile($m.requested)
+            elif $s == "\($h)-requested" then .use = ({harness: $h} + profile($m.requested))
+              | .why = "\($P.why.requested) \(.use | route)."
             elif $s == "\($h)-model-requested" and $p.model_requested_why != null then .why = $p.model_requested_why
             else . end)
       | .dispatch.default |= map(if .harness == $h then {harness: $h} + profile($m.standard) else . end)
     )
+    | .dispatch.rules |= map(
+        if .strategy == "light" or .strategy == "standard" or .strategy == "hard" then
+          .why = "\($P.why[.strategy]) It routes to \(.use | map(select(.harness as $x | $providers | index($x)) | route) | join(", or "))."
+        else . end)
   ' "$(template "$mode")"
 }
 

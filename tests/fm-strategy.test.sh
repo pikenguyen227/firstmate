@@ -423,6 +423,21 @@ plan_profile() {
   ' "$1/config/crew-dispatch.json"
 }
 
+# stale_whys <home>: each requested-worker or tier rule whose why omits one of
+# its routes, or names a model or percentage none of its routes has.
+stale_whys() {
+  jq -r '
+    .rules[] | select(.strategy | test("^(light|standard|hard|claude-requested|codex-requested)$"))
+    | . as $r | (if (.use | type) == "array" then .use else [.use] end) as $u
+    | ([$r.why | scan("(?:claude|gpt)-[a-z0-9.-]+[a-z0-9]|\\b(?:Opus|Sonnet|Haiku|Sol|Luna|Terra|Astra)\\b")] - [$u[].model]) as $stray_models
+    | ([$r.why | scan("[0-9]+%")] - [$u[] | select(.floor) | "\(.floor.min_percent)%"]) as $stray_percents
+    | [$u[] | "\(.model) at \(.effort) effort on \(.harness)" + (if .floor then " while at least \(.floor.min_percent)%" else "" end)
+        | select(. as $p | $r.why | contains($p) | not)] as $missing
+    | select(($stray_models + $stray_percents + $missing) | length > 0)
+    | "\(.strategy): \($r.why)"
+  ' "$1/config/crew-dispatch.json"
+}
+
 test_plans_render_matrix() {
   local mode cp xp home out bad
   for mode in full balanced lean; do
@@ -439,6 +454,8 @@ test_plans_render_matrix() {
         bad=$(jq -r '[.rules[].use, .default] | map(if type == "array" then .[] else . end)
           | .[] | select(.harness == "codex" and .floor != null) | .model' "$home/config/crew-dispatch.json")
         [ -z "$bad" ] || fail "$mode codex=$xp wrote a Codex floor on an unconfirmed quota scope: $bad"
+        bad=$(stale_whys "$home")
+        [ -z "$bad" ] || fail "$mode claude=$cp,codex=$xp left a why that does not match its routes: $bad"
       done
     done
   done
@@ -447,14 +464,16 @@ test_plans_render_matrix() {
       home=$(new_home "plans-claude-only-$mode-$cp")
       strat "$home" set "$mode" --providers claude --plans "claude=$cp" --yes >/dev/null || fail "claude-only $mode $cp failed"
       assert_not_contains "$(profiles "$home")" " codex " "a Claude-only $cp home routes nothing to Codex"
+      assert_equals "" "$(stale_whys "$home")" "a Claude-only $cp $mode home's why text matches its routes"
     done
     for xp in plus pro api; do
       home=$(new_home "plans-codex-only-$mode-$xp")
       strat "$home" set "$mode" --providers codex --plans "codex=$xp" --yes >/dev/null || fail "codex-only $mode $xp failed"
       assert_not_contains "$(profiles "$home")" " claude " "a Codex-only $xp home routes nothing to Claude"
+      assert_equals "" "$(stale_whys "$home")" "a Codex-only $xp $mode home's why text matches its routes"
     done
   done
-  pass "every plan in every mode and provider shape resolves explicitly, pairs providers per tier, and floors no Codex route"
+  pass "every plan in every mode and provider shape resolves explicitly, pairs providers per tier, floors no Codex route, and explains its routes"
 }
 
 test_plan_profiles() {
@@ -564,6 +583,7 @@ test_plan_recording_and_warnings() {
   strat "$home" set balanced --plans claude=pro --yes >/dev/null || fail "set Pro balanced failed"
   assert_contains "$(strat "$home" status)" "second mates: off by default" "status says a Pro balanced home turns second mates off"
   strat "$home" set balanced --plans claude=max5x,codex=plus --yes >/dev/null || fail "restoring Max 5x and Plus failed"
+  out=$(strat "$home" status)
   assert_contains "$out" $'drift:\n  none' "no drift right after a set with plans"
   out=$(strat "$home" list)
   assert_contains "$out" "(not recommended on codex=plus)" "list marks full as not recommended on a recorded small plan"
