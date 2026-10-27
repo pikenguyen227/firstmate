@@ -1,0 +1,50 @@
+$ fm-strategy.sh list --plans claude=pro,codex=plus
+full      Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed. (not recommended on claude=pro) (not recommended on codex=plus)
+balanced  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+lean      Manual starts and retries with unchanged validation; Sol on Codex, Opus on Claude, one coordinator by default, quiet while present.
+plans: claude=pro,codex=plus; show <mode> prints each role under them
+exit=0
+
+$ fm-strategy.sh show full --providers claude,codex --plans claude=pro,codex=plus
+strategy: full (providers: claude,codex, declared)
+  Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed.
+plans: claude=pro (Pro) codex=plus (Plus); each plan's profile replaces the template's models, efforts, and floors for its provider
+warning: full is not recommended on claude=pro (Pro): automatic starts, fresh starts, and fleet reviews reach its five-hour and weekly limits first; lean or balanced fits it better
+warning: full is not recommended on codex=plus (Plus): automatic starts, fresh starts, and fleet reviews reach its five-hour and weekly limits first; lean or balanced fits it better
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort medium
+    start with: claude --model claude-opus-5-5 --effort medium
+  codex: gpt-6.1-sol effort medium
+    start with: codex -m gpt-6.1-sol -c model_reasoning_effort="medium" -c project_doc_max_bytes=131072
+suggested primary (coordinator and no-mistakes validation): claude, with Codex mainly for light work; both pools are small, so lean or balanced fits
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+  automatic fresh starts: true
+  automatic fleet reviews: true
+  one-tier model step-up after a worker failure: automatic
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: allowed; new ones launch as claude claude-sonnet-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low, floor 30%
+  light: codex gpt-6-luna high
+  standard: claude claude-opus-5-5 medium, floor 20%
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+    codex:
+      model: gpt-6.1-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+exit=

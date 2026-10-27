@@ -1,0 +1,170 @@
+=== fm-strategy.sh show balanced --providers claude,codex --plans claude=max5x,codex=pro
+  claude: claude-opus-5-5 effort high
+  codex: gpt-6.1-sol effort high
+suggested primary (coordinator and no-mistakes validation): claude; both pools are large, so switch to codex if it has more headroom
+second mates: allowed when the benefit justifies the standing cost; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low, floor 20%
+  light: codex gpt-6-luna high
+  standard: claude claude-opus-5-5 medium, floor 10%
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show lean --providers claude,codex --plans claude=max20x,codex=pro
+  claude: claude-opus-5-5 effort high
+  codex: gpt-6.1-sol effort high
+suggested primary (coordinator and no-mistakes validation): claude; both pools are large, so switch to codex if it has more headroom
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-opus-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low, floor 15%
+  light: codex gpt-6-luna high
+  standard: claude claude-opus-5-5 medium, floor 5%
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show full --providers claude,codex --plans claude=api,codex=api
+  claude: claude-opus-5-5 effort high
+  codex: gpt-6.1-sol effort high
+suggested primary (coordinator and no-mistakes validation): either; both bill per token, so lean fits best
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low
+  light: codex gpt-6-luna high
+  standard: claude claude-opus-5-5 medium
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6-astra medium
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show full --providers claude,codex --plans claude=max5x,codex=pro
+  claude: claude-opus-5-5 effort high
+  codex: gpt-6.1-sol effort high
+suggested primary (coordinator and no-mistakes validation): claude; both pools are large, so switch to codex if it has more headroom
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low, floor 20%
+  light: codex gpt-6-luna high
+  standard: claude claude-opus-5-5 medium, floor 10%
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6-astra medium
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show lean --providers claude,codex --plans claude=api,codex=api
+  claude: claude-opus-5-5 effort medium
+  codex: gpt-6.1-sol effort medium
+suggested primary (coordinator and no-mistakes validation): either; both bill per token, so lean fits best
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-sonnet-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol medium
+  claude-requested: claude claude-opus-5-5 medium
+  light: claude claude-haiku-5-5 medium
+  light: codex gpt-6-luna high
+  standard: claude claude-sonnet-5-5 medium
+  standard: codex gpt-6.1-terra medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show balanced --providers claude,codex --plans claude=api,codex=api
+  claude: claude-opus-5-5 effort medium
+  codex: gpt-6.1-sol effort high
+suggested primary (coordinator and no-mistakes validation): either; both bill per token, so lean fits best
+second mates: allowed when the benefit justifies the standing cost; new ones launch as claude claude-sonnet-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-haiku-5-5 medium
+  light: codex gpt-6-luna high
+  standard: claude claude-sonnet-5-5 medium
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show balanced --providers claude,codex --plans claude=team-standard,codex=business-standard
+  claude: claude-opus-5-5 effort medium
+  codex: gpt-6.1-sol effort medium
+suggested primary (coordinator and no-mistakes validation): claude, with Codex mainly for light work; both pools are small, so lean or balanced fits
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-sonnet-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol medium
+  claude-requested: claude claude-opus-5-5 medium
+  light: claude claude-haiku-5-5 medium, floor 30%
+  light: codex gpt-6-luna high
+  standard: claude claude-sonnet-5-5 medium, floor 20%
+  standard: codex gpt-6.1-terra medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+
+=== fm-strategy.sh show lean --providers claude,codex --plans claude=team-premium,codex=enterprise-edu
+  claude: claude-opus-5-5 effort high
+  codex: gpt-6.1-sol effort high
+suggested primary (coordinator and no-mistakes validation): claude; both pools are large, so switch to codex if it has more headroom
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-opus-5-5 medium (config/secondmate-harness)
+  claude-model-requested: claude claude-opus-5-5 high
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low, floor 20%
+  light: codex gpt-6-luna high
+  standard: claude claude-opus-5-5 medium, floor 10%
+  standard: codex gpt-6.1-sol medium
+  hard: claude claude-opus-5-5 high
+  hard: codex gpt-6.1-sol high
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+      model: claude-opus-5-5
+      effort: high
+      model: gpt-6.1-sol
+      effort: high
+

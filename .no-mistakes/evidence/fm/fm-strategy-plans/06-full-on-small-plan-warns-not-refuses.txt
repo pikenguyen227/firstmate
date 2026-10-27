@@ -1,0 +1,9 @@
+$ fm-strategy.sh set full --providers claude,codex --plans claude=pro,codex=business-standard --yes
+warning: full is not recommended on claude=pro (Pro): automatic starts, fresh starts, and fleet reviews reach its five-hour and weekly limits first; lean or balanced fits it better
+warning: full is not recommended on codex=business-standard (Business Standard seat): automatic starts, fresh starts, and fleet reviews reach its five-hour and weekly limits first; lean or balanced fits it better
+written: crew-dispatch.json secondmate-harness strategy fresh-start.json
+exit=
+mode=full
+providers=claude,codex
+autonomy=full
+plans=claude=pro,codex=business-standard

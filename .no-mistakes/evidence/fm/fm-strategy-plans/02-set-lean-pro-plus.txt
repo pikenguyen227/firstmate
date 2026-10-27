@@ -1,0 +1,146 @@
+$ fm-strategy.sh set lean --providers claude,codex --plans claude=pro,codex=plus --yes
++{
++  "enabled": false
++}
+written: crew-dispatch.json secondmate-harness strategy fresh-start.json
+  
+exit=
+
+$ cat config/strategy
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=lean
+providers=claude,codex
+autonomy=lean
+plans=claude=pro,codex=plus
+$ cat config/secondmate-harness
+claude claude-sonnet-5-5 medium
+
+$ jq rules (strategy, use, why) config/crew-dispatch.json
+{
+  "default": [
+    {
+      "harness": "claude",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium"
+    },
+    {
+      "harness": "codex",
+      "model": "gpt-6.1-terra",
+      "effort": "medium"
+    }
+  ],
+  "rules": [
+    {
+      "strategy": "claude-model-requested",
+      "use": {
+        "harness": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "high"
+      },
+      "why": "Honor the requested model. Firstmate passes the named Claude model on claude in place of this pin. On this home's Claude plan a Fable model bills usage credits, so confirm a Fable request before spending them."
+    },
+    {
+      "strategy": "codex-model-requested",
+      "use": {
+        "harness": "codex",
+        "model": "gpt-6.1-sol",
+        "effort": "high"
+      },
+      "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin. Where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback."
+    },
+    {
+      "strategy": "codex-requested",
+      "use": {
+        "harness": "codex",
+        "model": "gpt-6.1-sol",
+        "effort": "medium"
+      },
+      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets this plan's pin: gpt-6.1-sol at medium effort on codex."
+    },
+    {
+      "strategy": "claude-requested",
+      "use": {
+        "harness": "claude",
+        "model": "claude-opus-5-5",
+        "effort": "medium"
+      },
+      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets this plan's pin: claude-opus-5-5 at medium effort on claude."
+    },
+    {
+      "strategy": "light",
+      "use": [
+        {
+          "harness": "claude",
+          "model": "claude-haiku-5-5",
+          "effort": "medium",
+          "floor": {
+            "scope": "all_models",
+            "min_percent": 30
+          }
+        },
+        {
+          "harness": "codex",
+          "model": "gpt-6-luna",
+          "effort": "high"
+        }
+      ],
+      "why": "Tier 1. Mechanical work; the cheapest capable model. It routes to claude-haiku-5-5 at medium effort on claude while at least 30% of its all_models quota remains, or gpt-6-luna at high effort on codex."
+    },
+    {
+      "strategy": "standard",
+      "use": [
+        {
+          "harness": "claude",
+          "model": "claude-sonnet-5-5",
+          "effort": "medium",
+          "floor": {
+            "scope": "all_models",
+            "min_percent": 20
+          }
+        },
+        {
+          "harness": "codex",
+          "model": "gpt-6.1-terra",
+          "effort": "medium"
+        }
+      ],
+      "why": "Tier 2. Most everyday work. It routes to claude-sonnet-5-5 at medium effort on claude while at least 20% of its all_models quota remains, or gpt-6.1-terra at medium effort on codex."
+    },
+    {
+      "strategy": "hard",
+      "use": [
+        {
+          "harness": "claude",
+          "model": "claude-opus-5-5",
+          "effort": "high"
+        },
+        {
+          "harness": "codex",
+          "model": "gpt-6.1-sol",
+          "effort": "high"
+        }
+      ],
+      "why": "Tier 3. Keep the strongest reasoning where mistakes are expensive; never floored, so hard work is not silently downgraded. It routes to claude-opus-5-5 at high effort on claude, or gpt-6.1-sol at high effort on codex."
+    }
+  ]
+}
+
+$ fm-strategy.sh status
+strategy: lean (providers: claude,codex)
+  Manual starts and retries with unchanged validation; Sol on Codex, Opus on Claude, one coordinator by default, quiet while present.
+plans: claude=pro,codex=plus
+second mates: off by default; create one only when the captain asks
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+  automatic fresh starts: false
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+drift:
+  none
+recorded autonomy: lean
+fresh-start check: disabled by selected policy
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show lean
+  /quiet is requested; the coordinator applies it through strategy-autonomy

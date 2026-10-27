@@ -1,0 +1,22 @@
+set full --plans none exit=0
+  plans= lines in config/strategy: 0
+  crew-dispatch.json identical to bin/strategies/full.json dispatch (no plan)
+  gpt-6-sol (bare) routes in render: 0; 6.1-sol routes: 4
+  codex light: {"harness":"codex","model":"gpt-6-luna","effort":"high"}; codex hard: {"harness":"codex","model":"gpt-6-astra","effort":"medium"}
+  codex second mate template: {"allowed":true,"claude":{"model":"claude-opus-5-5","effort":"medium"},"codex":{"model":"gpt-6.1-sol","effort":"medium"}}
+set balanced --plans none exit=0
+  plans= lines in config/strategy: 0
+  crew-dispatch.json identical to bin/strategies/balanced.json dispatch (no plan)
+  gpt-6-sol (bare) routes in render: 0; 6.1-sol routes: 5
+  codex light: {"harness":"codex","model":"gpt-6-luna","effort":"high"}; codex hard: {"harness":"codex","model":"gpt-6.1-sol","effort":"high"}
+  codex second mate template: {"allowed":true,"claude":{"model":"claude-opus-5-5","effort":"medium"},"codex":{"model":"gpt-6.1-sol","effort":"medium"}}
+set lean --plans none exit=0
+  plans= lines in config/strategy: 0
+  crew-dispatch.json identical to bin/strategies/lean.json dispatch (no plan)
+  gpt-6-sol (bare) routes in render: 0; 6.1-sol routes: 5
+  codex light: {"harness":"codex","model":"gpt-6-luna","effort":"high"}; codex hard: {"harness":"codex","model":"gpt-6.1-sol","effort":"high"}
+  codex second mate template: {"allowed":false,"claude":{"model":"claude-opus-5-5","effort":"medium"},"codex":{"model":"gpt-6.1-sol","effort":"medium"}}
+
+drift:
+  none
+recorded autonomy: lean
