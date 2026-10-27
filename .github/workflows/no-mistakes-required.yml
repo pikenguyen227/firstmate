@@ -22,7 +22,7 @@ concurrency:
 jobs:
   check:
     name: PR must be raised via no-mistakes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Temporary pin: ubuntu-latest moved to 26.04; unpin once the tests support it.
     if: >-
       github.event.pull_request.user.login != 'github-actions[bot]' &&
       github.event.pull_request.user.login != 'dependabot[bot]'
