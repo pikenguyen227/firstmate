@@ -14,6 +14,7 @@ In this document, an arm is one run of `bin/fm-watch-arm.sh`, which starts a wat
 | How a watcher-downtime episode is announced and retired | [Recovery episode acknowledgement](#recovery-episode-acknowledgement) |
 | How each actor consumes the wake queue | [Per-actor acknowledgement](#per-actor-acknowledgement) |
 | What `bin/fm-watch-arm.sh` guarantees about each cycle | [Arm-layer cycle contract](#arm-layer-cycle-contract) |
+| How a re-arm treats a live watcher whose beacon is stale, such as after system sleep | [Stale live holder](#stale-live-holder) |
 | Which test suites pin these contracts | [Regression coverage](#regression-coverage) |
 | What is not guaranteed, and where live evidence lives | [Active limits and verification](#active-limits-and-verification) |
 
@@ -404,6 +405,27 @@ The EXIT cleanup bounds its wait for `state/.watcher-down.lock` while persisting
 Only positive decimal integers are accepted, including leading-zero forms such as `08`; empty, non-numeric, and zero values (including `00`) fall back to 2 seconds.
 A live foreign holder therefore cannot strand a TERM'd watcher in this marker-lock wait: on timeout the recovery transition fails without releasing the singleton, leaving dead-pid stale evidence for the next arm to republish and clear.
 
+### Stale live holder
+
+Beacon age is wall-clock age, so a healthy watcher that was suspended with the machine reads stale the moment it wakes, before it has had a chance to cycle.
+A starting watcher therefore never judges a live lock holder by beacon age alone.
+When the holder's beacon is stale past `FM_WATCHER_STALE_GRACE` and the holder still proves the lock's recorded PID, home, path, command, and process-start identity, the new watcher observes that same holder and beacon for `FM_WATCHER_STALE_OBSERVE` seconds (default `FM_POLL` plus 30) before deciding:
+
+| Observation | Result |
+| --- | --- |
+| The beacon advances | The holder resumed; the new watcher defers to it and exits 0, and an arm attaches to it. |
+| The lock changes hands or the holder exits | The new watcher contends for the lock again. |
+| The beacon stays unchanged | After rechecking the lock PID, the beacon, and the recorded identity immediately before signalling, the holder is retired with TERM, and the new watcher takes the lock only once that exit is confirmed. |
+
+A holder that fails the pre-signal recheck, survives TERM, or never proved the recorded identity keeps the "heartbeat is stale" refusal and the nonzero exit, so two watchers never run at once and a recycled PID is never signalled.
+Identity matching is never widened for this case.
+
+The interval counts one-second sleeps rather than wall-clock time, so the machine sleeping again mid-observation cannot use up the interval at once.
+A resumed watcher touches its beacon within one poll, because its pending wait does not count the suspended time, and the 30 seconds of slack cover a cycle that was mid-scan on a loaded machine.
+A shorter interval risks retiring a healthy but slow watcher; a longer one only delays replacing a genuinely stalled one.
+`bin/fm-watch-arm.sh` extends its confirmation wait once by the announced interval plus the TERM confirmation, and ledgers the outcome as `stale-holder-resumed` or `stalled-holder-replaced`.
+`bin/fm-watch.sh`'s header owns the exact output lines.
+
 ## Regression coverage
 
 ### Pi and OpenCode watch extension
@@ -466,6 +488,7 @@ It checks that a newly appended keyed decision is classified without rereading e
 - The typed self-eviction failure.
 - Bounded and successor-linked lifecycle rows.
 - A SIGSTOP counterfactual that distinguishes a live PID from a stale beacon before classifying termination.
+- A stale live holder after a sleep-sized beacon gap: attach when its beacon advances, retire and replace it when the beacon stays frozen, no signal when its identity changes before TERM, the refusal when it survives TERM or never proved its identity, and an arm that waits through the observation for either outcome.
 
 ### Claude auto-arm and turn-end guard
 

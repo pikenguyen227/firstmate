@@ -186,64 +186,230 @@ test_live_stale_watch_lock_is_actionable() {
   PATH="$fakebin:$PATH" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" || status=$?
   [ "$status" -ne 0 ] || fail "watcher silently no-opped behind a live stale holder"
   grep -F 'heartbeat is stale' "$err" >/dev/null || fail "watcher did not explain the stale live lock"
+  # A live pid that never proved the lock's recorded identity is refused at
+  # once: the observation is only for an identity-matched holder.
+  ! grep -qF 'observing stale holder' "$out" || fail "watcher observed a holder that never proved its identity"
   pass "live watcher lock with stale heartbeat is actionable"
 }
 
-test_live_stalled_watch_lock_is_replaced_past_hard_bound() {
-  # A live holder whose beacon is stale past the ordinary grace is refused, but
-  # a beacon stale past the hard bound evicts that holder (identity-verified
-  # TERM) and the arm starts in its place - the deadlock where every re-arm
-  # died against a live-but-stalled watcher while nothing polled the home.
-  local dir state fakebin out err status holder identity pid i lock_pid
-  dir=$(make_case live-stalled-lock)
+# seed_matched_holder <dir> <pid>: publish <pid> as this home's watcher lock
+# holder with its real process identity, as a live watcher's lock records it,
+# and age the beacon by decades - a sleep-sized wall-clock gap.
+seed_matched_holder() {
+  local dir=$1 pid=$2 state identity
+  state="$dir/state"
+  identity=$(FM_STATE_OVERRIDE="$state" bash -c '. "$1"; fm_pid_identity "$2"' _ "$LIB" "$pid") || fail "could not identify the fake holder"
+  mkdir -p "$state/.watch.lock"
+  printf '%s\n' "$pid" > "$state/.watch.lock/pid"
+  printf '%s\n' "$dir" > "$state/.watch.lock/fm-home"
+  printf '%s\n' "$WATCH" > "$state/.watch.lock/watcher-path"
+  printf '%s\n' "$identity" > "$state/.watch.lock/pid-identity"
+  touch -t 200001010000 "$state/.last-watcher-beat"
+}
+
+# wait_for_line <file> <fixed-string> [polls]: poll until the file contains it.
+wait_for_line() {
+  local file=$1 line=$2 limit=${3:-100} i=0
+  while [ "$i" -lt "$limit" ]; do
+    grep -qF -- "$line" "$file" 2>/dev/null && return 0
+    sleep 0.1
+    i=$((i + 1))
+  done
+  return 1
+}
+
+test_live_frozen_watch_lock_is_retired_after_observation() {
+  # A live identity-matched holder whose beacon stays frozen through the whole
+  # bounded observation is a stalled watcher: it is retired with TERM, its exit
+  # is confirmed, and only then does the new watcher take the lock.
+  local dir state fakebin out err holder pid i lock_pid
+  dir=$(make_case live-frozen-lock)
   state="$dir/state"
   fakebin="$dir/fakebin"
   out="$dir/watch.out"
   err="$dir/watch.err"
   sleep 300 &
   holder=$!
-  identity=$(FM_STATE_OVERRIDE="$state" bash -c '. "$1"; fm_pid_identity "$2"' _ "$LIB" "$holder") || fail "could not identify the fake holder"
-  mkdir -p "$state/.watch.lock"
-  printf '%s\n' "$holder" > "$state/.watch.lock/pid"
-  printf '%s\n' "$dir" > "$state/.watch.lock/fm-home"
-  printf '%s\n' "$WATCH" > "$state/.watch.lock/watcher-path"
-  printf '%s\n' "$identity" > "$state/.watch.lock/pid-identity"
-  # Beacon decades old: past the grace, but a bound beyond it -> still refused.
-  touch -t 200001010000 "$state/.last-watcher-beat"
-  status=0
-  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_WATCHER_STALL_BOUND=9999999999 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" || status=$?
-  [ "$status" -ne 0 ] || fail "watcher replaced a holder whose beacon was under the hard bound"
-  grep -F 'heartbeat is stale' "$err" >/dev/null || fail "under-bound stale holder lost its refusal"
-  is_live_non_zombie "$holder" || fail "under-bound stale holder was signalled"
-  # Same holder and beacon, a bound it is past -> evicted and replaced.
-  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_WATCHER_STALL_BOUND=3 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" &
+  seed_matched_holder "$dir" "$holder"
+  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_WATCHER_STALE_OBSERVE=2 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" &
   pid=$!
   i=0
   lock_pid=
-  while [ "$i" -lt 100 ]; do
+  while [ "$i" -lt 150 ]; do
     lock_pid=$(cat "$state/.watch.lock/pid" 2>/dev/null || true)
     [ "$lock_pid" = "$pid" ] && break
     sleep 0.1
     i=$((i + 1))
   done
-  is_live_non_zombie "$pid" || fail "replacement watcher did not stay alive: $(cat "$err")"
+  is_live_non_zombie "$pid" || fail "replacement watcher did not stay alive: $(cat "$out" "$err")"
   [ "$lock_pid" = "$pid" ] || fail "replacement watcher did not take the lock (holder=$lock_pid)"
-  is_live_non_zombie "$holder" && fail "stalled holder survived the eviction"
+  is_live_non_zombie "$holder" && fail "frozen holder survived its retirement"
+  grep -E "^watcher: observing stale holder pid $holder \(beacon [0-9]+s\); waiting up to 2s for it to advance\$" "$out" >/dev/null \
+    || fail "watcher did not announce its bounded observation: $(cat "$out")"
   # The lock pid is written inside fm_lock_try_acquire; the replacement message
   # is echoed just after, so poll for the message rather than grep once and race
   # the acquire/echo gap.
-  i=0
-  while [ "$i" -lt 100 ]; do
-    grep -E "^watcher: replaced stalled pid $holder \(beacon [0-9]+s past hard bound 3s\)\$" "$out" >/dev/null && break
-    sleep 0.1
-    i=$((i + 1))
-  done
-  grep -E "^watcher: replaced stalled pid $holder \(beacon [0-9]+s past hard bound 3s\)\$" "$out" >/dev/null \
+  wait_for_line "$out" "watcher: replaced stalled pid $holder (beacon " \
     || fail "watcher did not report the replacement: $(cat "$out" "$err")"
+  grep -E "^watcher: replaced stalled pid $holder \(beacon [0-9]+s stale, unchanged through 2s observed\)\$" "$out" >/dev/null \
+    || fail "replacement line did not name the observation: $(cat "$out")"
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
   wait "$holder" 2>/dev/null || true
-  pass "live watcher lock with a beacon past the hard bound is replaced, under it is still refused"
+  pass "live holder whose stale beacon stays frozen through the observation is retired and replaced"
+}
+
+test_live_stale_holder_that_resumes_is_attached() {
+  # Right after system sleep a healthy watcher's beacon reads stale by
+  # wall-clock age. Once it touches the beacon during the observation, the new
+  # watcher defers to it instead of refusing or signalling it.
+  local dir state fakebin out err holder pid status
+  dir=$(make_case live-resumed-lock)
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  err="$dir/watch.err"
+  sleep 300 &
+  holder=$!
+  seed_matched_holder "$dir" "$holder"
+  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_WATCHER_STALE_OBSERVE=60 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" &
+  pid=$!
+  wait_for_line "$out" "watcher: observing stale holder pid $holder " \
+    || fail "watcher did not start observing the stale holder: $(cat "$out" "$err")"
+  touch "$state/.last-watcher-beat"
+  # Far inside the 60-second interval: the advance alone ends the observation.
+  wait_for_exit "$pid" 100
+  status=$?
+  [ "$status" -eq 0 ] || fail "watcher did not stand down cleanly behind a resumed holder (status $status): $(cat "$out" "$err")"
+  grep -E "^watcher: stale holder pid $holder resumed \(beacon advanced after [0-9]+s observed\)\$" "$out" >/dev/null \
+    || fail "watcher did not record the resumed holder: $(cat "$out")"
+  grep -qxF "watcher: already running pid $holder" "$out" || fail "watcher did not attach to the resumed holder: $(cat "$out")"
+  ! grep -qF 'heartbeat is stale' "$err" || fail "resumed holder was still refused"
+  is_live_non_zombie "$holder" || fail "resumed holder was signalled"
+  [ "$(cat "$state/.watch.lock/pid" 2>/dev/null || true)" = "$holder" ] || fail "resumed holder lost its lock"
+  kill "$holder" 2>/dev/null || true
+  wait "$holder" 2>/dev/null || true
+  pass "live holder whose stale beacon advances during the observation is attached, not signalled"
+}
+
+test_stale_holder_identity_change_blocks_retirement() {
+  # The recorded identity is rechecked immediately before TERM: a pid that no
+  # longer proves the lock's identity (a recycled pid) is never signalled, and
+  # the arm keeps its refusal instead.
+  local dir state fakebin out err holder pid status
+  dir=$(make_case live-identity-changed-lock)
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  err="$dir/watch.err"
+  sleep 300 &
+  holder=$!
+  seed_matched_holder "$dir" "$holder"
+  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_WATCHER_STALE_OBSERVE=3 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" &
+  pid=$!
+  wait_for_line "$out" "watcher: observing stale holder pid $holder " \
+    || fail "watcher did not start observing the stale holder: $(cat "$out" "$err")"
+  printf '%s\n' "recycled pid identity" > "$state/.watch.lock/pid-identity"
+  wait_for_exit "$pid" 100
+  status=$?
+  [ "$status" -ne 0 ] && [ "$status" -ne 124 ] || fail "watcher did not refuse after the identity changed (status $status)"
+  grep -F 'heartbeat is stale' "$err" >/dev/null || fail "identity-changed holder lost its refusal: $(cat "$err")"
+  ! grep -qF 'replaced stalled pid' "$out" || fail "watcher replaced a holder whose identity changed"
+  is_live_non_zombie "$holder" || fail "a holder whose identity changed before signalling was signalled"
+  kill "$holder" 2>/dev/null || true
+  wait "$holder" 2>/dev/null || true
+  pass "stale holder whose identity changes before signalling is not signalled"
+}
+
+test_frozen_holder_surviving_term_keeps_refusal() {
+  # Replacement waits for a confirmed exit: a frozen holder that ignores TERM
+  # keeps the lock, so no second watcher starts beside it.
+  local dir state fakebin out err holder pid status
+  dir=$(make_case live-term-survivor-lock)
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  err="$dir/watch.err"
+  perl -e '$SIG{TERM} = "IGNORE"; sleep 300' &
+  holder=$!
+  seed_matched_holder "$dir" "$holder"
+  PATH="$fakebin:$PATH" FM_HOME="$dir" FM_STATE_OVERRIDE="$state" FM_GUARD_GRACE=1 FM_WATCHER_STALE_OBSERVE=1 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH" > "$out" 2> "$err" &
+  pid=$!
+  wait_for_exit "$pid" 150
+  status=$?
+  [ "$status" -ne 0 ] && [ "$status" -ne 124 ] || fail "watcher did not refuse behind a TERM survivor (status $status)"
+  grep -F 'heartbeat is stale' "$err" >/dev/null || fail "TERM survivor lost its refusal: $(cat "$err")"
+  ! grep -qF 'replaced stalled pid' "$out" || fail "watcher replaced a holder that never exited"
+  is_live_non_zombie "$holder" || fail "TERM-ignoring holder unexpectedly exited"
+  [ "$(cat "$state/.watch.lock/pid" 2>/dev/null || true)" = "$holder" ] || fail "lock moved while the TERM survivor still ran"
+  kill -KILL "$holder" 2>/dev/null || true
+  wait "$holder" 2>/dev/null || true
+  pass "frozen holder that survives TERM keeps the refusal and the lock"
+}
+
+test_arm_waits_through_stale_holder_observation() {
+  # The arm's ordinary confirmation budget is shorter than the observation, so
+  # it must extend once for an announced observation: a frozen holder ends with
+  # a confirmed replacement, a resumed one with an attach.
+  local row dir state fakebin armout armpid holder status observe i
+  for row in frozen resumed; do
+    dir=$(make_case "arm-stale-$row")
+    state="$dir/state"
+    fakebin="$dir/fakebin"
+    armout="$dir/arm.out"
+    observe=3
+    [ "$row" = frozen ] || observe=10
+    sleep 300 &
+    holder=$!
+    seed_matched_holder "$dir" "$holder"
+    PATH="$fakebin:$PATH" FM_HOME="$dir" FM_GUARD_GRACE=30 FM_WATCHER_STALE_OBSERVE="$observe" FM_ARM_CONFIRM_TIMEOUT=1 FM_ARM_ATTACH_POLL=0.1 FM_POLL=5 FM_SIGNAL_GRACE=1 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 "$WATCH_ARM" > "$armout" &
+    armpid=$!
+    if [ "$row" = frozen ]; then
+      # Without the extension the arm would abandon this child at its
+      # one-second budget with "no live watcher with a fresh beacon". The
+      # replacement takes the lock from a holder that published no downtime, so
+      # it surfaces that recovery as its wake, which the arm relays and exits 0
+      # on, whether or not it saw the replacement healthy first.
+      wait_for_exit "$armpid" 200
+      status=$?
+      [ "$status" -eq 0 ] || fail "arm did not finish the frozen-holder replacement (status $status): $(cat "$armout")"
+      ! grep -qF 'watcher: FAILED' "$armout" || fail "arm gave up during the observation of a frozen holder: $(cat "$armout")"
+      grep -qF "watcher: replaced stalled pid $holder " "$armout" \
+        || fail "arm did not relay the replacement: $(cat "$armout")"
+      grep -qxF 'check: rearm-resurface' "$armout" || fail "arm did not relay the replacement's recovery wake: $(cat "$armout")"
+      is_live_non_zombie "$holder" && fail "arm replacement left the frozen holder running"
+      if grep -qF 'watcher: started pid=' "$armout"; then
+        grep -q 'reason=stalled-holder-replaced' "$state/.watch-cycle-exits.log" \
+          || fail "confirmed frozen-holder replacement was not ledgered"
+      fi
+      kill "$armpid" 2>/dev/null || true
+      wait "$armpid" 2>/dev/null || true
+      wait "$holder" 2>/dev/null || true
+      continue
+    fi
+    # Touch the beacon only once the child is observing, past the arm's
+    # original one-second budget.
+    i=0
+    while [ "$i" -lt 100 ]; do
+      ls "$state"/.watch-arm-output.* >/dev/null 2>&1 \
+        && grep -qF "watcher: observing stale holder pid $holder " "$state"/.watch-arm-output.* 2>/dev/null && break
+      sleep 0.1
+      i=$((i + 1))
+    done
+    sleep 3
+    touch "$state/.last-watcher-beat"
+    wait_for_line "$armout" "watcher: attached pid=$holder" 100 \
+      || fail "arm did not attach to the resumed holder: $(cat "$armout")"
+    ! grep -qF 'watcher: FAILED' "$armout" || fail "arm reported FAILED for a resumed holder: $(cat "$armout")"
+    is_live_non_zombie "$holder" || fail "arm signalled the resumed holder"
+    grep -q 'reason=stale-holder-resumed' "$state/.watch-cycle-exits.log" \
+      || fail "resumed-holder attach was not ledgered: $(cat "$state/.watch-cycle-exits.log")"
+    kill "$armpid" 2>/dev/null || true
+    wait "$armpid" 2>/dev/null || true
+    kill "$holder" 2>/dev/null || true
+    wait "$holder" 2>/dev/null || true
+  done
+  pass "arm waits through an announced observation, then replaces a frozen holder or attaches to a resumed one"
 }
 
 test_guard_warnings() {
@@ -1652,7 +1818,11 @@ test_msys_pid_identity_uses_proc
 test_stale_watch_lock_reclaimed
 test_stale_watch_reclaim_publishes_before_clear
 test_live_stale_watch_lock_is_actionable
-test_live_stalled_watch_lock_is_replaced_past_hard_bound
+test_live_frozen_watch_lock_is_retired_after_observation
+test_live_stale_holder_that_resumes_is_attached
+test_stale_holder_identity_change_blocks_retirement
+test_frozen_holder_surviving_term_keeps_refusal
+test_arm_waits_through_stale_holder_observation
 test_guard_warnings
 test_lock_single_winner_under_concurrency
 test_lock_steals_dead_pid_lock

@@ -232,15 +232,10 @@ Both use `max(300, FM_POLL + 60)`.
 The default never drops below the historical 300-second floor for the common short-poll case, but grows with the poll cadence once that cadence would otherwise outrun it.
 `fm_poll_derived_grace` in `bin/fm-wake-lib.sh` is the single owner of that formula.
 
-That refusal has a ceiling.
-Once the live holder's beacon is stale past `FM_WATCHER_STALL_BOUND` (default three times the grace), the re-arm takes these steps:
-
-1. It re-verifies the holder against the lock's recorded identity.
-2. It retires the holder with TERM.
-3. It starts in the holder's place.
-
-A watcher wedged mid-cycle can therefore no longer refuse every replacement indefinitely.
-`bin/fm-watch.sh`'s header owns the exact wording and the survives-TERM fallback.
+That refusal is not the first answer for an identity-matched holder.
+A stale beacon may only mean the machine slept, so the re-arm first observes that holder for a bounded interval, attaches when its beacon advances, and retires a holder whose beacon stays frozen.
+A watcher wedged mid-cycle can therefore no longer refuse every replacement indefinitely, and a watcher resumed after sleep is not refused or killed.
+[`docs/watcher-continuity.md`](watcher-continuity.md#stale-live-holder) owns that contract.
 
 The auto-arm hook additionally exports its resolved `FM_GUARD_GRACE` when it forks `bin/fm-watch-arm.sh`.
 The arm wrapper and the watcher it may start then judge staleness with the exact same value the hook just judged it with, whether that value came from an operator override or the poll-derived default.
