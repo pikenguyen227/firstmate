@@ -2785,7 +2785,7 @@ test_allow_red_is_refused_while_away() {
   pass "fm-pr-merge rechecks away presence before an attended red merge"
 }
 
-test_allow_red_requires_one_separate_name() {
+test_allow_red_requires_separate_names() {
   local case_dir rc head
   head=afafafafafafafafafafafafafafafafafafafaf
 
@@ -2802,19 +2802,40 @@ test_allow_red_requires_one_separate_name() {
   assert_no_grep 'pr merge' "$case_dir/gh.log" \
     "github-allow-red-equals: gh pr merge ran for the equals alias"
 
-  case_dir=$(make_case github-allow-red-duplicate)
+  case_dir=$(make_case github-allow-red-two)
   mkdir -p "$case_dir/wt"
+  add_gh_mocks "$case_dir" "$head"
+  write_github_rollup_json "$case_dir" "$head" \
+    "$(check_run lint COMPLETED FAILURE)" "$(check_run unit COMPLETED FAILURE)" \
+    "$(check_run ci COMPLETED SUCCESS)"
+  run_pr_merge "$case_dir" task-x1 https://github.com/example/repo/pull/88 \
+    --allow-red lint --allow-red unit > "$case_dir/stdout" 2> "$case_dir/stderr"
+  assert_logged_gh_merge "$case_dir" 88 example/repo --squash
+
+  case_dir=$(make_case github-allow-red-three)
+  add_gh_mocks "$case_dir" "$head"
+  write_github_rollup_json "$case_dir" "$head" \
+    "$(check_run lint COMPLETED FAILURE)" "$(check_run unit COMPLETED FAILURE)" \
+    "$(check_run portable COMPLETED FAILURE)"
+  run_pr_merge "$case_dir" task-x1 https://github.com/example/repo/pull/89 \
+    --allow-red lint --allow-red unit --allow-red portable \
+    > "$case_dir/stdout" 2> "$case_dir/stderr"
+  assert_logged_gh_merge "$case_dir" 89 example/repo --squash
+
+  case_dir=$(make_case github-allow-red-unmatched)
   add_gh_mocks "$case_dir" "$head"
   write_github_red_json "$case_dir" "$head" lint
   set +e
-  run_pr_merge "$case_dir" task-x1 https://github.com/example/repo/pull/88 \
-    --allow-red lint --allow-red unit > "$case_dir/stdout" 2> "$case_dir/stderr"
+  run_pr_merge "$case_dir" task-x1 https://github.com/example/repo/pull/90 \
+    --allow-red lin --allow-red unit > "$case_dir/stdout" 2> "$case_dir/stderr"
   rc=$?
   set -e
-  expect_code 2 "$rc" "github-allow-red-duplicate: duplicate waiver must be refused"
+  expect_code 1 "$rc" "github-allow-red-unmatched: a near name must not waive lint"
+  assert_grep "check 'lint' is not green" "$case_dir/stderr" \
+    "github-allow-red-unmatched: lint was not named"
   assert_no_grep 'pr merge' "$case_dir/gh.log" \
-    "github-allow-red-duplicate: gh pr merge ran for duplicate waivers"
-  pass "fm-pr-merge accepts exactly one separately named red-check waiver"
+    "github-allow-red-unmatched: gh pr merge ran for unmatched waivers"
+  pass "fm-pr-merge accepts repeated separate red-check waivers and exact names only"
 }
 
 test_away_record_permits_any_green_merge_under_away_authority() {
@@ -3509,7 +3530,7 @@ test_unreadable_required_set_refuses() {
           > "$case_dir/github-required-rules.json"
         ;;
     esac
-    # A waiver names one check, so it can never stand in for a required set
+    # Named waivers cannot stand in for a required set
     # that could not be read.
     run_required_case "$case_dir" 93 --allow-missing validate
     expect_code 1 "$RC" "required-unreadable-$label: an unreadable required set must refuse"
@@ -3610,15 +3631,29 @@ test_allow_missing_follows_the_allow_red_rules() {
   assert_no_grep 'pr merge' "$case_dir/gh.log" \
     "allow-missing-equals: gh pr merge ran for the equals form"
 
-  case_dir=$(make_case github-allow-missing-duplicate)
+  case_dir=$(make_case github-allow-missing-two)
   add_gh_mocks "$case_dir" "$head"
   write_github_required "$case_dir" ruleset:validate ruleset:e2e
   run_required_case "$case_dir" 101 --allow-missing validate --allow-missing e2e
-  expect_code 2 "$RC" "allow-missing-duplicate: a second waiver must be refused"
-  assert_grep '--allow-missing may be specified only once' "$case_dir/stderr" \
-    "allow-missing-duplicate: the refusal did not say single use"
+  expect_code 0 "$RC" "allow-missing-two: both named checks should be waived"
+  assert_logged_gh_merge "$case_dir" 101 example/repo --squash
+
+  case_dir=$(make_case github-allow-missing-three)
+  add_gh_mocks "$case_dir" "$head"
+  write_github_required "$case_dir" ruleset:validate ruleset:e2e ruleset:portable
+  run_required_case "$case_dir" 104 --allow-missing validate --allow-missing e2e --allow-missing portable
+  expect_code 0 "$RC" "allow-missing-three: all three named checks should be waived"
+  assert_logged_gh_merge "$case_dir" 104 example/repo --squash
+
+  case_dir=$(make_case github-allow-missing-unmatched)
+  add_gh_mocks "$case_dir" "$head"
+  write_github_required "$case_dir" ruleset:validate ruleset:e2e
+  run_required_case "$case_dir" 105 --allow-missing validate --allow-missing e2
+  expect_code 1 "$RC" "allow-missing-unmatched: a near name must not waive e2e"
+  assert_grep "required check 'e2e' has not reported" "$case_dir/stderr" \
+    "allow-missing-unmatched: e2e was not named"
   assert_no_grep 'pr merge' "$case_dir/gh.log" \
-    "allow-missing-duplicate: gh pr merge ran for two waivers"
+    "allow-missing-unmatched: gh pr merge ran for an unmatched waiver"
 
   case_dir=$(make_case github-allow-missing-away)
   add_gh_mocks "$case_dir" "$head"
@@ -3662,7 +3697,7 @@ test_allow_missing_follows_the_allow_red_rules() {
   assert_grep '--allow-missing does not apply to GitLab' "$case_dir/stderr" \
     "gitlab-allow-missing: the refusal did not name GitLab"
   [ ! -s "$case_dir/glab.log" ] || fail "gitlab-allow-missing: glab ran despite the waiver"
-  pass "fm-pr-merge --allow-missing is single use, attended-only, and GitHub-only like --allow-red"
+  pass "fm-pr-merge --allow-missing accepts repeated exact names, remains attended-only, and applies only to GitHub"
 }
 
 test_gitlab_head_override_args_refuse_before_recording
@@ -3696,7 +3731,7 @@ test_supersession_never_crosses_check_names
 test_undated_runs_never_supersede
 test_allow_red_still_waives_only_the_current_failure
 test_allow_red_is_refused_while_away
-test_allow_red_requires_one_separate_name
+test_allow_red_requires_separate_names
 test_away_record_permits_any_green_merge_under_away_authority
 test_away_branch_actor_merges_green_under_the_record
 test_away_branch_refuses_when_record_archived_during_preflight
