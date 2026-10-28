@@ -1,0 +1,26 @@
+docs/configuration.md
+  s_308ad501d9d9da::t_6dcb8f1ac694e3 1358
+  s_308ad501d9d9da::t_70b4331c9788e3 1339
+tests/fm-strategy.test.sh
+  s_308ad501d9d9da::t_6dcb8f1ac694e3 551
+tests/fm-dispatch-resolve.test.sh
+  s_308ad501d9d9da::t_189a150760db65 1043-1086
+bin/strategies/plans.json
+  s_308ad501d9d9da::t_70b4331c9788e3 62,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c90c862f49e0ec311fdaf527896905173f571fbf",
+  "prompts": {},
+  "sessions": {
+    "s_308ad501d9d9da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b8a483f-b176-4432-b215-aced8cbe8b24",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
