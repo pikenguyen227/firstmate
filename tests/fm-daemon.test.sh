@@ -2347,7 +2347,7 @@ test_outbox_delivers_past_an_unprovable_pane_on_claude_and_codex() {
     (
       unset FM_DAEMON_TRANSPORT
       PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
-        FM_DAEMON_PRIMARY_HARNESS=$harness housekeeping "$state"
+        FM_ESCALATE_BATCH_SECS=0 FM_DAEMON_PRIMARY_HARNESS=$harness housekeeping "$state"
     )
     outbox=$(fm_outbox_dir "$state")
     [ ! -s "$sent" ] || fail "$harness: the daemon typed into the captain's pane"
@@ -2432,9 +2432,74 @@ test_outbox_max_defer_pane_fallback_delivers_once() {
   [ "$(delivered_digest "$sent" 2>/dev/null | grep -c 'pull/9' || true)" -eq 1 ] \
     || fail "the pane fallback did not deliver the digest exactly once"
   fm_outbox_pending "$state" && fail "a digest the pane fallback delivered stayed in the outbox"
-  [ -f "$outbox/delivered/$old.1.0.msg" ] || fail "the delivered digest was not archived"
+  [ -z "$(ls -A "$outbox")" ] || fail "the delivered digest left a file behind: $(ls -A "$outbox")"
   [ ! -e "$state/.subsuper-inject-wedged" ] || fail "the wedge marker survived a delivered fallback"
   pass "the outbox pane fallback delivers an unclaimed digest once and clears the alarm"
+}
+
+# A coordinator turn that stays busy past max-defer is working, not wedged: the
+# wake path delivers at that turn's end, so the daemon neither types into the
+# busy pane nor alarms - until the digest outlives the hung-turn bound.
+test_outbox_busy_turn_waits_without_typing_or_alarm() {
+  local harness dir state sent outbox old
+  for harness in claude codex; do
+    dir=$(make_bordered_case "outbox-busy-turn-$harness")
+    state="$dir/state"
+    sent="$dir/sent.log"; : > "$sent"
+    case "$harness" in
+      claude) printf 'esc to interrupt\n' > "$dir/composer" ;;
+      codex) printf 'Working (12s • esc to interrupt)\n' > "$dir/composer" ;;
+    esac
+    PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_DAEMON_PRIMARY_HARNESS=$harness pane_is_busy fakepane tmux \
+      || fail "$harness: the busy-turn fixture does not read busy, so it pins nothing"
+    afk_enter "$state"
+    outbox=$(fm_outbox_dir "$state"); mkdir -p "$outbox"
+    old=$(( $(date +%s) - 600 ))
+    printf 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/7?\n' > "$outbox/$old.1.0.msg"
+    (
+      unset FM_DAEMON_TRANSPORT
+      PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
+        FM_DAEMON_PRIMARY_HARNESS=$harness FM_MAX_DEFER_SECS=60 FM_INJECT_CONFIRM_SLEEP=0.05 \
+        housekeeping "$state"
+    )
+    [ ! -s "$sent" ] || fail "$harness: the daemon typed into a pane busy mid-turn"
+    [ ! -e "$state/.subsuper-inject-wedged" ] || fail "$harness: a busy turn raised a false WEDGED alarm"
+    [ -f "$outbox/$old.1.0.msg" ] || fail "$harness: the digest left the outbox before its wake path claimed it"
+    (
+      unset FM_DAEMON_TRANSPORT
+      PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
+        FM_DAEMON_PRIMARY_HARNESS=$harness FM_MAX_DEFER_SECS=60 FM_OUTBOX_HUNG_TURN_SECS=300 \
+        FM_INJECT_CONFIRM_SLEEP=0.05 housekeeping "$state"
+    )
+    [ ! -s "$sent" ] || fail "$harness: the hung-turn alarm typed into the busy pane"
+    grep -F 'possibly hung' "$state/.subsuper-inject-wedged" >/dev/null \
+      || fail "$harness: a digest held past the hung-turn bound did not alarm"
+    grep -F 'pull/7' "$state/.subsuper-inject-wedged" >/dev/null \
+      || fail "$harness: the hung-turn alarm did not name the held digest"
+    [ -f "$outbox/$old.1.0.msg" ] || fail "$harness: the hung-turn alarm dropped the digest"
+  done
+  pass "a busy coordinator turn holds outbox digests for its turn end without typing or a false alarm, and a hung turn alarms"
+}
+
+# Balanced and lean both batch within a bound; lean batches longer so it spends
+# fewer coordinator turns, and an explicit FM_ESCALATE_BATCH_SECS still wins.
+test_escalate_batch_window_follows_strategy_mode() {
+  local config got transport
+  config="$TMP_ROOT/batch-strategy-config"; mkdir -p "$config"
+  for transport in hook checkpoint pane; do
+    printf 'mode=balanced\nautonomy=balanced\n' > "$config/strategy"
+    got=$(unset FM_ESCALATE_BATCH_SECS; FM_CONFIG_OVERRIDE="$config" FM_DAEMON_TRANSPORT=$transport escalate_batch_secs)
+    [ "$got" = 90 ] || fail "$transport balanced batch window: $got"
+    printf 'mode=lean\nautonomy=lean\n' > "$config/strategy"
+    got=$(unset FM_ESCALATE_BATCH_SECS; FM_CONFIG_OVERRIDE="$config" FM_DAEMON_TRANSPORT=$transport escalate_batch_secs)
+    [ "$got" = 180 ] || fail "$transport lean batch window: $got"
+    got=$(FM_ESCALATE_BATCH_SECS=30 FM_CONFIG_OVERRIDE="$config" FM_DAEMON_TRANSPORT=$transport escalate_batch_secs)
+    [ "$got" = 30 ] || fail "$transport explicit batch window: $got"
+  done
+  rm -f "$config/strategy"
+  got=$(unset FM_ESCALATE_BATCH_SECS; FM_CONFIG_OVERRIDE="$config" FM_DAEMON_TRANSPORT=hook escalate_batch_secs)
+  [ "$got" = 90 ] || fail "no-strategy batch window: $got"
+  pass "the digest batch window is bounded on every transport, longer under lean than balanced"
 }
 
 test_outbox_empty_clears_stale_wedge_marker() {
@@ -3343,6 +3408,8 @@ test_outbox_transport_is_claude_and_codex_only
 test_outbox_publish_waits_while_afk_inactive
 test_outbox_max_defer_alarms_and_keeps_unclaimed_digest
 test_outbox_max_defer_pane_fallback_delivers_once
+test_outbox_busy_turn_waits_without_typing_or_alarm
+test_escalate_batch_window_follows_strategy_mode
 test_outbox_empty_clears_stale_wedge_marker
 test_oversized_digest_is_bounded_and_kept_durable
 test_digest_budget_counts_omitted_events

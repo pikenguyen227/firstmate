@@ -116,6 +116,10 @@ test_quiet_mode_stanzas() {
   assert_contains "$out" "Ordinary captain chat does NOT exit it" "quiet stanza lost the explicit-only exit rule"
   assert_not_contains "$out" "- Away mode: active" "quiet mode incorrectly rendered as away mode"
   assert_contains "$out" "- Daemon digests: keep the foreground checkpoint loop running" "codex quiet mode must keep the checkpoint that delivers daemon digests"
+  assert_not_contains "$out" "keep normal harness supervision paused" "codex quiet mode told the model to pause the checkpoint that delivers daemon digests"
+  out=$(FM_HOME="$home" FM_CONFIG_OVERRIDE="$config" "$RENDER" --harness codex --afk 1)
+  assert_not_contains "$out" "keep normal harness supervision paused" "codex away mode told the model to pause the checkpoint that delivers daemon digests"
+  assert_contains "$out" "keep the foreground checkpoint loop running" "codex away mode dropped the checkpoint loop"
   out=$(FM_HOME="$home" "$RENDER" --harness codex --afk 1 --afk-mode quiet --repair-line)
   assert_contains "$out" "Quiet mode owns watcher supervision; load /quiet" "quiet repair line did not name /quiet"
   assert_contains "$out" "Keep the foreground checkpoint running" "codex quiet repair line dropped the checkpoint that delivers daemon digests"

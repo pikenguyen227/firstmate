@@ -70,10 +70,13 @@
 #     outbox (bin/fm-escalation-outbox-lib.sh owns the hand-off and why), and the
 #     primary's own wake path delivers it: Claude's Stop asyncRewake hook and
 #     Codex's foreground checkpoint both park on the outbox while state/.afk
-#     exists. Those digests flush as soon as they are buffered
-#     (FM_OUTBOX_BATCH_SECS, default 0) because delivery no longer competes with
-#     the captain for the pane. A digest still unclaimed past FM_MAX_DEFER_SECS
-#     gets one pane-typed attempt as a last resort, then the same wedge alarm.
+#     exists. A digest is delivered when the coordinator's current turn ends,
+#     so while that turn is live (pane busy) the daemon neither types into the
+#     pane nor alarms. A digest still unclaimed past FM_MAX_DEFER_SECS on an
+#     idle pane (a turn ended without claiming it) gets one pane-typed attempt
+#     as a last resort, then the same wedge alarm; one unclaimed past
+#     FM_OUTBOX_HUNG_TURN_SECS behind a pane that stays busy alarms as a
+#     possibly hung turn, without typing.
 #   - Cheap heartbeat catch-all: every HEARTBEAT_SCAN_SECS the daemon greps all
 #     state/*.status for a captain-relevant line the per-wake classifier might
 #     have missed (e.g. a status verb outside CAPTAIN_RE) and escalates it.
@@ -118,9 +121,12 @@
 #                                   captain-held transfer is never rechecked
 #                                   while the away-posture record exists
 #          FM_ESCALATE_BATCH_SECS   buffer window for batched escalation
-#                                   digests; 0 = flush immediately (default 90)
-#          FM_OUTBOX_BATCH_SECS     the same window where the primary's wake
-#                                   path delivers through the outbox (default 0)
+#                                   digests; 0 = flush immediately (default 90,
+#                                   or 180 when config/strategy names
+#                                   mode=lean)
+#          FM_OUTBOX_HUNG_TURN_SECS how long an outbox digest may wait behind a
+#                                   coordinator turn that stays busy before the
+#                                   wedge alarm treats it as hung (default 3600)
 #          FM_DAEMON_TRANSPORT      hook|checkpoint|pane override of the
 #                                   delivery path the primary harness selects
 #                                   (fm_outbox_transport); tests and diagnosis
@@ -231,7 +237,8 @@ FM_SUPERVISOR_SUPPORTED_BACKENDS="tmux herdr"
 INJECT_SKIP_DEFAULT="heartbeat"
 STALE_ESCALATE_SECS_DEFAULT=240
 ESCALATE_BATCH_SECS_DEFAULT=90
-OUTBOX_BATCH_SECS_DEFAULT=0
+LEAN_ESCALATE_BATCH_SECS_DEFAULT=180
+OUTBOX_HUNG_TURN_SECS_DEFAULT=3600
 HEARTBEAT_SCAN_SECS_DEFAULT=300
 HOUSEKEEPING_TICK_DEFAULT=15
 # Max time a buffered escalation may sit undelivered before the daemon retries
@@ -731,12 +738,14 @@ escalate_uses_outbox() {
   [ "$FM_DAEMON_TRANSPORT" != pane ]
 }
 
+# escalate_batch_secs: the digest batch window. The lean strategy batches
+# longer than balanced so it spends fewer coordinator turns; both stay bounded.
 escalate_batch_secs() {
-  local secs
-  if escalate_uses_outbox; then
-    secs=${FM_OUTBOX_BATCH_SECS:-$OUTBOX_BATCH_SECS_DEFAULT}
-  else
-    secs=${FM_ESCALATE_BATCH_SECS:-$ESCALATE_BATCH_SECS_DEFAULT}
+  local secs=${FM_ESCALATE_BATCH_SECS:-} mode
+  if [ -z "$secs" ]; then
+    secs=$ESCALATE_BATCH_SECS_DEFAULT
+    mode=$(sed -n 's/^mode=//p' "${FM_CONFIG_OVERRIDE:-$FM_HOME/config}/strategy" 2>/dev/null | head -n 1)
+    [ "$mode" != lean ] || secs=$LEAN_ESCALATE_BATCH_SECS_DEFAULT
   fi
   case "$secs" in ''|*[!0-9]*) secs=0 ;; esac
   printf '%s' "$secs"
@@ -1262,7 +1271,7 @@ _oldest_line_age() {  # <buf> -> seconds since the oldest buffered item first ar
 #  3) heartbeat scan: every HEARTBEAT_SCAN_SECS, grep state/*.status for a
 #     captain-relevant line the per-wake classifier missed and escalate it.
 housekeeping() {  # <state>
-  local state=$1 now due f key task win marker age last max_defer oldest pause_secs marker_epoch until bounded_until pause_reason
+  local state=$1 now due f key task win marker age last max_defer oldest hung_turn pause_secs marker_epoch until bounded_until pause_reason
   now=$(_now)
   migrate_watcher_pause_markers "$state"
 
@@ -1296,17 +1305,29 @@ housekeeping() {  # <state>
     fi
   fi
 
-  # (1c) outbox max-defer. A digest the primary's own wake path has not claimed
-  # past MAX_DEFER_SECS gets one pane-typed attempt; if that cannot confirm, the
-  # wedge alarm fires and the digest stays in the outbox for the wake path, the
-  # next attempt, or the return brief. An empty outbox clears the alarm marker.
+  # (1c) outbox max-defer. The wake path delivers at the end of the current
+  # coordinator turn, so a busy pane is waited on: no pane typing and no alarm
+  # until the digest outlives OUTBOX_HUNG_TURN_SECS, which alarms as a possibly
+  # hung turn. On an idle pane a digest unclaimed past MAX_DEFER_SECS means a
+  # turn ended without claiming it: it gets one pane-typed attempt; if that
+  # cannot confirm, the wedge alarm fires and the digest stays in the outbox for
+  # the wake path, the next attempt, or the return brief. An empty outbox clears
+  # the alarm marker.
   if escalate_uses_outbox; then
     oldest=$(fm_outbox_oldest_age "$state")
+    hung_turn=${FM_OUTBOX_HUNG_TURN_SECS:-$OUTBOX_HUNG_TURN_SECS_DEFAULT}
+    case "$hung_turn" in ''|*[!0-9]*) hung_turn=$OUTBOX_HUNG_TURN_SECS_DEFAULT ;; esac
     if [ -z "$oldest" ]; then
       [ -s "$state/.subsuper-escalations" ] || rm -f "$state/.subsuper-inject-wedged"
-    elif afk_active "$state" && [ "$max_defer" -gt 0 ] && [ "$oldest" -ge "$max_defer" ] \
-       && [ "$(_file_age "$state/.subsuper-inject-wedged")" -ge "$max_defer" ] \
-       && fm_outbox_claim "$state"; then
+    elif ! afk_active "$state" || [ "$max_defer" -le 0 ] || [ "$oldest" -lt "$max_defer" ] \
+       || [ "$(_file_age "$state/.subsuper-inject-wedged")" -lt "$max_defer" ]; then
+      :
+    elif pane_is_busy "${FM_SUPERVISOR_TARGET:-$FM_SUPERVISOR_TARGET_DEFAULT}" "${FM_SUPERVISOR_BACKEND:-tmux}"; then
+      if [ "$oldest" -ge "$hung_turn" ]; then
+        INJECT_LAST_FAILURE="unclaimed by the $FM_DAEMON_TRANSPORT wake path for ${oldest}s while the coordinator turn stayed busy (possibly hung)"
+        inject_wedge_alarm "$state" "$oldest"
+      fi
+    elif fm_outbox_claim "$state"; then
       if inject_msg "$(fm_outbox_render_claimed "$max_defer")" "$state"; then
         fm_outbox_commit "$state"
         log "outbox recovered: pane fallback delivered after ${oldest}s unclaimed by the $FM_DAEMON_TRANSPORT wake path"

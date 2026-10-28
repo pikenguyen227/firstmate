@@ -255,10 +255,12 @@ else
   printf '%s\n' '- Lock: held by this session; this session owns normal supervision unless away mode says otherwise.'
 fi
 if [ "$AFK" -eq 1 ]; then
+  afk_paused='keep normal harness supervision paused while the daemon owns the watcher'
+  [ "$HARNESS" != codex ] || afk_paused='start no watcher yourself while the daemon owns it, but keep the foreground checkpoint loop running'
   if [ "$AFK_MODE" = quiet ]; then
-    printf '%s\n' '- Quiet mode: active; load /quiet and keep normal harness supervision paused while the daemon owns the watcher. Ordinary captain chat does NOT exit it - only an explicit /quiet off does.'
+    printf '%s%s%s\n' '- Quiet mode: active; load /quiet and ' "$afk_paused" '. Ordinary captain chat does NOT exit it - only an explicit /quiet off does.'
   else
-    printf '%s\n' '- Away mode: active; load /afk and keep normal harness supervision paused while the daemon owns the watcher.'
+    printf '%s%s%s\n' '- Away mode: active; load /afk and ' "$afk_paused" '.'
   fi
   case "$HARNESS" in
     claude)

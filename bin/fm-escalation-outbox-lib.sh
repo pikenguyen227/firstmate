@@ -26,14 +26,12 @@
 # per file, written to a temporary name and renamed into place. A consumer
 # claims a file by renaming it to <name>.claimed.<pid> (a rename either wins or
 # finds the file gone, so exactly one consumer delivers it), prints it, and
-# commits by moving it under delivered/ (the newest FM_OUTBOX_KEEP_DELIVERED
-# are kept as audit evidence). A claim whose owner died, or that is older than
+# commits by deleting it. A claim whose owner died, or that is older than
 # FM_OUTBOX_CLAIM_STALE_SECS (a live claim is held for well under a second),
 # is put back for the next consumer: a duplicate delivery is possible after a
 # crash between print and commit, a lost one is not.
 #
-# Tunables: FM_OUTBOX_CLAIM_STALE_SECS (default 120), FM_OUTBOX_KEEP_DELIVERED
-# (default 50).
+# Tunables: FM_OUTBOX_CLAIM_STALE_SECS (default 120).
 
 FM_OUTBOX_DIRNAME=.subsuper-outbox
 
@@ -155,25 +153,12 @@ fm_outbox_render_claimed() {  # [late-seconds]
 }
 
 fm_outbox_commit() {  # <state>
-  local dir f keep
-  dir=$(fm_outbox_dir "$1")
-  mkdir -p "$dir/delivered" 2>/dev/null || true
+  local f
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    mv "$f" "$dir/delivered/$(basename "${f%.claimed.*}")" 2>/dev/null || rm -f "$f"
+    rm -f "$f"
   done <<< "$FM_OUTBOX_CLAIMED"
   FM_OUTBOX_CLAIMED=
-  keep=${FM_OUTBOX_KEEP_DELIVERED:-50}
-  case "$keep" in ''|*[!0-9]*) keep=50 ;; esac
-  local -a kept=()
-  for f in "$dir"/delivered/*.msg; do
-    [ -f "$f" ] && kept+=("${f##*/}")
-  done
-  [ "${#kept[@]}" -gt "$keep" ] || return 0
-  printf '%s\n' "${kept[@]}" | sort -t. -k1,1n -k2,2n -k3,3n \
-    | head -n $(( ${#kept[@]} - keep )) | while IFS= read -r f; do
-      rm -f "$dir/delivered/$f"
-    done
 }
 
 fm_outbox_release() {  # <state>

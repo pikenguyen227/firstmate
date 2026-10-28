@@ -21,7 +21,7 @@ These rules apply to the coordinator handling the work, including its supervisio
 
 A confirmed strategy selection is consent to its present-session notification posture.
 For balanced or lean, load `quiet` and enter through its existing lifecycle when the captain is present; never write its flag, launch a parallel monitor, or change notification classification yourself.
-On Claude and Codex primaries that lifecycle hands captain-relevant events to the harness's own wake path rather than the captain's pane, so a present, busy session never holds them back; on Codex keep the foreground checkpoint loop running while quiet is active, because it carries them.
+On Claude and Codex primaries that lifecycle hands captain-relevant events to the harness's own wake path rather than the captain's pane, so a present, busy session receives them at its next turn end and never loses them; on Codex keep the foreground checkpoint loop running while quiet is active, because it carries them.
 For full, use normal supervision; if quiet is active, load `quiet` and use its ordinary exit procedure before resuming normal supervision.
 An explicit later `/quiet` or `/quiet off` overrides that posture for this session; do not immediately undo it at the next dispatch or notification.
 A strategy change during away mode updates config but does not end or replace the away contract; reconcile the selected posture after the ordinary return catch-up.

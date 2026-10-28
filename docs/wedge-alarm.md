@@ -2,7 +2,7 @@
 
 The away-mode sub-supervisor (`bin/fm-supervise-daemon.sh`) buffers escalations and injects them into Firstmate's own pane.
 On a Claude or Codex primary it hands them instead to the outbox that harness's own wake path delivers from ([afk skill](../.agents/skills/afk/SKILL.md) "Delivery path").
-When injection cannot confirm a submit, or an outbox digest stays unclaimed, past `FM_MAX_DEFER_SECS`, `inject_wedge_alarm` raises a loud, rate-limited alarm so the stall never stays invisible.
+When injection cannot confirm a submit, or an outbox digest stays unclaimed after a turn has ended, past `FM_MAX_DEFER_SECS` (or behind a turn still busy past `FM_OUTBOX_HUNG_TURN_SECS`), `inject_wedge_alarm` raises a loud, rate-limited alarm so the stall never stays invisible.
 The active alert is pane-independent because a tmux status-line flash has no cross-backend equivalent and cannot reach an unattended captain reliably.
 The durable marker and tmux flash remain as additional signals.
 

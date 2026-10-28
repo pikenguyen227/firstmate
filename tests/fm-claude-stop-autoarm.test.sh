@@ -374,7 +374,6 @@ test_afk_park_delivers_outbox_digest() {
   assert_contains "$out" 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/58?' "the rewake did not carry the digest"
   [ ! -e "$dir/state/arm-ran" ] || fail "the delivering park also armed a watcher"
   [ -z "$(find "$dir/state/.subsuper-outbox" -maxdepth 1 -name '*.msg*')" ] || fail "the delivered digest stayed in the outbox"
-  [ -n "$(find "$dir/state/.subsuper-outbox/delivered" -name '*.msg')" ] || fail "the delivered digest was not archived"
   pass "auto-arm: under away/quiet mode the hook delivers an outbox digest through its rewake"
 }
 
