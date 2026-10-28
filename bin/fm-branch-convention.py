@@ -1,37 +1,38 @@
 #!/usr/bin/env python3
-"""Propose a ship branch from a repository's documented or observed convention.
+"""Propose only a simple, validated repository ship-branch prefix.
 
-Usage: fm-branch-convention.py <repo> [--task-id ID --title TITLE] [--template RULE]
+Usage: fm-branch-convention.py <repo> [--task-id ID --title TITLE]
 
-Output is key=value lines: kind (prefix|rule), value, source, and branch when
-a task id is supplied. An unresolved rule reports status=needs-decision instead
-of a branch. An empty result means no sufficiently clear convention.
-This never writes a repository or its registry; project add and task intake own
-the decision to record or use a proposal.
+Print kind=prefix, value, source, and branch for one unambiguous prefix. Print
+status=needs-decision with the observed rule when evidence is complex or
+conflicting. Print nothing when there is no evidence of a repository rule.
 """
 
 import argparse
-import base64
-from collections import Counter
+import fnmatch
 import json
 from pathlib import Path
 import re
 import subprocess
-import sys
 
 
-TYPES = ("feature", "feat", "bugfix", "hotfix", "fix", "chore")
-DEFAULTS = {"main", "master", "develop", "development", "dev", "release", "beta", "staging"}
+DOCS = ("AGENTS.md", "CONTRIBUTING.md", "README.md", "BRANCHING.md", ".github/CONTRIBUTING.md")
+SKIP_BRANCHES = {"main", "master", "develop", "development", "dev", "release", "beta", "staging"}
+SKIP_PREFIXES = {"fm", "dependabot", "renovate"}
 
 
 def git(repo, *args):
-    return subprocess.run(["git", "-C", str(repo), *args], text=True,
-                          capture_output=True, check=False).stdout.strip()
+    result = subprocess.run(["git", "-C", str(repo), *args], text=True,
+                            capture_output=True, check=False)
+    return result.stdout.strip()
 
 
 def github_repo(repo):
     remote = git(repo, "remote", "get-url", "origin")
-    match = re.fullmatch(r"(?:https://github\.com/|git@github\.com:)([^/]+)/([^/]+?)(?:\.git)?", remote)
+    match = re.fullmatch(
+        r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)([^/]+)/([^/]+?)(?:\.git)?",
+        remote,
+    )
     return "/".join(match.groups()) if match else None
 
 
@@ -44,137 +45,134 @@ def axi_read(path):
     return result.stdout if result.returncode == 0 else ""
 
 
-def rulesets(repo):
-    name = github_repo(repo)
-    if not name:
-        return []
-    summaries = axi_read(f"/repos/{name}/rulesets?includes_parents=true")
+def doc_evidence(repo):
+    paths = [repo / name for name in DOCS]
+    if (repo / "docs").is_dir():
+        paths.extend(sorted((repo / "docs").glob("*branch*.md")))
+    vault_paths = []
+    for name in git(repo, "ls-files", "--", "_vaults").splitlines():
+        parts = Path(name).parts
+        if len(parts) >= 4 and parts[0] == "_vaults" and parts[2] == "wiki" and name.endswith(".md"):
+            vault_paths.append(repo / name)
+    # A workspace context note is the natural entry point for a workspace-wide
+    # Git rule. Search it before app-specific wiki notes when reporting evidence.
+    paths = sorted(vault_paths, key=lambda path: ("/workspace/wiki/" not in str(path), str(path))) + paths
     found = []
-    for entry in re.split(r"(?=^  - id:)", summaries, flags=re.MULTILINE):
-        number = re.search(r"^  - id:\s*(\d+)", entry, re.MULTILINE)
-        if not number or not re.search(r"^\s*enforcement:\s*active$", entry, re.MULTILINE):
-            continue
-        if not re.search(r"^\s*target:\s*branch$", entry, re.MULTILINE):
-            continue
-        detail = axi_read(f"/repos/{name}/rulesets/{number.group(1)}")
-        # gh-axi presents an API object as labeled text, not raw JSON.
-        # Read only the branch-name rule fields and leave an unknown shape alone.
-        match = re.search(r'^\s*pattern:\s*(".*")$', detail, re.MULTILINE)
-        if "type: branch_name_pattern" not in detail or not match:
-            continue
-        try:
-            pattern = json.loads(match.group(1))
-        except ValueError:
-            continue
-        found.append({"id": int(number.group(1)), "rules": [{"type": "branch_name_pattern",
-                      "parameters": {"operator": "regex", "pattern": pattern,
-                                     "negate": bool(re.search(r"^\s*negate:\s*true$", detail, re.MULTILINE))}}]})
-    return found
-
-
-def from_docs(repo):
-    paths = [repo / name for name in ("AGENTS.md", "CONTRIBUTING.md", "README.md", "BRANCHING.md", ".github/CONTRIBUTING.md")]
-    paths += list((repo / "docs").glob("*branch*.md")) if (repo / "docs").is_dir() else []
     for path in paths:
         if not path.is_file():
             continue
+        is_vault = "_vaults" in path.parts
         for line in path.read_text(errors="replace").splitlines():
-            if not re.search(r"branch", line, re.I):
+            branch_context = "branch" in line.lower()
+            # A vault may show concrete branch templates in a fenced Git
+            # workflow example. Require a branch-family name at line start so
+            # unrelated HTML components and type parameters are ignored.
+            vault_template = is_vault and re.match(
+                r"^\s*(?:[-*]\s*)?(?:`)?(?:feature|feat|fix|bugfix|hotfix)/[^\s`]*<[^>]+>",
+                line, re.I,
+            )
+            if not branch_context and not vault_template:
                 continue
-            # Generic directions to discover conventions carry no name to use.
-            match = re.search(r"branch(?:es| naming| name)?\s*(?:prefix|must (?:start|begin) with|should (?:start|begin) with)\s*[:=]?\s*[`\"']?([A-Za-z][A-Za-z0-9_-]*/)", line, re.I)
-            if match:
-                return "prefix", match.group(1), str(path.relative_to(repo))
-            for template in ("type/ticket-description", "ticket-description"):
-                if template in re.sub(r"[<>]", "", line.lower()):
-                    return "rule", template, str(path.relative_to(repo))
-    return None
+            source = str(path.relative_to(repo))
+            prefix = re.search(
+                r"branch(?:es| naming| name)?\s*(?:prefix|must (?:start|begin) with|should (?:start|begin) with)\s*[:=]?\s*[`\"']?([A-Za-z][A-Za-z0-9_-]*/)",
+                line, re.I,
+            )
+            if prefix:
+                found.append(("prefix", prefix.group(1), source))
+            elif vault_template or (branch_context and re.search(
+                r"<ticket>|<type>|ticket-description|type/ticket-description|\b(?:feature|feat|fix|bugfix|hotfix)/[^\s`]*<[^>]+>",
+                line, re.I,
+            )):
+                found.append(("complex", line.strip(), source))
+    return found
 
 
-def from_rulesets(repo):
-    for ruleset in rulesets(repo):
-        for rule in ruleset.get("rules", []):
+def ruleset_evidence(repo):
+    name = github_repo(repo)
+    if not name:
+        return []
+    try:
+        summaries = json.loads(axi_read(f"/repos/{name}/rulesets?includes_parents=true"))
+    except ValueError:
+        return []
+    if not isinstance(summaries, list):
+        return []
+    found = []
+    for entry in summaries:
+        if not isinstance(entry, dict) or entry.get("enforcement") != "active":
+            continue
+        if entry.get("target") != "branch" or not isinstance(entry.get("id"), int):
+            continue
+        source = f"GitHub ruleset {entry['id']}"
+        try:
+            detail = json.loads(axi_read(f"/repos/{name}/rulesets/{entry['id']}"))
+        except ValueError:
+            found.append(("complex", "unreadable ruleset", source))
+            continue
+        if not isinstance(detail, dict):
+            found.append(("complex", "unreadable ruleset", source))
+            continue
+        conditions = detail.get("conditions") or {}
+        ref_name = conditions.get("ref_name") or {}
+        includes = ref_name.get("include", [])
+        excludes = ref_name.get("exclude", [])
+        if excludes:
+            found.append(("complex", f"ref exclusions: {excludes}", source))
+        if len(includes) == 1:
+            protected = re.fullmatch(r"(?:refs/heads/)?([A-Za-z][A-Za-z0-9_-]*)/\*", includes[0])
+            if protected:
+                found.append(("prefix", protected.group(1) + "/", source))
+        elif len(includes) > 1:
+            found.append(("complex", f"ref includes: {includes}", source))
+        for rule in detail.get("rules") or []:
             if rule.get("type") != "branch_name_pattern":
                 continue
             params = rule.get("parameters", {})
-            if params.get("negate") or params.get("operator") != "regex":
-                continue
             pattern = params.get("pattern", "")
-            if not isinstance(pattern, str):
+            operator = params.get("operator")
+            if params.get("negate") or not isinstance(pattern, str):
+                found.append(("complex", f"branch name pattern: {params}", source))
                 continue
-            # A constrained type/slug regex is a naming rule. A protection
-            # pattern for main or release branches alone is not one.
-            head = re.match(r"^\^(?:\((?P<choices>[a-z|]+)\)|(?P<single>[a-z]+))(?:/|\\/)(?:.+)\$$", pattern)
-            if head and all(kind in TYPES for kind in (head.group("choices") or head.group("single")).split("|")):
-                source = f"GitHub ruleset {ruleset.get('id', ruleset.get('name', 'unknown'))}"
-                encoded = base64.urlsafe_b64encode(pattern.encode()).decode().rstrip("=")
-                return "rule", "regex64:" + encoded, source
-    return None
+            if operator == "starts_with" and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*/", pattern):
+                found.append(("prefix", pattern, source, (operator, pattern)))
+                continue
+            if operator == "fnmatch" and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*/\*", pattern):
+                found.append(("prefix", pattern[:-1], source, (operator, pattern)))
+                continue
+            if operator != "regex":
+                found.append(("complex", f"branch name pattern: {params}", source))
+                continue
+            try:
+                re.compile(pattern)
+            except re.error:
+                found.append(("complex", "invalid branch name pattern", source))
+                continue
+            # Only a literal prefix followed by a conventional slug class is
+            # inferred. Alternations, ticket groups, and unknown regex syntax
+            # stay decisions for the coordinator.
+            simple = re.fullmatch(r"\^([A-Za-z][A-Za-z0-9_-]*/|[A-Za-z][A-Za-z0-9_-]*\\/)(?:\[a-z0-9-\]\+|\[A-Za-z0-9-\]\+|\.\+)\$", pattern)
+            if simple:
+                found.append(("prefix", simple.group(1).replace("\\/", "/"), source, (operator, pattern)))
+            else:
+                found.append(("complex", pattern, source))
+    return found
 
 
-def from_history(repo):
-    names = git(repo, "for-each-ref", "--count=120", "--sort=-committerdate",
-                "--format=%(refname:short)", "refs/remotes/origin").splitlines()
-    prefixes = []
-    multi_segment = False
-    for name in names:
+def history_evidence(repo):
+    remote = git(repo, "for-each-ref", "--count=120", "--sort=-committerdate",
+                 "--format=%(refname:short)", "refs/remotes/origin").splitlines()
+    local = git(repo, "for-each-ref", "--count=120", "--sort=-committerdate",
+                "--format=%(refname:short)", "refs/heads").splitlines()
+    topics = []
+    for name in remote + local:
         name = name.removeprefix("origin/")
-        if "/" not in name or name in DEFAULTS:
+        if name in SKIP_BRANCHES or "/" not in name:
             continue
-        if name.count("/") != 1:
-            multi_segment = True
+        if name.split("/", 1)[0] in SKIP_PREFIXES:
             continue
-        prefix = name.split("/", 1)[0]
-        if prefix in ("fm", "dependabot", "renovate", "release"):
-            continue
-        prefixes.append(prefix)
-    if len(prefixes) < 4:
-        if multi_segment:
-            print("note: multi-segment branch history has no complete prefix proposal", file=sys.stderr)
-        return None
-    counts = Counter(prefixes)
-    prefix, count = counts.most_common(1)[0]
-    if count * 10 < len(prefixes) * 7:
-        if multi_segment:
-            print("note: multi-segment branch history has no complete prefix proposal", file=sys.stderr)
-        return None
-    return "prefix", prefix + "/", f"origin history ({count}/{len(prefixes)} recent topic branches)"
-
-
-def branch_for(kind, value, task_id, title):
-    if kind == "prefix":
-        return value + task_id
-    lower = title.lower()
-    is_fix = bool(re.search(r"\b(bug|fix|broken|regression)\b", lower))
-    ticket = re.search(r"\b[A-Z][A-Z0-9]+-\d+\b", title + " " + task_id)
-    description = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60].strip("-") or "change"
-    if value in ("type/ticket-description", "ticket-description"):
-        branch_type = "bugfix" if is_fix else "feature"
-        proposed = f"{branch_type}/{description}-{task_id}" if value.startswith("type/") else f"{description}-{task_id}"
-        if not ticket:
-            return None, proposed, value
-        tail = f"{ticket.group()}-{description}"
-        branch = f"{branch_type}/{tail}" if value.startswith("type/") else tail
-        return branch, branch, value
-    if not value.startswith("regex64:"):
-        return None, f"feature/{description}-{task_id}", value
-    try:
-        encoded = value.removeprefix("regex64:")
-        pattern = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
-        head = re.match(r"^\^(?:\((?P<choices>[a-z|]+)\)|(?P<single>[a-z]+))(?:/|\\/)(?:.+)\$$", pattern)
-        choices = (head.group("choices") or head.group("single")).split("|") if head else []
-        if not choices or any(choice not in TYPES for choice in choices):
-            raise ValueError("unsupported rule")
-        preferred = ("fix", "bugfix", "hotfix", "feat", "feature", "chore") if is_fix else ("feat", "feature", "chore", "fix", "bugfix", "hotfix")
-        branch_type = next(choice for choice in preferred if choice in choices)
-        tails = ([f"{ticket.group()}-{description}", f"{ticket.group().lower()}-{description}"] if ticket else []) + [f"{description}-{task_id}"]
-        for tail in tails:
-            branch = f"{branch_type}/{tail}"
-            if re.fullmatch(pattern, branch):
-                return branch, branch, pattern
-        return None, f"{branch_type}/{tails[0]}", pattern
-    except (ValueError, UnicodeError, re.error, StopIteration):
-        return None, f"feature/{description}-{task_id}", value
+        topics.append(name)
+    return sorted(set(topics))
 
 
 def main():
@@ -182,27 +180,44 @@ def main():
     parser.add_argument("repo", type=Path)
     parser.add_argument("--task-id")
     parser.add_argument("--title", default="")
-    parser.add_argument("--template")
     args = parser.parse_args()
     repo = args.repo.resolve()
     if not (repo / ".git").exists():
         parser.error("repository has no .git")
-    result = (("rule", args.template, "registered branch rule") if args.template else
-              from_docs(repo) or from_rulesets(repo) or from_history(repo))
-    if not result:
+    documents = doc_evidence(repo)
+    rulesets = ruleset_evidence(repo)
+    evidence = documents + rulesets
+    complex_rules = [item for item in evidence if item[0] == "complex"]
+    prefixes = {item[1] for item in evidence if item[0] == "prefix"}
+    topics = history_evidence(repo)
+    if complex_rules or len(prefixes) > 1:
+        observed = "; ".join(f"{item[2]}: {item[1]}" for item in evidence[:5])
+        if len(evidence) > 5:
+            observed += f"; ... ({len(evidence) - 5} more observations)"
+        print(f"status=needs-decision\nrule={observed}\nproposed-branch=fm/{args.task_id or 'task-id'}")
         return
-    kind, value, source = result
-    print(f"kind={kind}\nvalue={value}\nsource={source}")
-    if args.task_id:
-        if kind == "prefix":
-            branch = branch_for(kind, value, args.task_id, args.title)
-            proposed, rule = branch, value
-        else:
-            branch, proposed, rule = branch_for(kind, value, args.task_id, args.title)
-        if branch and subprocess.run(["git", "check-ref-format", "--branch", branch], capture_output=True).returncode == 0:
+    if len(prefixes) == 1:
+        prefix = next(iter(prefixes))
+        branch = prefix + (args.task_id or "task-id")
+        if args.task_id and subprocess.run(["git", "check-ref-format", "--branch", branch], capture_output=True).returncode:
+            print(f"status=needs-decision\nrule={prefix}\nproposed-branch={branch}")
+            return
+        for item in rulesets:
+            if item[0] == "prefix" and len(item) > 3:
+                operator, pattern = item[3]
+                valid = (re.fullmatch(pattern, branch) is not None if operator == "regex" else
+                         branch.startswith(pattern) if operator == "starts_with" else
+                         fnmatch.fnmatchcase(branch, pattern))
+                if not valid:
+                    print(f"status=needs-decision\nrule={pattern}\nproposed-branch={branch}")
+                    return
+        source = ", ".join(item[2] for item in evidence if item[0] == "prefix")
+        print(f"kind=prefix\nvalue={prefix}\nsource={source}")
+        if args.task_id:
             print(f"branch={branch}")
-        else:
-            print(f"status=needs-decision\nrule={rule}\nproposed-branch={proposed}")
+        return
+    if topics:
+        print(f"status=needs-decision\nrule=branch history: {', '.join(topics[:5])}\nproposed-branch=fm/{args.task_id or 'task-id'}")
 
 
 if __name__ == "__main__":
