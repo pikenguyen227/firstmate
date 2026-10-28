@@ -1,0 +1,21 @@
+bin/fm-supervise-daemon.sh
+  s_7559e687c2ab9e::t_de3a564af488b4 669
+tests/fm-daemon.test.sh
+  s_7559e687c2ab9e::t_de3a564af488b4 1659,1667-1668
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d5116db8db5e4d5b62d2485b5575513aeaa0792",
+  "prompts": {},
+  "sessions": {
+    "s_7559e687c2ab9e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a181c7-e85d-78d2-adc3-efc54a103e4f",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
