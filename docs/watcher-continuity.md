@@ -4,7 +4,7 @@ This document explains how Firstmate keeps the watcher re-armed after a wake, ho
 Read it when debugging a supervision gap or changing a harness's re-arm path.
 
 The watcher remains intentionally one-shot: one actionable reason closes one watcher cycle.
-Must-work continuity now lives above that process boundary instead of depending on the model remembering a re-arm step.
+For Pi, omp, OpenCode, Cursor, and Claude, continuity lives above that process boundary instead of depending on the model remembering a re-arm step.
 In this document, an arm is one run of `bin/fm-watch-arm.sh`, which starts a watcher cycle or attaches to one and returns the cycle's reason.
 
 | Topic | Section |
@@ -197,11 +197,11 @@ It enters its poll loop immediately and keeps scanning signals, stale panes, and
 
 ### Manual recovery and other harnesses
 
-- The model no longer re-arms after ordinary wakes.
+- On Pi, omp, OpenCode, Cursor, and Claude, the model no longer re-arms after ordinary wakes.
 - No PreToolUse hook denies fleet commands based on watcher status.
 - A genuine auto-arm failure describes the automatic mechanism as broken and never directs a routine manual background arm.
 - Terminal arm-output classification (`started`, `attached`, or `FAILED`) remains defense in depth for the manual recovery path.
-- Codex retains its bounded foreground checkpoint protocol.
+- Codex follows its [foreground checkpoint protocol](supervision-protocols/codex.md).
 - Grok retains its tracked background-task notification protocol.
 
 No adapter starts a replacement with a fire-and-forget shell `&` from a model command.

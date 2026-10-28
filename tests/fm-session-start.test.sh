@@ -2631,6 +2631,40 @@ EOF
   pass "Codex reset sources do not claim an unavailable instruction-refresh channel"
 }
 
+test_codex_check_only_startup_requires_first_checkpoint() {
+  local rec root home fakebin out
+  rec=$(new_world codex-first-checkpoint)
+  IFS='|' read -r root home fakebin <<EOF
+$rec
+EOF
+  make_fake_toolchain "$fakebin"
+  make_fake_ps_harness "$fakebin" codex
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$home/state/lab-check.check.sh"
+  chmod 0700 "$home/state/lab-check.check.sh"
+  FM_HOME="$home" "$ROOT/bin/fm-check-register.sh" lab-check >/dev/null \
+    || fail "could not register the check-only Codex startup fixture"
+
+  out=$(run_named_harness_session_start codex "$home" "$root" "$fakebin:$BASE_PATH")
+  assert_contains "$out" "primary harness: codex" "Codex startup selected the wrong supervision block"
+  assert_contains "$out" "1 registered custom check(s), but no watcher has a fresh beacon" \
+    "check-only startup did not expose the missing watcher"
+  assert_contains "$out" "start the first foreground checkpoint during the startup turn" \
+    "Codex startup left its first monitoring cycle implicit"
+  assert_contains "$out" "even if no workers or checks are present" \
+    "Codex startup made its first checkpoint conditional"
+  assert_contains "$out" "bin/fm-watch-checkpoint.sh --seconds \"\${FM_CODEX_WATCH_CHECKPOINT:-180}\"" \
+    "Codex startup omitted its foreground monitoring command"
+  assert_contains "$out" "Do not describe monitoring as active based on a startup digest" \
+    "Codex startup permitted a false active-monitoring claim"
+  assert_contains "$out" "run the same foreground command again" \
+    "Codex startup permitted the turn to end after its first checkpoint"
+  assert_contains "$out" "This script never starts supervision itself" \
+    "Codex closing reminder implied monitoring had started"
+  assert_absent "$home/state/.last-watcher-beat" \
+    "Codex startup unexpectedly created watcher proof without a checkpoint"
+  pass "check-only Codex startup reports supervision down and requires its own first checkpoint"
+}
+
 test_agents_baseline_requires_sha256_and_successful_completion() {
   local rec root home fakebin compact_out
   rec=$(new_world agents-baseline-failures)
@@ -3099,6 +3133,7 @@ test_reemit_skips_startup_sweeps_but_keeps_the_wake_drain
 test_agents_baseline_stays_at_true_start_and_reemits_on_every_drifted_pi_compact
 test_read_only_pi_compact_refreshes_against_its_own_session_identity
 test_codex_unreachable_reset_sources_do_not_claim_instruction_refresh
+test_codex_check_only_startup_requires_first_checkpoint
 test_agents_baseline_requires_sha256_and_successful_completion
 test_reemit_keeps_repair_ownership_with_the_lock_holder
 

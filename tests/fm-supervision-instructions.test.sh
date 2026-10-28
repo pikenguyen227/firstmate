@@ -19,6 +19,29 @@ test_selected_harness_block_only() {
   pass "renderer prints exactly the selected harness block"
 }
 
+test_codex_startup_and_repair_do_not_claim_monitoring() {
+  local out repair
+  out=$("$RENDER" --harness codex)
+  assert_contains "$out" "start the first foreground checkpoint during the startup turn" \
+    "Codex startup left its first monitoring cycle implicit"
+  assert_contains "$out" "even if no workers or checks are present" \
+    "Codex startup made its first checkpoint conditional"
+  assert_contains "$out" "Do not describe monitoring as active based on a startup digest" \
+    "Codex startup treated a digest as monitoring proof"
+  assert_contains "$out" "A returned checkpoint has stopped its watcher" \
+    "Codex continuation treated an expired checkpoint as live coverage"
+  assert_contains "$out" "run the same foreground command again" \
+    "Codex continuation did not require re-arming after a checkpoint"
+  repair=$("$RENDER" --harness codex --repair-line)
+  assert_contains "$repair" "monitoring is OFF; start the foreground checkpoint now" \
+    "Codex guard repair did not state the current outage or immediate action"
+  assert_contains "$repair" "do not claim monitoring is active" \
+    "Codex guard repair permitted a false active-monitoring reply"
+  assert_contains "$repair" "Re-arm when it returns while supervision is needed" \
+    "Codex guard repair permitted stopping after one checkpoint"
+  pass "Codex startup and repair output require a live monitoring cycle before any active claim"
+}
+
 test_supervision_host_protocol_only_on_an_opted_in_claude_home() {
   local home config plain hosted other
   home="$TMP_ROOT/host-home"
@@ -296,6 +319,7 @@ test_pi_snippet_uses_effective_extension_path() {
 test_supervision_host_protocol_only_on_an_opted_in_claude_home
 test_supervision_host_protocol_on_every_arm_owner
 test_selected_harness_block_only
+test_codex_startup_and_repair_do_not_claim_monitoring
 test_unknown_fallback
 test_conditional_stanzas
 test_quiet_mode_stanzas
