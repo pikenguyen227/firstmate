@@ -76,7 +76,7 @@ The shared no-mistakes gate lifecycle boundary is summarized in [architecture.md
 | `fm-strategy.sh`         | List, show, select, and check the full, balanced, or lean token and autonomy strategy for this home ([contract](configuration.md#token-strategies-binfm-strategysh-configstrategy)) |
 | `fm-step-up.sh`          | Decide, record, and apply the one-tier model step-up after a real worker failure ([contract](configuration.md#automatic-one-tier-step-up-binfm-step-upsh)) |
 | `fm-project-mode.sh`     | Resolve a project's registered delivery posture, forge binding, or ship-branch prefix from `data/projects.md` for fleet sync, home seeding, and the forge agreement a ship spawn or scout promotion applies |
-| `fm-branch-convention.py` | Propose a ship branch convention from repository instructions, active GitHub branch naming rules, or consistent recent remote branches for project add and task intake |
+| `fm-branch-convention.sh` | Propose a ship branch convention from repository instructions, active GitHub branch naming rules, or consistent recent remote branches for project add and task intake, with an `fm/` fallback when detection cannot run |
 | `fm-forge-detect.sh`     | Propose a clone's forge binding from its origin remote for project-add intake, never recording it |
 | `fm-merge-local.sh`      | Fast-forward a `local-only` project's local default branch after approval            |
 | `fm-review-diff.sh`      | Review a crewmate branch or resolved PR head against the authoritative base          |

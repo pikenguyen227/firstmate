@@ -13,13 +13,14 @@ printf 'base\n' > "$repo/file"
 git -C "$repo" add file
 git -C "$repo" commit -qm base
 
-detect() { "$ROOT/bin/fm-branch-convention.py" "$repo" "$@"; }
+detect() { "$ROOT/bin/fm-branch-convention.sh" "$repo" "$@"; }
 
 [ -z "$(detect --task-id task-1 --title 'New panel')" ] || fail 'no rule should make no proposal'
 branch=$(FM_HOME="$tmp/home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix project 2>/dev/null)
 [ "$branch" = 'fm/' ] || fail 'no rule must keep fm/ fallback'
 pass 'no repository rule keeps the fm/ fallback'
 
+# shellcheck disable=SC2016 # Literal backticks are fixture content.
 printf 'Ship branch prefix: `design/`\n' > "$repo/CONTRIBUTING.md"
 out=$(detect --task-id task-1 --title 'New panel')
 [[ "$out" == *'kind=prefix'* && "$out" == *'value=design/'* && "$out" == *'source=CONTRIBUTING.md'* && "$out" == *'branch=design/task-1'* ]] || fail "documented prefix was missed: $out"
@@ -38,12 +39,14 @@ out=$(detect --template type/ticket-description --task-id task-1 --title 'Add HG
 [[ "$out" == *'branch=feature/HGRS-1679-add-hgrs-1679-selector'* ]] || fail "registered typed rule was missed: $out"
 for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ -x "$shell" ] || continue
-  observed=$("$shell" -c 'exec "$1" "$2" --template type/ticket-description --task-id task-1 --title "Add HGRS-1679 selector"' _ "$ROOT/bin/fm-branch-convention.py" "$repo") \
+  # shellcheck disable=SC2016 # Positional arguments expand in the child shell.
+  observed=$("$shell" -c 'exec "$1" "$2" --template type/ticket-description --task-id task-1 --title "Add HGRS-1679 selector"' _ "$ROOT/bin/fm-branch-convention.sh" "$repo") \
     || fail "detector failed through $shell"
   [ "$observed" = "$out" ] || fail "detector changed result through $shell"
 done
 if [ -x /bin/zsh ]; then
-  observed=$(/bin/zsh -lc 'exec "$1" "$2" --template type/ticket-description --task-id task-1 --title "Add HGRS-1679 selector"' _ "$ROOT/bin/fm-branch-convention.py" "$repo") \
+  # shellcheck disable=SC2016 # Positional arguments expand in the child shell.
+  observed=$(/bin/zsh -lc 'exec "$1" "$2" --template type/ticket-description --task-id task-1 --title "Add HGRS-1679 selector"' _ "$ROOT/bin/fm-branch-convention.sh" "$repo") \
     || fail 'detector failed through zsh login shell'
   [ "$observed" = "$out" ] || fail 'zsh login shell changed detector result'
 fi
@@ -68,5 +71,22 @@ setting=$(FM_HOME="$tmp/home" "$ROOT/bin/fm-project-mode.sh" --branch-setting pr
 FM_HOME="$tmp/home" "$ROOT/bin/fm-brief.sh" task-3 project --mode local-only --branch-name design/task-3 --branch-prefix owner/ >/dev/null 2>&1 || fail 'brief refused explicit prefix override'
 grep -q 'Ship branch: owner/task-3' "$tmp/home/data/task-3/brief.md" || fail 'explicit prefix did not win'
 pass 'explicit prefix wins over a detected full branch name'
+
+mkdir -p "$tmp/no-python"
+ln -s "$(command -v dirname)" "$tmp/no-python/dirname"
+out=$(PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-convention.sh" "$repo" --task-id task-4 --title 'New panel' 2>"$tmp/no-python-warning") \
+  || fail 'missing python3 blocked detection fallback'
+[[ "$out" == *'kind=prefix'* && "$out" == *'value=fm/'* && "$out" == *'branch=fm/task-4'* ]] \
+  || fail "missing python3 did not choose fm/: $out"
+[ "$(wc -l < "$tmp/no-python-warning")" -eq 1 ] || fail 'missing python3 emitted more than one warning line'
+out=$(PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-convention.sh" "$repo" 2>"$tmp/no-python-warning") \
+  || fail 'missing python3 blocked project-add discovery'
+[ -z "$out" ] || fail 'failed project-add discovery invented a declaration'
+printf '#!/bin/sh\nexit 7\n' > "$tmp/no-python/python3"
+chmod +x "$tmp/no-python/python3"
+out=$(PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-convention.sh" "$repo" --task-id task-5 2>"$tmp/no-python-warning") \
+  || fail 'failing python3 blocked detection fallback'
+[[ "$out" == *'branch=fm/task-5'* ]] || fail 'failing python3 did not choose fm/'
+pass 'missing or failing python3 warns once and leaves intake with fm/ fallback'
 
 echo '# all fm-branch-convention tests passed'
