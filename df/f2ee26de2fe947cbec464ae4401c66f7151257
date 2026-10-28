@@ -1,0 +1,21 @@
+docs/configuration.md
+  s_6af1a6131d7d2f::t_5fe9e434f8cf01 1293-1294
+docs/verification/runtime-backends.md
+  s_6af1a6131d7d2f::t_5fe9e434f8cf01 631
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dff2ee26de2fe947cbec464ae4401c66f7151257",
+  "prompts": {},
+  "sessions": {
+    "s_6af1a6131d7d2f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18215-bbfc-7a51-8002-d21914b76bec",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
