@@ -1656,7 +1656,7 @@ test_entry_adopts_presented_status_without_losing_unclassified_events() {
 
   seed_status_seen_at_entry "$state"
   [ "$(status_seen_offset "$state" old)" = "$(log_size "$old")" ] || fail "entry did not adopt a presented signal"
-  [ "$(status_seen_offset "$state" routine)" = "$(log_size "$routine")" ] || fail "entry did not skip a routine-only existing file"
+  [ "$(status_seen_offset "$state" routine)" = 0 ] || fail "entry marked routine history without a presentation receipt"
   [ "$(status_seen_offset "$state" fresh)" = 0 ] || fail "entry skipped an unpresented failure"
   FM_HEARTBEAT_SCAN_SECS=0 FM_ESCALATE_BATCH_SECS=90 housekeeping "$state"
   grep -F 'fresh.status: failed: still unpresented (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
@@ -1664,6 +1664,8 @@ test_entry_adopts_presented_status_without_losing_unclassified_events() {
   grep -F 'partial.status: failed: new after presentation (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
     || fail "entry lost an event after a presented prefix"
   grep -F 'old.status:' "$state/.subsuper-escalations" >/dev/null && fail "entry replayed a presented failure"
+  [ "$(status_seen_offset "$state" routine)" = "$(log_size "$routine")" ] || fail "catch-all scan did not classify routine history"
+  grep -F 'routine.status:' "$state/.subsuper-escalations" >/dev/null && fail "catch-all scan escalated routine history"
   pass "entry adopts ordinary presentation and preserves unclassified status events"
 }
 

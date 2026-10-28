@@ -665,10 +665,8 @@ mark_status_seen() {  # <state> <task> <captured-end-offset> <captured-identity>
 }
 
 # Adopt positions already classified by ordinary supervision at entry.
-# Without either marker, only skip an existing log when its whole span has no
-# actionable event; an unpresented event must remain available to the scan.
 seed_status_seen_at_entry() {  # <state>
-  local state=$1 f task signal heartbeat daemon offset ident record rc
+  local state=$1 f task signal heartbeat daemon offset ident
   for f in "$state"/*.status; do
     [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] || continue
     task=$(basename "$f"); task=${task%.status}
@@ -678,13 +676,6 @@ seed_status_seen_at_entry() {  # <state>
     offset=$daemon
     [ "$signal" -le "$offset" ] || offset=$signal
     [ "$heartbeat" -le "$offset" ] || offset=$heartbeat
-    if [ "$offset" -eq 0 ]; then
-      record=$(status_span_first_actionable_record "$f" 0)
-      rc=$?
-      [ "$rc" -eq 1 ] || continue
-      [ -n "$record" ] || continue
-      offset=${record%%$'\t'*}
-    fi
     [ "$offset" -gt "$daemon" ] || continue
     ident=$(_fm_open_decisions_file_ident "$f") || continue
     mark_status_seen "$state" "$task" "$offset" "$ident" || true
