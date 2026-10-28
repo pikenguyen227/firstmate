@@ -1,0 +1,39 @@
+$ FM_HOME=<run worktree> bin/fm-supervision-instructions.sh --harness codex
+================================================================================
+SUPERVISION OPERATING INSTRUCTIONS - primary harness: codex
+================================================================================
+Current state:
+- Lock: held by this session; this session owns normal supervision unless away mode says otherwise.
+- Away/quiet mode: inactive.
+- X mode: inactive; use the default watcher cadence.
+- Ordinary wake: take the next foreground bin/fm-watch-checkpoint.sh checkpoint as directed below.
+
+Mode: Codex foreground checkpoint.
+
+The session-start digest and a wake drain do not start monitoring.
+When this session owns the fleet lock, start the first foreground checkpoint during the startup turn before giving a final status, even if no workers or checks are present.
+Do not describe monitoring as active based on a startup digest, a drain, a previous watcher beat, or a checkpoint that has already returned.
+If the checkpoint cannot start, report that monitoring is down and name the failure.
+
+When this session owns supervision and away mode is not active:
+1. Drain first with `bin/fm-wake-drain.sh`.
+   After handling all emitted wakes and reconciling open decisions and unread status lines, run the exact `--ack-through` command printed as `WAKE_ACK_REQUIRED`; until then the work remains durable for idempotent re-handling after interruption.
+2. Source `/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60XHG7G8C5WF6PYQYT79AVT/config/x-mode.env` first when Relay is active.
+3. First cycle: run one foreground watcher checkpoint with `bin/fm-watch-checkpoint.sh --seconds "${FM_CODEX_WATCH_CHECKPOINT:-180}"` before ending the startup turn.
+4. Ordinary wake: if the command prints `signal:`, `stale:`, `check:`, or `heartbeat`, drain queued wakes, handle that wake, then start the next checkpoint.
+5. If the command prints `checkpoint:` or exits 124 with no wake, drain queued wakes anyway, process any queued user message now visible to Codex, then start the next checkpoint.
+   While work or a registered check or source or X-mode polling still needs supervision, a returned checkpoint is a turn boundary for re-arming, not an occasion to give a final status; run the same foreground command again.
+6. Never use shell `&` or Codex background tasks for firstmate watcher supervision.
+7. Do not run `bin/fm-watch-arm.sh` as Codex's normal supervision command.
+   If it is ever shelled anyway, a backgrounded, piped, or bundled anti-pattern is denied automatically by the PreToolUse seatbelt (`bin/fm-arm-pretool-check.sh`) registered in `.codex/hooks.json`.
+8. Failure or missing cycle only: drain queued wakes, inspect the failure, then start a fresh foreground checkpoint.
+   A returned checkpoint has stopped its watcher, so its output is not proof that monitoring remains active.
+
+Codex cannot reason while a foreground tool call is running.
+The bounded checkpoint returns control regularly so user messages and queued wakes can be handled without relying on background-task wake semantics.
+
+While away or quiet mode is active, keep the same checkpoint loop: the checkpoint parks on the away/quiet daemon instead of running a watcher and returns each daemon digest, beginning `Supervisor escalate`, as its output; the [afk skill](../../.agents/skills/afk/SKILL.md) owns how to handle them.
+
+
+$ FM_CODEX_WATCH_CHECKPOINT=7 FM_HOME=<run worktree> bin/fm-supervision-instructions.sh --harness codex --repair-line
+monitoring is OFF; start the foreground checkpoint now: bin/fm-watch-checkpoint.sh --seconds 7. Re-arm when it returns while supervision is needed. A drain or completed checkpoint is not live proof; do not claim monitoring is active. If the checkpoint cannot start, report the failure.
