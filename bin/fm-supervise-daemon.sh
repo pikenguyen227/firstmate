@@ -1275,8 +1275,9 @@ _oldest_line_age() {  # <buf> -> seconds since the oldest buffered item first ar
 
 # --- housekeeping (runs every tick while the watcher is mid-cycle) ----------
 # Four cheap jobs, each guarded so an empty/quiet fleet costs near zero:
-#  1) batch flush: publish before the escalation buffer's oldest content
-#     reaches ESCALATE_BATCH_SECS (or immediately when batching is disabled).
+#  1) batch flush: on normal housekeeping ticks, start delivery before the
+#     escalation buffer's oldest content reaches ESCALATE_BATCH_SECS (or
+#     immediately when batching is disabled).
 #  1b) max-defer escape: if the buffer is STILL undelivered past MAX_DEFER_SECS,
 #     attempt one normal delivery; if it cannot confirm, raise the wedge alarm.
 #     Never silently defer forever.
@@ -1298,8 +1299,9 @@ housekeeping() {  # <state>
   else
     due=$(_oldest_line_age "$state/.subsuper-escalations")
     # Housekeeping runs on a tick, and the loop itself sleeps one second.
-    # Start the flush before the stated deadline so tick scheduling cannot
-    # publish the digest one or two seconds beyond it.
+    # Start the flush before the target so normal tick scheduling does not
+    # publish the digest one or two seconds beyond it. Watcher crash backoff
+    # skips housekeeping and can still delay publication.
     if [ "$((due + ${FM_HOUSEKEEPING_TICK:-$HOUSEKEEPING_TICK_DEFAULT} + 2))" -ge "$(escalate_batch_secs)" ]; then
       escalate_flush "$state" || true
     fi

@@ -199,7 +199,8 @@ Classify each wake this way:
   An identity that was not delivered still escalates.
   Status-read uncertainty follows the shared one-report-without-position-advance contract referenced under Dedupe below.
 
-Escalations are buffered up to `FM_ESCALATE_BATCH_SECS` (default 90s, 180s when `config/strategy` names `mode=lean`; 0 = immediate) and flushed as one single-line digest carrying pre-read status summaries and a recommended action.
+Escalations use a target batch window of `FM_ESCALATE_BATCH_SECS` (default 90s, 180s when `config/strategy` names `mode=lean`; 0 = immediate) and flush as one single-line digest carrying pre-read status summaries and a recommended action.
+Normal housekeeping starts a flush when the oldest item is within one tick plus two seconds of that target, but watcher crash backoff can delay publication beyond it.
 The single-line format makes submission unambiguous across harnesses; the carrier described above distinguishes it from an ordinary captain message.
 
 ### Injection hardening
