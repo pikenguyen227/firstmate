@@ -1,0 +1,47 @@
+docs/configuration.md
+  s_1b4be81b67f9c6::t_1338fba43b3120 1278-1279,1281-1282,1284,1293-1295,1348-1352,1354,1363-1364
+tests/fm-strategy.test.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 14,16,116-117,126,144,147-148,153,157,162,183,190,331,507-508,512,514,516,528,567,569-570,574,576-577
+bin/strategies/full.json
+  s_1b4be81b67f9c6::t_1338fba43b3120 10,21,31,52,55,62,65,114,149
+docs/verification/runtime-backends.md
+  s_1b4be81b67f9c6::t_1338fba43b3120 631-632
+bin/fm-strategy.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 518-521
+bin/strategies/plans.json
+  s_1b4be81b67f9c6::t_1338fba43b3120 169,172-175,179,182-185,189,191-195,206,209-212,216,219-222,225,227,229-231,242,245-248,252,254-258,261,263,265-267
+bin/strategies/balanced.json
+  s_1b4be81b67f9c6::t_1338fba43b3120 10,21,31,52,55,62,65,114,132,149
+tests/fm-spawn-dispatch-profile.test.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 119-121,608-665,1950-1952
+tests/fixtures.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 122-134
+bin/fm-codex-launch-lib.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 18-26
+bin/strategies/lean.json
+  s_1b4be81b67f9c6::t_1338fba43b3120 10,21,31,52,55,62,65,114,132,149
+tests/fm-step-up.test.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 61,98,109,111-112,117
+bin/fm-spawn.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 224-227,5522-5582,5721-5723
+bin/fm-control.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 1042-1048,1051
+tests/fm-control-relaunch.test.sh
+  s_1b4be81b67f9c6::t_1338fba43b3120 120-127,752-771,2439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "adb630d19c97e2a4268d2bc682c0773c695f02c4",
+  "prompts": {},
+  "sessions": {
+    "s_1b4be81b67f9c6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a181d3-5c7a-7023-a1f9-adfdc32008de",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
