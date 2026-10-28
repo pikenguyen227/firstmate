@@ -1,0 +1,13 @@
+CASE github-allow-red-equals
+error: --allow-red requires a separate check name argument
+CASE github-allow-red-two
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  repair missing watcher supervision according to the session-start block for this harness; do not use shell &.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+fm-captain-hold: compatible tasks-axi is required
+error: could not determine whether task task-x1 is still held for the captain; refusing to merge
+pr view https://github.com/example/repo/pull/88 --json headRefOid -q .headRefOid

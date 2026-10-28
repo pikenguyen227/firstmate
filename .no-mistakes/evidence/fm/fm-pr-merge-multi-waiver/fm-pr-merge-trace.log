@@ -1,0 +1,336 @@
++ set -u
+++ dirname tests/.fm-pr-merge-select.run.sh
++ . tests/lib.sh
+++ '[' -n '' ']'
+++ FM_TEST_LIB_SOURCED=1
+++ umask 022
++++ dirname tests/lib.sh
+++ . tests/git-config-helpers.sh
++++ export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
++++ GIT_CONFIG_GLOBAL=/dev/null
++++ GIT_CONFIG_NOSYSTEM=1
+++ export FM_GATE_REFUSE_BYPASS=1
+++ FM_GATE_REFUSE_BYPASS=1
+++ export FM_TEST_SEAM=1
+++ FM_TEST_SEAM=1
+++ unset FM_TASK_ID
+++ unset TASKS_AXI_FILE TASKS_AXI_BACKEND
+++++ dirname tests/lib.sh
++++ cd tests/..
++++ pwd
+++ ROOT=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60P0T275QBTQTWA2HGXZKC9
+++ FM_TEST_CLEANUP_DIRS=()
++++ mktemp /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//.fm-test-cleanup.15598.XXXXXX
+++ FM_TEST_CLEANUP_REGISTRY=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//.fm-test-cleanup.15598.2x1paE
++++ fm_test_pid_identity 15598
++++ local pid=15598
++++ FM_STATE_OVERRIDE=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/
++++ bash -c '. "$1"; fm_pid_identity "$2"' _ /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60P0T275QBTQTWA2HGXZKC9/bin/fm-wake-lib.sh 15598
+++ FM_TEST_OWNER_IDENTITY='Wed Oct 28 07:24:53 2026     bash -x tests/.fm-pr-merge-select.run.sh'
++++ mktemp /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//.fm-test-procevent.15598.XXXXXX
+++ FM_TEST_PROCEVENT_REGISTRY=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//.fm-test-procevent.15598.2zFA0X
++++ mktemp /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//.fm-test-watcher.15598.XXXXXX
+++ FM_TEST_WATCHER_REGISTRY=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//.fm-test-watcher.15598.FTTHyU
+++ FM_TEST_STUB_MAX_BLOCK_SECONDS=120
+++ export FM_TEST_STUB_MAX_BLOCK_SECONDS
+++ trap fm_test_cleanup EXIT
+++ trap 'fm_test_cleanup; exit 130' INT
+++ trap 'fm_test_cleanup; exit 143' TERM
+++ trap 'fm_test_cleanup; exit 129' HUP
+++ trap 'fm_test_cleanup; exit 131' QUIT
+++ FM_TEST_ORPHAN_MAX_AGE_SECONDS=3600
+++ '[' 0 '!=' 1 ']'
+++ fm_test_reap_orphans
+++ local marker dir mtime now owner_pid owner_identity current_identity
++++ date +%s
+++ now=1793172293
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-base-path-sans.NGW3EV/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-base-path-sans.NGW3EV/.fm-test-fixture
+++ owner_pid=61264
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-base-path-sans.NGW3EV/.fm-test-fixture
+++ owner_identity='Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 61264
+++ current_identity='Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh'
+++ '[' -n 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' ']'
+++ '[' 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' = 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' ']'
+++ continue
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-base-path-sans.qK6p9S/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-base-path-sans.qK6p9S/.fm-test-fixture
+++ owner_pid=61264
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-base-path-sans.qK6p9S/.fm-test-fixture
+++ owner_identity='Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 61264
+++ current_identity='Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh'
+++ '[' -n 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' ']'
+++ '[' 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' = 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' ']'
+++ continue
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.2AcPnK/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.2AcPnK/.fm-test-fixture
+++ owner_pid=29562
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.2AcPnK/.fm-test-fixture
+++ owner_identity='Wed Oct 28 07:11:13 2026     bash tests/fm-control-relaunch.test.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 29562
+++ current_identity=
+++ current_identity=
+++ '[' -n 'Wed Oct 28 07:11:13 2026     bash tests/fm-control-relaunch.test.sh' ']'
+++ '[' '' = 'Wed Oct 28 07:11:13 2026     bash tests/fm-control-relaunch.test.sh' ']'
++++ stat -c %Y /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.2AcPnK/.fm-test-fixture
++++ stat -f %m /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.2AcPnK/.fm-test-fixture
+++ mtime=1793171536
+++ '[' 757 -ge 3600 ']'
+++ continue
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.kBH5gt/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.kBH5gt/.fm-test-fixture
+++ owner_pid=11346
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.kBH5gt/.fm-test-fixture
+++ owner_identity='Wed Oct 28 07:07:51 2026     bash tests/fm-control-relaunch.test.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 11346
+++ current_identity=
+++ current_identity=
+++ '[' -n 'Wed Oct 28 07:07:51 2026     bash tests/fm-control-relaunch.test.sh' ']'
+++ '[' '' = 'Wed Oct 28 07:07:51 2026     bash tests/fm-control-relaunch.test.sh' ']'
++++ stat -c %Y /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.kBH5gt/.fm-test-fixture
++++ stat -f %m /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-control-auth.kBH5gt/.fm-test-fixture
+++ mtime=1793171357
+++ '[' 936 -ge 3600 ']'
+++ continue
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-secondmate-restart.zol2EO/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-secondmate-restart.zol2EO/.fm-test-fixture
+++ owner_pid=29481
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-secondmate-restart.zol2EO/.fm-test-fixture
+++ owner_identity='Wed Oct 28 06:27:13 2026     bash /private/tmp/claude-501/-Users-pike-Desktop-Agentic--treehouse-firstmate-4515c4-11-firstmate/b806c706-69c9-47ef-bfb6-e65b31201dd9/scratchpad/batch-only.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 29481
+++ current_identity=
+++ current_identity=
+++ '[' -n 'Wed Oct 28 06:27:13 2026     bash /private/tmp/claude-501/-Users-pike-Desktop-Agentic--treehouse-firstmate-4515c4-11-firstmate/b806c706-69c9-47ef-bfb6-e65b31201dd9/scratchpad/batch-only.sh' ']'
+++ '[' '' = 'Wed Oct 28 06:27:13 2026     bash /private/tmp/claude-501/-Users-pike-Desktop-Agentic--treehouse-firstmate-4515c4-11-firstmate/b806c706-69c9-47ef-bfb6-e65b31201dd9/scratchpad/batch-only.sh' ']'
++++ stat -c %Y /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-secondmate-restart.zol2EO/.fm-test-fixture
++++ stat -f %m /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-secondmate-restart.zol2EO/.fm-test-fixture
+++ mtime=1793168833
+++ '[' 3460 -ge 3600 ']'
+++ continue
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-spawn-dispatch-profile.4Gcoea/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-spawn-dispatch-profile.4Gcoea/.fm-test-fixture
+++ owner_pid=26646
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-spawn-dispatch-profile.4Gcoea/.fm-test-fixture
+++ owner_identity='Wed Oct 28 07:24:15 2026     bash tests/fm-spawn-dispatch-profile.test.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 26646
+++ current_identity='Wed Oct 28 07:24:15 2026     bash tests/fm-spawn-dispatch-profile.test.sh'
+++ '[' -n 'Wed Oct 28 07:24:15 2026     bash tests/fm-spawn-dispatch-profile.test.sh' ']'
+++ '[' 'Wed Oct 28 07:24:15 2026     bash tests/fm-spawn-dispatch-profile.test.sh' = 'Wed Oct 28 07:24:15 2026     bash tests/fm-spawn-dispatch-profile.test.sh' ']'
+++ continue
+++ for marker in '"${TMPDIR:-/tmp}"/fm-*/.fm-test-fixture'
+++ '[' -e /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-strategy.EAiTzt/.fm-test-fixture ']'
++++ sed -n 1p /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-strategy.EAiTzt/.fm-test-fixture
+++ owner_pid=61264
++++ sed -n '2,$p' /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-strategy.EAiTzt/.fm-test-fixture
+++ owner_identity='Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh'
+++ case "$owner_pid" in
++++ fm_test_pid_identity 61264
+++ current_identity='Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh'
+++ '[' -n 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' ']'
+++ '[' 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' = 'Wed Oct 28 07:24:29 2026     bash tests/fm-strategy.test.sh' ']'
+++ continue
++ fm_git_identity fmtest fmtest@example.invalid
++ export GIT_AUTHOR_NAME=fmtest GIT_AUTHOR_EMAIL=fmtest@example.invalid
++ GIT_AUTHOR_NAME=fmtest
++ GIT_AUTHOR_EMAIL=fmtest@example.invalid
++ export GIT_COMMITTER_NAME=fmtest GIT_COMMITTER_EMAIL=fmtest@example.invalid
++ GIT_COMMITTER_NAME=fmtest
++ GIT_COMMITTER_EMAIL=fmtest@example.invalid
++ PR_MERGE=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60P0T275QBTQTWA2HGXZKC9/bin/fm-pr-merge.sh
+++ fm_test_tmproot fm-pr-merge-tests
+++ local prefix=fm-pr-merge-tests root tmp_base
+++ tmp_base=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/
+++ tmp_base=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T
++++ mktemp -d /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.XXXXXX
+++ root=/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE
++++ cd -P -- /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE
++++ pwd -P
+++ root=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE
+++ printf '%s\n%s\n' 15598 'Wed Oct 28 07:24:53 2026     bash -x tests/.fm-pr-merge-select.run.sh'
+++ printf '%s\n' /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE
+++ printf '%s\n' /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE
++ TMP_ROOT=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE
++ BASE_PATH='/Users/pike/.nvm/versions/node/v22.13.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/pike/.bun/bin:/Users/pike/.git-ai/bin:/Users/pike/.antigravity/antigravity/bin:/Users/pike/.local/bin:/Users/pike/.nvm/versions/node/v22.13.0/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/pike/.nvm/versions/node/v22.13.0/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/usr/local/share/dotnet:~/.dotnet/tools:/opt/homebrew/bin:/Users/pike/.codex/tmp/arg0/codex-arg0szmggG:/Users/pike/.nvm/versions/node/v22.13.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/codex-path:/Users/pike/.bun/bin:/Users/pike/.git-ai/bin:/Users/pike/.antigravity/antigravity/bin:/Users/pike/.local/bin:/Users/pike/.sdkman/candidates/java/current/bin:/opt/homebrew/sbin:/Users/pike/.nvm/versions/node/v22.13.0/bin:/Library/Frameworks/Python.framework/Versions/3.13/bin:/Users/pike/go/bin:/Users/pike/.cargo/bin:/Users/pike/bin:/usr/local/sbin:/Users/pike/.lmstudio/bin:/Users/pike/.lmstudio/bin'
++ MR_HOST=gitlab.example
++ MR_PATH=group/subgroup/project
++ MR_PROJECT_URL=https://gitlab.example/group/subgroup/project
++ MR_URL=https://gitlab.example/group/subgroup/project/-/merge_requests/7
++ MR_HEAD=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++ MR_STALE_HEAD=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+++ command -v jq
++ JQ_BIN=/usr/bin/jq
+++ command -v mv
++ REAL_MV=/bin/mv
++ trap 'printf "ROOT:%s\n" "$TMP_ROOT"; for d in "$TMP_ROOT"/github-allow-red-*; do [ -d "$d" ] || continue; printf "CASE %s\n" "${d##*/}"; cat "$d/stderr" 2>/dev/null; cat "$d/gh.log" 2>/dev/null; done; fm_test_cleanup' EXIT
++ test_allow_red_requires_separate_names
++ local case_dir rc head
++ head=afafafafafafafafafafafafafafafafafafafaf
+++ make_case github-allow-red-equals
+++ local name=github-allow-red-equals case_dir fakebin
+++ case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals
+++ fakebin=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/fakebin
+++ mkdir -p /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/state /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/home/data /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/home/config /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/fakebin
+++ fm_git_init_commit /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt
+++ local dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt
+++ mkdir -p /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt init -q -b main
++++ basename /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt
+++ printf '# %s\n' wt
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt add README.md
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt -c 'user.name=Firstmate Tests' -c user.email=tests@example.invalid commit -qm initial
++++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt rev-parse HEAD
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt update-ref refs/remotes/origin/main 5cb68f99af73265b8a428527eb70254d87b1eb92
+++ cp /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60P0T275QBTQTWA2HGXZKC9/.tasks.toml /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/home/.tasks.toml
+++ printf '%s\n' '## In flight' '' '## Queued' '' '## Done'
+++ fm_write_meta /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/state/task-x1.meta window=fm-task-x1 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt project=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/project kind=ship mode=no-mistakes
+++ local file=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/state/task-x1.meta kv
+++ shift
+++ :
+++ for kv in '"$@"'
+++ printf '%s\n' window=fm-task-x1
+++ for kv in '"$@"'
+++ printf '%s\n' worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt
+++ for kv in '"$@"'
+++ printf '%s\n' project=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/project
+++ for kv in '"$@"'
+++ printf '%s\n' kind=ship
+++ for kv in '"$@"'
+++ printf '%s\n' mode=no-mistakes
+++ printf '%s\n' state=MERGED merged=true queued=false base=main
+++ :
+++ write_github_required /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals
+++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals spec contexts= checks= rules= protected=false
+++ shift
++++ '[' false = true ']'
++++ echo off
+++ printf '{"name":"main","protected":%s,"protection":{"enabled":%s,"required_status_checks":{"enforcement_level":"%s","contexts":[%s],"checks":[%s]}}}\n' false false off '' ''
+++ printf '[{"type":"deletion"}%s]\n' ''
+++ :
+++ printf '%s\n' /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals
++ case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals
++ mkdir -p /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/wt
++ add_gh_mocks /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals afafafafafafafafafafafafafafafafafafafaf
++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals head=afafafafafafafafafafafafafafafafafafafaf
++ write_github_live_json /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals afafafafafafafafafafafafafafafafafafafaf
++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals head=afafafafafafafafafafafafafafafafafafafaf
++ printf '%s\n' afafafafafafafafafafafafafafafafafafafaf
++ cat
++ cat
++ cat
++ chmod +x /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/fakebin/gh-axi /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/fakebin/gh
++ write_github_red_json /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals afafafafafafafafafafafafafafafafafafafaf lint
++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals head=afafafafafafafafafafafafafafafafafafafaf name=lint
++ printf '%s\n' afafafafafafafafafafafafafafafafafafafaf
++ cat
++ set +e
++ run_pr_merge /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals task-x1 https://github.com/example/repo/pull/87 --allow-red=lint
++ rc=2
++ set -e
++ expect_code 2 2 'github-allow-red-equals: equals form must be refused'
++ local expected=2 actual=2 'label=github-allow-red-equals: equals form must be refused'
++ '[' 2 = 2 ']'
++ assert_no_grep 'pr merge' /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/gh.log 'github-allow-red-equals: gh pr merge ran for the equals alias'
++ grep -F -- 'pr merge' /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-equals/gh.log
+++ make_case github-allow-red-two
+++ local name=github-allow-red-two case_dir fakebin
+++ case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two
+++ fakebin=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/fakebin
+++ mkdir -p /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/state /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/home/data /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/home/config /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/fakebin
+++ fm_git_init_commit /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt
+++ local dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt
+++ mkdir -p /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt init -q -b main
++++ basename /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt
+++ printf '# %s\n' wt
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt add README.md
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt -c 'user.name=Firstmate Tests' -c user.email=tests@example.invalid commit -qm initial
++++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt rev-parse HEAD
+++ git -C /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt update-ref refs/remotes/origin/main d709c414c70138c1aeaae2d3733c77df17704bb3
+++ cp /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60P0T275QBTQTWA2HGXZKC9/.tasks.toml /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/home/.tasks.toml
+++ printf '%s\n' '## In flight' '' '## Queued' '' '## Done'
+++ fm_write_meta /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/state/task-x1.meta window=fm-task-x1 worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt project=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/project kind=ship mode=no-mistakes
+++ local file=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/state/task-x1.meta kv
+++ shift
+++ :
+++ for kv in '"$@"'
+++ printf '%s\n' window=fm-task-x1
+++ for kv in '"$@"'
+++ printf '%s\n' worktree=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt
+++ for kv in '"$@"'
+++ printf '%s\n' project=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/project
+++ for kv in '"$@"'
+++ printf '%s\n' kind=ship
+++ for kv in '"$@"'
+++ printf '%s\n' mode=no-mistakes
+++ printf '%s\n' state=MERGED merged=true queued=false base=main
+++ :
+++ write_github_required /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two
+++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two spec contexts= checks= rules= protected=false
+++ shift
++++ '[' false = true ']'
++++ echo off
+++ printf '{"name":"main","protected":%s,"protection":{"enabled":%s,"required_status_checks":{"enforcement_level":"%s","contexts":[%s],"checks":[%s]}}}\n' false false off '' ''
+++ printf '[{"type":"deletion"}%s]\n' ''
+++ :
+++ printf '%s\n' /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two
++ case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two
++ mkdir -p /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/wt
++ add_gh_mocks /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two afafafafafafafafafafafafafafafafafafafaf
++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two head=afafafafafafafafafafafafafafafafafafafaf
++ write_github_live_json /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two afafafafafafafafafafafafafafafafafafafaf
++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two head=afafafafafafafafafafafafafafafafafafafaf
++ printf '%s\n' afafafafafafafafafafafafafafafafafafafaf
++ cat
++ cat
++ cat
++ chmod +x /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/fakebin/gh-axi /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two/fakebin/gh
+++ check_run lint COMPLETED FAILURE
+++ local name=lint status=COMPLETED conclusion=FAILURE started=- completed=-
+++ local conclusion_json=null started_json=null completed_json=null
+++ '[' FAILURE = - ']'
+++ conclusion_json='"FAILURE"'
+++ '[' - = - ']'
+++ '[' - = - ']'
+++ printf '{"__typename":"CheckRun","name":"%s","status":"%s","conclusion":%s,"startedAt":%s,"completedAt":%s}' lint COMPLETED '"FAILURE"' null null
+++ check_run unit COMPLETED FAILURE
+++ local name=unit status=COMPLETED conclusion=FAILURE started=- completed=-
+++ local conclusion_json=null started_json=null completed_json=null
+++ '[' FAILURE = - ']'
+++ conclusion_json='"FAILURE"'
+++ '[' - = - ']'
+++ '[' - = - ']'
+++ printf '{"__typename":"CheckRun","name":"%s","status":"%s","conclusion":%s,"startedAt":%s,"completedAt":%s}' unit COMPLETED '"FAILURE"' null null
+++ check_run ci COMPLETED SUCCESS
+++ local name=ci status=COMPLETED conclusion=SUCCESS started=- completed=-
+++ local conclusion_json=null started_json=null completed_json=null
+++ '[' SUCCESS = - ']'
+++ conclusion_json='"SUCCESS"'
+++ '[' - = - ']'
+++ '[' - = - ']'
+++ printf '{"__typename":"CheckRun","name":"%s","status":"%s","conclusion":%s,"startedAt":%s,"completedAt":%s}' ci COMPLETED '"SUCCESS"' null null
++ write_github_rollup_json /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two afafafafafafafafafafafafafafafafafafafaf '{"__typename":"CheckRun","name":"lint","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null}' '{"__typename":"CheckRun","name":"unit","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null}' '{"__typename":"CheckRun","name":"ci","status":"COMPLETED","conclusion":"SUCCESS","startedAt":null,"completedAt":null}'
++ local case_dir=/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two head=afafafafafafafafafafafafafafafafafafafaf entry rollup=
++ shift 2
++ for entry in '"$@"'
++ rollup='{"__typename":"CheckRun","name":"lint","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null}'
++ for entry in '"$@"'
++ rollup='{"__typename":"CheckRun","name":"lint","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null},{"__typename":"CheckRun","name":"unit","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null}'
++ for entry in '"$@"'
++ rollup='{"__typename":"CheckRun","name":"lint","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null},{"__typename":"CheckRun","name":"unit","status":"COMPLETED","conclusion":"FAILURE","startedAt":null,"completedAt":null},{"__typename":"CheckRun","name":"ci","status":"COMPLETED","conclusion":"SUCCESS","startedAt":null,"completedAt":null}'
++ printf '%s\n' afafafafafafafafafafafafafafafafafafafaf
++ cat
++ run_pr_merge /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pr-merge-tests.S9tDnE/github-allow-red-two task-x1 https://github.com/example/repo/pull/88 --allow-red lint --allow-red unit

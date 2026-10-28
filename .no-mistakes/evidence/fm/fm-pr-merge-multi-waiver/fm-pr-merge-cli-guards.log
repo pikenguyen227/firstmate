@@ -1,0 +1,6 @@
+error: --allow-red requires a separate check name argument
+github_equals_exit=2
+error: --allow-red does not apply to GitLab, where a merge already requires the head pipeline to have succeeded
+gitlab_repeated_exit=2
+error: --allow-missing requires a separate check name argument
+missing_equals_exit=2
