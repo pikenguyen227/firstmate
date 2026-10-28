@@ -1,0 +1,38 @@
+bin/fm-supervise-daemon.sh
+  s_7154eff039c086::t_14523c38999784 73-79,124-129,240-241,741-742,744-748,1274,1308-1315,1318-1319,1322-1330
+tests/fm-supervision-instructions.test.sh
+  s_7154eff039c086::t_8fd1845e9868ea 119-122
+docs/configuration.md
+  s_7154eff039c086::t_2593a798fee7d7 1287,1298-1300
+  s_7154eff039c086::t_9c7f4d6b796d27 2656,2658
+docs/wedge-alarm.md
+  s_7154eff039c086::t_2593a798fee7d7 5
+.agents/skills/afk/SKILL.md
+  s_7154eff039c086::t_2593a798fee7d7 110-111,150
+  s_7154eff039c086::t_9c7f4d6b796d27 202
+bin/fm-escalation-outbox-lib.sh
+  s_7154eff039c086::t_84c4763fb992cf 29,34,156,159
+bin/fm-supervision-instructions.sh
+  s_7154eff039c086::t_b7a3c7eef020ac 258-259,261,263
+tests/fm-daemon.test.sh
+  s_7154eff039c086::t_a520bed5b696ea 2350,2435,2440-2452,2454-2486,2488-2504,3411-3412
+  s_7154eff039c086::t_8fd1845e9868ea 2453,2487
+.agents/skills/strategy-autonomy/SKILL.md
+  s_7154eff039c086::t_2593a798fee7d7 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff8a61924c3d290ae8caef96754b23534e9c8775",
+  "prompts": {},
+  "sessions": {
+    "s_7154eff039c086": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33fc8132-c73d-40ed-8f01-a981def518e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
