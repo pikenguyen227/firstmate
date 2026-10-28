@@ -1,0 +1,45 @@
+bin/fm-control.sh
+  s_f13197abb8108c::t_b4b4676a409c8c 131-132
+docs/agent-control.md
+  s_f13197abb8108c::t_b4b4676a409c8c 66-67
+bin/fm-spawn.sh
+  s_f13197abb8108c::t_6a2afdf2a5c5bf 73-74
+tests/fm-secondmate-restart.test.sh
+  s_6a953064a6e5db::t_80d48aeb882ba3 39
+  s_6a953064a6e5db::t_1c2acb4412af1e 36-38,40-42
+README.md
+  s_f13197abb8108c::t_b4b4676a409c8c 190
+bin/fm-secondmate-restart.sh
+  s_f13197abb8108c::t_6a2afdf2a5c5bf 57,61
+  s_f13197abb8108c::t_a534845443d144 58-59,63-64
+  s_f13197abb8108c::t_8cd7e7adf57c84 62
+  s_f13197abb8108c::t_b4b4676a409c8c 60
+.agents/skills/updatefirstmate/SKILL.md
+  s_f13197abb8108c::t_b4b4676a409c8c 6,108
+docs/architecture.md
+  s_f13197abb8108c::t_6a2afdf2a5c5bf 497
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "169237f39be71b5b1e64b3cac937b3a5c970c832",
+  "prompts": {},
+  "sessions": {
+    "s_6a953064a6e5db": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1821f-a961-7120-9f72-8eae56dd129d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    },
+    "s_f13197abb8108c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18232-c31f-7532-92e9-76a8c232743a",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
