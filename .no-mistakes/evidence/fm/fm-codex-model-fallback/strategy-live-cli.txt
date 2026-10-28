@@ -1,0 +1,73 @@
+Firstmate strategy show: full, Codex Pro
+strategy: full (providers: codex, recorded in config/strategy)
+  Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed.
+plans: codex=pro (Pro); each plan's profile replaces the template's models, efforts, and floors for its provider
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+  automatic fresh starts: true
+  automatic fleet reviews: true
+  one-tier model step-up after a worker failure: automatic
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: allowed; new ones launch as codex gpt-6-sol medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna high, floor 20%
+  standard: codex gpt-6-sol medium, floor 10%
+  hard: codex gpt-6-astra medium
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+Persisted worker routing and second mate pin:
+codex-requested: gpt-6-sol high
+standard: gpt-6-sol medium
+hard: gpt-6-astra medium
+codex gpt-6-sol medium
+
+Firstmate strategy show: balanced, Codex Plus
+strategy: balanced (providers: codex, recorded in config/strategy)
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+plans: codex=plus (Plus); each plan's profile replaces the template's models, efforts, and floors for its provider
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort medium
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="medium" -c project_doc_max_bytes=131072
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6-sol medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol medium
+  light: codex gpt-6-luna high, floor 50%
+  light: codex gpt-6-luna medium, floor 30%
+  standard: codex gpt-6.1-terra medium, floor 50%
+  standard: codex gpt-6.1-terra low, floor 20%
+  hard: codex gpt-6-sol high, floor 50%
+  hard: codex gpt-6-sol medium
+  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used
+  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; choose an available model explicitly if an interactive session refuses it
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+Persisted balanced routing:
+codex-requested: gpt-6-sol medium
+standard: gpt-6.1-terra medium, gpt-6.1-terra low
+hard: gpt-6-sol high, gpt-6-sol medium

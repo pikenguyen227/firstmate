@@ -1,0 +1,161 @@
+strategy: balanced (providers: codex, declared)
+  Mixed autonomy: light/standard starts automatic, hard or expensive work asks; one automatic fix round; hard Codex work on Sol.
+plans: codex=pro (Pro); each plan's profile replaces the template's models, efforts, and floors for its provider
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6.1-sol effort high
+    start with: codex -m gpt-6.1-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: allowed when the benefit justifies the standing cost; new ones launch as codex gpt-6.1-sol medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol high
+  light: codex gpt-6-luna high, floor 35%
+  light: codex gpt-6-luna medium, floor 20%
+  standard: codex gpt-6.1-terra medium, floor 35%
+  standard: codex gpt-6.1-terra low, floor 10%
+  hard: codex gpt-6.1-sol high, floor 35%
+  hard: codex gpt-6.1-sol medium
+  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used
+  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; an interactive model_not_found refusal falls back once to gpt-6-sol at the same effort
+  note: an interactive gpt-6.1-sol model_not_found refusal falls back once to gpt-6-sol at the same effort
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6.1-sol
+      effort: high
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
+
+--- a/config/crew-dispatch.json
++++ b/config/crew-dispatch.json
+@@ -0,0 +1,105 @@
++{
++  "rules": [
++    {
++      "when": "The instructions name the exact Codex model this worker must run on, for example 'run this on gpt-6-astra'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6.1-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin. An interactive model_not_found refusal for a named Codex 6.1 model retries once on gpt-6-sol at the same effort.",
++      "strategy": "codex-model-requested"
++    },
++    {
++      "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
++      "use": {
++        "harness": "codex",
++        "model": "gpt-6.1-sol",
++        "effort": "high"
++      },
++      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets this plan's pin: gpt-6.1-sol at high effort on codex.",
++      "strategy": "codex-requested"
++    },
++    {
++      "when": "Light: a small, fully specified job where the instructions already say exactly what to produce and nothing is left to investigate or design, such as a smoke test or toy example, a typo or documentation-only edit, a config value or version bump, starting or running something locally, or one small fix whose exact change is given. Not for changes that span several source files or need a design decision.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6-luna",
++          "effort": "high",
++          "floor": {
++            "scope": "all_models",
++            "min_percent": 35
++          }
++        },
++        {
++          "harness": "codex",
++          "model": "gpt-6-luna",
++          "effort": "medium",
++          "floor": {
++            "scope": "all_models",
++            "min_percent": 20
++          }
++        }
++      ],
++      "why": "Tier 1. Mechanical work; the cheapest capable model. It routes to gpt-6-luna at high effort on codex while at least 35% of its all_models quota remains, then gpt-6-luna at medium effort on codex while at least 20% of its all_models quota remains. Within one provider the first route whose floor still holds is used, so a falling quota steps down to the cheaper route before the week runs out.",
++      "select": "ladder",
++      "strategy": "light"
++    },
++    {
++      "when": "Standard: everyday implementation whose cause or design the instructions already settle, such as a bug fix with a stated cause, a small feature with a described approach, added tests, or replaying existing commits unchanged onto a new base, touching a few files, where the worker mainly writes, tests, and ships code. Not for work that asks the worker to find or confirm an unknown cause, measure, compare options, reconcile conflicting changes, or choose a design, and not for changes that delete data, migrate existing state, or touch concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6.1-terra",
++          "effort": "medium",
++          "floor": {
++            "scope": "all_models",
++            "min_percent": 35
++          }
++        },
++        {
++          "harness": "codex",
++          "model": "gpt-6.1-terra",
++          "effort": "low",
++          "floor": {
++            "scope": "all_models",
++            "min_percent": 10
++          }
++        }
++      ],
++      "why": "Tier 2. Most everyday work. It routes to gpt-6.1-terra at medium effort on codex while at least 35% of its all_models quota remains, then gpt-6.1-terra at low effort on codex while at least 10% of its all_models quota remains. Within one provider the first route whose floor still holds is used, so a falling quota steps down to the cheaper route before the week runs out.",
++      "select": "ladder",
++      "strategy": "standard"
++    },
++    {
++      "when": "Hard: an open-ended or high-stakes job where the worker must diagnose an unexplained or unconfirmed bug or measure to find a cause, investigate and write a report or recommendation, choose between designs the instructions leave open, reconcile conflicting changes, or build a feature with several separate parts or new components across many files or subsystems; also any change that deletes data, migrates existing state, or touches concurrency or security.",
++      "use": [
++        {
++          "harness": "codex",
++          "model": "gpt-6.1-sol",
++          "effort": "high",
++          "floor": {
++            "scope": "all_models",
++            "min_percent": 35
++          }
++        },
++        {
++          "harness": "codex",
++          "model": "gpt-6.1-sol",
++          "effort": "medium"
++        }
++      ],
++      "why": "Tier 3. Keep the provider's strongest model where mistakes are expensive; a step down only lowers its effort and the last route is never floored, so hard work never drops to a weaker model. It routes to gpt-6.1-sol at high effort on codex while at least 35% of its all_models quota remains, then gpt-6.1-sol at medium effort on codex. Within one provider the first route whose floor still holds is used, so a falling quota steps down to the cheaper route before the week runs out.",
++      "select": "ladder",
++      "strategy": "hard"
++    }
++  ],
++  "default": [
++    {
++      "harness": "codex",
++      "model": "gpt-6.1-terra",
++      "effort": "medium"
++    }
++  ]
++}
+--- a/config/secondmate-harness
++++ b/config/secondmate-harness
+@@ -0,0 +1 @@
++codex gpt-6.1-sol medium
+--- a/config/strategy
++++ b/config/strategy
+@@ -0,0 +1,5 @@
++# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
++mode=balanced
++providers=codex
++autonomy=balanced
++plans=codex=pro
+--- a/config/fresh-start.json
++++ b/config/fresh-start.json
+@@ -0,0 +1,3 @@
++{
++  "enabled": true
++}
+dry run: nothing written
