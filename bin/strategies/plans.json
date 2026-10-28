@@ -166,33 +166,33 @@
       "floors": { "light": 30, "standard": 20 },
       "modes": {
         "lean": {
-          "coordinator": "gpt-6.1-sol medium",
+          "coordinator": "gpt-6-sol medium",
           "light": "gpt-6-luna medium",
           "standard": ["gpt-6.1-terra low 60", "gpt-6-luna high"],
-          "hard": "gpt-6.1-sol medium",
-          "requested": "gpt-6.1-sol medium",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium",
+          "hard": "gpt-6-sol medium",
+          "requested": "gpt-6-sol medium",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium",
           "secondmates_allowed": false
         },
         "balanced": {
-          "coordinator": "gpt-6.1-sol medium",
+          "coordinator": "gpt-6-sol medium",
           "light": ["gpt-6-luna high 50", "gpt-6-luna medium"],
           "standard": ["gpt-6.1-terra medium 50", "gpt-6.1-terra low"],
-          "hard": ["gpt-6.1-sol high 50", "gpt-6.1-sol medium"],
-          "requested": "gpt-6.1-sol medium",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium",
+          "hard": ["gpt-6-sol high 50", "gpt-6-sol medium"],
+          "requested": "gpt-6-sol medium",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium",
           "secondmates_allowed": false
         },
         "full": {
-          "coordinator": "gpt-6.1-sol medium",
+          "coordinator": "gpt-6-sol medium",
           "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-sol medium",
-          "hard": "gpt-6.1-sol high",
-          "requested": "gpt-6.1-sol high",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium"
+          "standard": "gpt-6-sol medium",
+          "hard": "gpt-6-sol high",
+          "requested": "gpt-6-sol high",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium"
         }
       }
     },
@@ -203,32 +203,32 @@
       "floors": { "light": 20, "standard": 10 },
       "modes": {
         "lean": {
-          "coordinator": "gpt-6.1-sol medium",
+          "coordinator": "gpt-6-sol medium",
           "light": "gpt-6-luna medium",
           "standard": ["gpt-6.1-terra low 50", "gpt-6-luna high"],
-          "hard": "gpt-6.1-sol medium",
-          "requested": "gpt-6.1-sol medium",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium",
+          "hard": "gpt-6-sol medium",
+          "requested": "gpt-6-sol medium",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium",
           "secondmates_allowed": false
         },
         "balanced": {
-          "coordinator": "gpt-6.1-sol high",
+          "coordinator": "gpt-6-sol high",
           "light": ["gpt-6-luna high 35", "gpt-6-luna medium"],
           "standard": ["gpt-6.1-terra medium 35", "gpt-6.1-terra low"],
-          "hard": ["gpt-6.1-sol high 35", "gpt-6.1-sol medium"],
-          "requested": "gpt-6.1-sol high",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium"
+          "hard": ["gpt-6-sol high 35", "gpt-6-sol medium"],
+          "requested": "gpt-6-sol high",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium"
         },
         "full": {
-          "coordinator": "gpt-6.1-sol high",
+          "coordinator": "gpt-6-sol high",
           "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-sol medium",
+          "standard": "gpt-6-sol medium",
           "hard": "gpt-6-astra medium",
-          "requested": "gpt-6.1-sol high",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium"
+          "requested": "gpt-6-sol high",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium"
         }
       }
     },
@@ -239,32 +239,32 @@
       "pool": "api",
       "modes": {
         "lean": {
-          "coordinator": "gpt-6.1-sol medium",
+          "coordinator": "gpt-6-sol medium",
           "light": "gpt-6-luna high",
           "standard": "gpt-6.1-terra medium",
-          "hard": "gpt-6.1-sol high",
-          "requested": "gpt-6.1-sol medium",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium",
+          "hard": "gpt-6-sol high",
+          "requested": "gpt-6-sol medium",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium",
           "secondmates_allowed": false
         },
         "balanced": {
-          "coordinator": "gpt-6.1-sol high",
+          "coordinator": "gpt-6-sol high",
           "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-sol medium",
-          "hard": "gpt-6.1-sol high",
-          "requested": "gpt-6.1-sol high",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium"
+          "standard": "gpt-6-sol medium",
+          "hard": "gpt-6-sol high",
+          "requested": "gpt-6-sol high",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium"
         },
         "full": {
-          "coordinator": "gpt-6.1-sol high",
+          "coordinator": "gpt-6-sol high",
           "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-sol medium",
+          "standard": "gpt-6-sol medium",
           "hard": "gpt-6-astra medium",
-          "requested": "gpt-6.1-sol high",
-          "validation": "gpt-6.1-sol high",
-          "secondmates": "gpt-6.1-sol medium"
+          "requested": "gpt-6-sol high",
+          "validation": "gpt-6-sol high",
+          "secondmates": "gpt-6-sol medium"
         }
       }
     }

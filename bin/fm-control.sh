@@ -1039,16 +1039,9 @@ do_relaunch() {
   }
   RELAUNCH_AGENT_CONFIRMED=1
 
-  EFFECTIVE_MODEL=$(fm_meta_get "$META" model)
-  [ -n "$EFFECTIVE_MODEL" ] || die "the replacement agent for $ID is running, but its recorded model is missing"
-  MODEL_FALLBACK_REPORT=
-  case "$TARGET_MODEL" in
-    gpt-6.1-*) [ "$EFFECTIVE_MODEL" = "$TARGET_MODEL" ] || MODEL_FALLBACK_REPORT=" fallback_from=$TARGET_MODEL" ;;
-  esac
-
   journal_write complete "${CHECKPOINT_LINES[@]}" "$note_line" "exit_result=$exit_result"
   RELAUNCH_ACTIVE=0
-  echo "relaunched $ID harness=$TARGET_HARNESS from=$PRIOR_RECORDED_HARNESS model=$EFFECTIVE_MODEL$MODEL_FALLBACK_REPORT effort=$TARGET_EFFORT backend=$BACKEND endpoint=$T worktree=$WT"
+  echo "relaunched $ID harness=$TARGET_HARNESS from=$PRIOR_RECORDED_HARNESS model=$TARGET_MODEL effort=$TARGET_EFFORT backend=$BACKEND endpoint=$T worktree=$WT"
 }
 
 # --- verbs ------------------------------------------------------------------
