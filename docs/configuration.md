@@ -1057,6 +1057,7 @@ This section is the single owner of the canonical schema and its per-field seman
       "when": "<natural-language condition describing a kind of task>",
       "approval": "captain",
       "min_confidence": 0.85,
+      "select": "ladder",
       "floor": { "scope": "<quota-axi scope>", "min_percent": 20, "provider": "<quota-axi provider>" },
       "use": [
         { "harness": "<adapter>", "model": "<optional model>", "effort": "<low|medium|high|xhigh|max|ultra, optional>", "provider": "<optional quota-axi provider>", "floor": { "scope": "<quota-axi scope>", "min_percent": 50 } }
@@ -1125,6 +1126,8 @@ This single-provider table is separate from the frozen legacy mapping used by `f
 - A rule may carry a `strategy` key naming the slot [token strategies](#token-strategies-binfm-strategysh-configstrategy) manage; routing ignores it, and the [one-tier step-up](#automatic-one-tier-step-up-binfm-step-upsh) reads the `check`, `light`, `standard`, `hard`, and `research` slots as its ladder.
 - OpenCode receives the effort as its default `build` agent's `variant`, keyed to the resolved model, inside the `OPENCODE_CONFIG_CONTENT` JSON its launch already writes (the per-model reasoning-effort field of the config schema, verified on opencode 1.18.32); with no model resolved, the effort is recorded in task metadata but omitted from the launch.
 - Every profile array is an implicit quota-aware choice resolved through `quota-array-dispatch`.
+- A rule's optional `select` accepts `quota-balanced`, the same choice named explicitly, or `ladder`, which declares that each quota pool's profiles are listed from stronger to cheaper: within one pool, the profiles that draw on the same provider account's quota, the first profile that passes every gate is the pool's candidate and the later ones are held back, so profile floors step the pool down as its quota falls, while pools are still ranked against each other as `quota-array-dispatch` describes.
+  A ladder never reorders pools or crosses one, and without it profiles sharing a pool stay a genuine tie.
 - If no dispatch rule fits, firstmate resolves `default` through the same object-or-array path before falling back to `config/crew-harness`.
 - Except for `ultra`, which refuses unsupported profiles under the native-effort contract above, an effort value the chosen harness does not accept is recorded as `effort=` in task meta for traceability but omitted from the launch flags.
 - Bootstrap reports unsupported harness/model/effort combinations as a `CREW_DISPATCH` diagnostic when they are visible in the file.
@@ -1203,6 +1206,7 @@ After the answer, code applies all remaining checks and ranking:
 - The confidence floor and the matched rule's `approval` and `floor`.
 - Each candidate's `provider` and `floor`.
 - Every applicable account-wide and model/product row from one `quota-axi --json` snapshot.
+- A rule's declared `ladder`, which holds back every eligible candidate after the first on the same quota row and prints it as `held back`.
 - The numeric `spendPriority` argmax over candidates, using each candidate's limiting row.
 
 The [shared quota library](../bin/fm-quota-axi-lib.sh) accepts schema 5 and schema 6 and implements the [account-matching contract](../.agents/skills/quota-array-dispatch/SKILL.md#1-eligibility).
@@ -1326,26 +1330,35 @@ With any plan named, the requested-worker and light, standard, and hard rules ta
 | Codex `pro`, `business-premium`, `enterprise-edu` | Pro |
 | Codex `api` | API |
 
-| Plan profile | Coordinator | Light / standard / hard | Requested worker | Validation | Second mates | Light / standard floors |
-|---|---|---|---|---|---|---|
-| Claude Pro, lean and balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | 30% / 20% |
-| Claude Pro, full | Opus 5.5 medium | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | 30% / 20% |
-| Claude Max 5x | the template | the template | the template | the template | the template | 20% / 10% |
-| Claude Max 20x | the template | the template | the template | the template | the template | 15% / 5% |
-| Claude API, lean | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none |
-| Claude API, balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none |
-| Claude API, full | the template | the template | the template | the template | the template | none |
-| Codex Plus, lean and balanced | 6.1 Sol medium | Luna high / 6.1 Terra medium / 6.1 Sol high | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | none |
-| Codex Plus, full | 6.1 Sol medium | Luna high / 6.1 Sol medium / 6.1 Sol high | 6.1 Sol high | 6.1 Sol high | 6.1 Sol medium | none |
-| Codex Pro | the template | the template | the template | the template | the template | none |
-| Codex API, lean | 6.1 Sol medium | Luna high / 6.1 Terra medium / 6.1 Sol high | 6.1 Sol medium | 6.1 Sol high | off | none |
-| Codex API, balanced and full | the template | the template | the template | the template | the template | none |
+| Plan profile | Coordinator | Light / standard / hard | Requested worker | Validation | Second mates | Step-down floor | Light / standard floors |
+|---|---|---|---|---|---|---|---|
+| Claude Pro, balanced | Opus 5.5 medium | Haiku 5.5 medium then low / Sonnet 5.5 medium then low / Opus 5.5 high then medium | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | 50% | 30% / 20% |
+| Claude Pro, lean | Opus 5.5 medium | Haiku 5.5 low / Sonnet 5.5 low / Opus 5.5 medium | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | 30% / 20% |
+| Claude Pro, full | Opus 5.5 medium | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none | 30% / 20% |
+| Claude Max 5x and Max 20x, balanced | Opus 5.5 high | Haiku 5.5 medium then low / Sonnet 5.5 medium then low / Opus 5.5 high then medium | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | 35% | Max 5x 20% / 10%, Max 20x 15% / 5% |
+| Claude Max 5x and Max 20x, lean | Opus 5.5 medium | Haiku 5.5 low / Sonnet 5.5 low / Opus 5.5 medium | Opus 5.5 high | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | Max 5x 20% / 10%, Max 20x 15% / 5% |
+| Claude Max 5x and Max 20x, full | the template | the template | the template | the template | the template | none | Max 5x 20% / 10%, Max 20x 15% / 5% |
+| Claude API, lean | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | none |
+| Claude API, balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none | none |
+| Claude API, full | the template | the template | the template | the template | the template | none | none |
+| Codex Plus, balanced | 6.1 Sol medium | Luna high then medium / 6.1 Terra medium then low / 6.1 Sol high then medium | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | 50% | 30% / 20% |
+| Codex Plus, lean | 6.1 Sol medium | Luna medium / 6.1 Terra low then Luna high / 6.1 Sol medium | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | 60% | 30% / 20% |
+| Codex Plus, full | 6.1 Sol medium | Luna high / 6.1 Sol medium / 6.1 Sol high | 6.1 Sol high | 6.1 Sol high | 6.1 Sol medium | none | 30% / 20% |
+| Codex Pro, balanced | 6.1 Sol high | Luna high then medium / 6.1 Terra medium then low / 6.1 Sol high then medium | 6.1 Sol high | 6.1 Sol high | 6.1 Sol medium | 35% | 20% / 10% |
+| Codex Pro, lean | 6.1 Sol medium | Luna medium / 6.1 Terra low then Luna high / 6.1 Sol medium | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | 50% | 20% / 10% |
+| Codex Pro, full | the template | the template | the template | the template | the template | none | 20% / 10% |
+| Codex API, lean | 6.1 Sol medium | Luna high / 6.1 Terra medium / 6.1 Sol high | 6.1 Sol medium | 6.1 Sol high | off | none | none |
+| Codex API, balanced and full | the template | the template | the template | the template | the template | none | none |
 
-Hard work and validation never drop below the template on any plan, and Fable and Astra stay off every tier where they bill credits or have a small allowance.
-Floors use the `all_models` scope; API plans write none because an unmeasured provider makes a floor escalate, and Codex plans write none until the quota-axi Codex scope name is confirmed.
-6.1 Terra routes only in Plus and Business Standard lean and balanced and Codex API lean, and needs Codex CLI 0.159.0 or later, which `show` notes.
+Routing uses both the plan and the live quota.
+A tier written as "A then B" lists that provider's routes from stronger to cheaper, and every tier rule a strategy writes declares the [`ladder` selection](#crew-dispatch-profiles-configcrew-dispatchjson): the stronger route applies while at least the step-down floor of the provider's `all_models` quota remains, so as the week's quota falls the tier moves to the cheaper route instead of exhausting it.
+Below its last floor a light or standard tier leaves the provider for the other one, or escalates in a home with only that provider.
+Balanced steps down to the plan's lean route for that tier, and lean starts there.
+Validation always stays at high effort, and hard work stays on the provider's strongest routed model, stepping down only in effort with its last route never floored, so no quota drop moves hard work to a weaker model; Fable and Astra stay off every tier where they bill credits or have a small allowance.
+Floors use the `all_models` scope, which quota-axi reports for both Claude and Codex (a captured Codex snapshot in [`tests/fm-dispatch-resolve.test.sh`](../tests/fm-dispatch-resolve.test.sh) pins the Codex row); API plans write none because an unmeasured provider makes a floor escalate.
+6.1 Terra routes in the Plus and Pro Codex profiles' lean and balanced tiers and in Codex API lean, and needs Codex CLI 0.159.0 or later; `show` notes that minimum and that 6.1 Sol at low effort is the fallback where Terra is unavailable.
 A plan that turns second mates off does so when its provider is the one new second mates launch on, Claude whenever the home has it.
-In a home with both providers each tier keeps one Claude and one Codex profile, so [`quota-array-dispatch`](../.agents/skills/quota-array-dispatch/SKILL.md) picks by remaining quota, and `show` suggests which provider should host the primary coordinator and the no-mistakes validation.
+In a home with both providers each tier lists its Claude routes and then its Codex routes, so the floors pick a route within each provider and [`quota-array-dispatch`](../.agents/skills/quota-array-dispatch/SKILL.md) picks between the providers by remaining quota, and `show` suggests which provider should host the primary coordinator and the no-mistakes validation.
 Full is not recommended on `pro`, `team-standard`, `plus`, or `business-standard`, whose five-hour and weekly limits automatic starts reach first: `show` and `set` warn without refusing, and `list` marks it.
 
 Every mode keeps the same safety floor: none changes delivery mode, `yolo` or merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, native context compaction, claude-mem, or any `AGENTS.md` boundary.

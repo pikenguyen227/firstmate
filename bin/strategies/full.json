@@ -94,6 +94,7 @@
           }
         ],
         "why": "Tier 1. Mechanical work; the cheapest capable model, Sonnet at low effort or Luna at high effort, the starting effort OpenAI recommends for Luna. The Claude floor keeps the end of the Claude week for harder work.",
+        "select": "ladder",
         "strategy": "light"
       },
       {
@@ -115,6 +116,7 @@
           }
         ],
         "why": "Tier 2. Most everyday work; strong model at medium effort, which costs less per finished job than a weaker model at high effort on long, cache-heavy sessions.",
+        "select": "ladder",
         "strategy": "standard"
       },
       {
@@ -132,6 +134,7 @@
           }
         ],
         "why": "Tier 3. Keep the strongest reasoning where mistakes are expensive; never floored, so hard work is not silently downgraded.",
+        "select": "ladder",
         "strategy": "hard"
       }
     ],

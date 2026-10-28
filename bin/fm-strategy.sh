@@ -27,7 +27,12 @@
 # coordinator, second-mate pin, validation, the light, standard, hard, and
 # requested-worker routes, the default, the light and standard floors (the
 # plan's own, or none when it has none), and the Claude requested-model why
-# text. Any named plan also rebuilds the why text of the requested-worker and
+# text. A plan tier may be a ladder of routes from stronger to cheaper: each
+# route but the last carries its own step-down floor, the last light or
+# standard route takes the plan's floor, and the default takes the first
+# standard route. Every template tier rule declares select "ladder", so the
+# resolver takes the first route whose floor holds within each provider. Any
+# named plan also rebuilds the why text of the requested-worker and
 # tier rules from plans.json why and the rendered routes, so it names the model,
 # effort, and floor each rule routes to. A plan that turns second mates off does so when its provider is the one
 # new second mates launch on. Without --plans, show, set, and status reuse the
@@ -284,9 +289,19 @@ effective_template() {
     --argjson sel "$(plans_json "$plans")" --slurpfile plans "$PLANS_FILE" '
     $plans[0] as $P
     | def profile($s): ($s | split(" ")) as $w | {model: $w[0], effort: $w[1]};
+      def routes($v): if ($v | type) == "array" then $v else [$v] end;
+      def floor_of($f): if $f == null then {} else {floor: {scope: "all_models", min_percent: $f}} end;
+      # A tier ladder: each route but the last steps down below its own floor;
+      # the last takes the plan floor, where the tier leaves the provider.
+      def ladder($v; $last):
+        routes($v) as $r | [range(0; $r | length) as $i
+          | profile($r[$i])
+            + floor_of(if $i == ($r | length) - 1 then $last
+                       else (($r[$i] | split(" "))[2] // null | if . == null then null else tonumber end) end)];
       def resolved($h; $name): $P[$h][$name] as $e | $P[$h][$e.same_as // $name];
       def route: "\(.model) at \(.effort) effort on \(.harness)"
         + (if .floor then " while at least \(.floor.min_percent)% of its \(.floor.scope) quota remains" else "" end);
+      def harness_order: reduce .[].harness as $x ([]; if index([$x]) then . else . + [$x] end);
     reduce ($sel | to_entries[]) as $e (.;
       $e.key as $h | resolved($h; $e.value) as $p | $p.modes[$mode] as $m
       | .coordinator[$h] = profile($m.coordinator)
@@ -296,19 +311,21 @@ effective_template() {
       | .dispatch.rules |= map(
           .strategy as $s
           | if $s == "light" or $s == "standard" or $s == "hard" then
-              .use |= map(if .harness == $h then
-                {harness: $h} + profile($m[$s])
-                + (($p.floors // {})[$s] as $f | if $f == null then {} else {floor: {scope: "all_models", min_percent: $f}} end)
-              else . end)
+              .use |= [.[] | if .harness == $h then
+                (ladder($m[$s]; ($p.floors // {})[$s])[] | {harness: $h} + .)
+              else . end]
             elif $s == "\($h)-requested" then .use = ({harness: $h} + profile($m.requested))
               | .why = "\($P.why.requested) \(.use | route)."
             elif $s == "\($h)-model-requested" and $p.model_requested_why != null then .why = $p.model_requested_why
             else . end)
-      | .dispatch.default |= map(if .harness == $h then {harness: $h} + profile($m.standard) else . end)
+      | .dispatch.default |= map(if .harness == $h then {harness: $h} + profile(routes($m.standard)[0]) else . end)
     )
     | .dispatch.rules |= map(
         if .strategy == "light" or .strategy == "standard" or .strategy == "hard" then
-          .why = "\($P.why[.strategy]) It routes to \(.use | map(select(.harness as $x | $providers | index($x)) | route) | join(", or "))."
+          [.use[] | select(.harness as $x | $providers | index($x))] as $u
+          | ($u | harness_order) as $hs
+          | .why = "\($P.why[.strategy]) It routes to \([$hs[] as $x | [$u[] | select(.harness == $x) | route] | join(", then ")] | join("; or "))."
+            + (if any($hs[]; . as $x | [$u[] | select(.harness == $x)] | length > 1) then " \($P.why.ladder)" else "" end)
         else . end)
   ' "$(template "$mode")"
 }
@@ -492,8 +509,13 @@ print_resolved() {
     (.rules // [])[] as $r | profiles($r.use)[] | "  \(slotname($r)): \(txt(.))\(floor(.))",
     (profiles(.default // [])[] | "  default: \(txt(.))")
   ' <<<"$dispatch"
+  if jq -e '
+    def profiles($u): if ($u | type) == "array" then $u else [$u] end;
+    any((.rules // [])[]; .select == "ladder" and (profiles(.use) | group_by(.harness) | any(length > 1)))' <<<"$dispatch" >/dev/null; then
+    echo "  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used"
+  fi
   if grep -q '"gpt-6.1-terra"' <<<"$dispatch"; then
-    echo "  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later"
+    echo "  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; where it is unavailable, gpt-6.1-sol at low effort is the fallback"
   fi
   if grep -q '"gpt-6.1-sol"' <<<"$dispatch"; then
     echo "  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback"

@@ -125,8 +125,12 @@ Do not compare headroom against runway by hand.
 Do not use pace or signed reserve as a later tie-break layer.
 Do not read `aheadWindowIds`, `behindWindowIds`, `onPaceWindowIds`, `limitingWindowIds`, or other window-id lists to reconstruct what `spendPriority` already computed.
 
+A rule that declares `select: "ladder"` lists each quota pool's candidates from stronger to cheaper ([`docs/configuration.md`](../../../docs/configuration.md#crew-dispatch-profiles-configcrew-dispatchjson) owns the field).
+Within one pool, the candidates bound to the same provider account's quota row, the first candidate that passes all three gates is that pool's only contender, usually because a stronger candidate's declared floor failed; rank pools against each other by `spendPriority` exactly as above.
+The ladder is declared order, not a tie-break, so it never crosses pools or replaces the reasoning-class gate.
+
 Genuine ties: stop and report every tied candidate for captain choice.
-Do not select by array order, harness name, or another arbitrary identity ordering.
+Outside a declared ladder, do not select by array order, harness name, or another arbitrary identity ordering.
 Report duplicate concrete profiles as a configuration error.
 
 Account for every candidate visibly before selecting or escalating, naming its catalog evidence, provider relation, applicable quota and authentication facts, remaining uncertainty, fit and reasoning class, `spendPriority`, and runway-versus-horizon result.
