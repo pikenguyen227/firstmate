@@ -1,0 +1,28 @@
+bin/fm-control.sh
+  s_158b4fd7f1e580::t_87ccfe8a968e9a 1023-1036
+  s_158b4fd7f1e580::t_0a06b033521176 129
+bin/fm-spawn.sh
+  s_158b4fd7f1e580::t_0a06b033521176 73-74
+  s_158b4fd7f1e580::t_b7561d6e56f65a 1797-1800,3656-3660,3662-3679,3682,4622
+tests/fm-secondmate-restart.test.sh
+  s_158b4fd7f1e580::t_bd0601d477c669 881
+  s_158b4fd7f1e580::t_ad7389fdf80ca4 305,887
+  s_158b4fd7f1e580::t_038bc8a2abcfb1 835-875,1241-1242
+  s_158b4fd7f1e580::t_cab01b9e3c4019 876-880,882-886,888-898,1243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32039bf265c3c5683546ede06288fbbcbaec309e",
+  "prompts": {},
+  "sessions": {
+    "s_158b4fd7f1e580": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1820b-ca70-7ff1-b26d-ef5924180282",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
