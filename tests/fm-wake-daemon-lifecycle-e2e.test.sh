@@ -32,6 +32,11 @@ if [ -z "${FM_TEST_DAEMON_SOURCED:-}" ]; then
 fi
 
 TMP_ROOT=$(fm_test_tmproot fm-wake-daemon-e2e)
+# This lifecycle drives the pane-typed delivery path, which a Claude or Codex
+# primary only uses as its last resort; pin it so harness detection of the
+# shell running the suite cannot switch it to the outbox.
+FM_DAEMON_TRANSPORT=pane
+export FM_DAEMON_TRANSPORT
 
 # Run the daemon-managed watcher once: under the supervise-daemon (away mode) the
 # watcher is one-shot - it exits with a single reason line on EVERY wake and the

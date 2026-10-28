@@ -166,8 +166,11 @@ chmod +x "$TMUX_SHIM_DIR/tmux"
 # the daemon would otherwise detect from this test's own process ancestry:
 # "unknown" preserves the typed U+2063 envelope, "claude" selects the
 # record-backed doorbell that a marker-stripping Claude Code primary receives.
-start_daemon() {  # [primary-harness]
+# A second argument pins the delivery path (FM_DAEMON_TRANSPORT); empty derives
+# it from the harness, which for unknown is the pane.
+start_daemon() {  # [primary-harness] [transport]
   FM_DAEMON_PRIMARY_HARNESS="${1:-unknown}" \
+  FM_DAEMON_TRANSPORT="${2:-}" \
   PATH="$TMUX_SHIM_DIR:$PATH" \
   FM_STATE_OVERRIDE="$STATE_DIR" \
   FM_SUPERVISOR_TARGET="$SUPERVISOR_PANE" \
@@ -429,13 +432,15 @@ test_scenario_c() {
 # --- Scenario D: a marker-stripping primary gets a record-backed doorbell ----
 # Claude Code removes U+2063 from submitted prompts, so for a claude primary the
 # daemon types one plain doorbell naming a record in this home, and the away-mode
-# return check still reads that submitted line as internal.
+# return check still reads that submitted line as internal. A claude primary
+# normally receives digests through its Stop hook; this pins the pane path it
+# keeps as the outbox's last resort.
 
 test_scenario_d() {
   reset_state
   rm -rf "$STATE_DIR/operational-inbox"
   afk_enter "$STATE_DIR"
-  start_daemon claude
+  start_daemon claude pane
 
   echo "done: PR https://example.test/pr/400" > "$STATE_DIR/fake-c1.status"
   sleep 6

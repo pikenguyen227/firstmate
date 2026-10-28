@@ -1284,7 +1284,7 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Automatic fresh starts | enabled | enabled | disabled |
 | Extra discretionary fleet reviews | enabled | disabled | disabled |
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
-| While the captain is present | normal supervision | `/quiet`, with bounded batching | `/quiet`, routine turns suppressed |
+| While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events delivered at once | same as balanced |
 
 Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate; where an Enterprise or Edu workspace has not enabled it, `gpt-6-sol` is the fallback to route by hand.
 Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
@@ -1296,6 +1296,8 @@ The templates' `autonomy` object owns the rendered level, dispatch policy, autom
 [`strategy-autonomy`](../.agents/skills/strategy-autonomy/SKILL.md) owns coordinator application, approval reuse, round accounting, and session transitions, using the existing quiet lifecycle instead of new notification filtering.
 A confirmed selection requests that posture; the command records it but does not itself launch or stop quiet supervision, and later explicit session choices win.
 Quiet batches only within its existing bound and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
+On Claude and Codex primaries quiet delivers through the harness's own wake path instead of typing into the captain's pane: routine wakes are handled in bash without a model turn, and each decision, failure, credential need, or review-ready result is handed off as soon as it is buffered and reaches the coordinator through Claude's Stop-hook rewake or Codex's foreground checkpoint, even while the captain is mid-conversation.
+A digest still unclaimed after the daemon's max-defer bound gets one pane attempt and the wedge alarm, and anything left when quiet ends appears in the return brief; the [afk skill](../.agents/skills/afk/SKILL.md) owns that mechanism.
 Fix-round limits pause for approval rather than bypassing validation, and indivisible tool-internal retry boundaries must be disclosed rather than represented as enforceable caps.
 A stronger model is reached only through the [one-tier step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a real worker failure.
 

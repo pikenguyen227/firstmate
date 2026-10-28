@@ -25,6 +25,11 @@ fi
 TMP_ROOT=$(fm_test_tmproot fm-daemon-tests)
 FM_DAEMON_PRIMARY_HARNESS=claude
 export FM_DAEMON_PRIMARY_HARNESS
+# The pinned claude primary delivers through the outbox in production; the
+# pane-injection units below pin the pane path it keeps as its last resort and
+# every other primary uses. The outbox tests unset this per test.
+FM_DAEMON_TRANSPORT=pane
+export FM_DAEMON_TRANSPORT
 
 # What the pinned claude primary received: each typed line, with every
 # record-backed doorbell followed by the envelope its record holds.
@@ -2318,6 +2323,131 @@ test_normal_flush_clears_stale_wedge_marker() {
   pass "normal flush clears a stale wedge marker"
 }
 
+# --- harness-path delivery (bin/fm-escalation-outbox-lib.sh) -----------------
+# Reproduces the 2026-10-28 quiet-mode incident: a present captain's Claude pane
+# whose composer cannot be proven empty kept every pane-typed digest deferred.
+# On Claude and Codex primaries the digest must instead reach the outbox their
+# own wake path delivers from, at once, without touching the pane.
+test_outbox_delivers_past_an_unprovable_pane_on_claude_and_codex() {
+  local harness dir state sent outbox
+  for harness in claude codex; do
+    dir=$(make_bordered_case "outbox-busy-$harness")
+    state="$dir/state"
+    sent="$dir/sent.log"; : > "$sent"
+    printf '╭─────────────────╮\n│ > human draft   │\n╰─────────────────╯\n' > "$dir/composer"
+    escalate_add "$state" "needs-decision: merge PR https://x/y/pull/58?"
+    afk_enter "$state"
+    # Counterfactual: the pane path defers exactly as the incident log did.
+    (
+      PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
+        FM_DAEMON_TRANSPORT=pane FM_ESCALATE_BATCH_SECS=0 FM_DAEMON_PRIMARY_HARNESS=$harness \
+        housekeeping "$state"
+    )
+    [ -s "$state/.subsuper-escalations" ] || fail "$harness: the pane path delivered into an unprovable composer"
+    (
+      unset FM_DAEMON_TRANSPORT
+      PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
+        FM_DAEMON_PRIMARY_HARNESS=$harness housekeeping "$state"
+    )
+    outbox=$(fm_outbox_dir "$state")
+    [ ! -s "$sent" ] || fail "$harness: the daemon typed into the captain's pane"
+    [ ! -s "$state/.subsuper-escalations" ] || fail "$harness: the digest stayed buffered behind the pane"
+    [ "$(fm_outbox_pending_files "$state" | wc -l | tr -d ' ')" = 1 ] || fail "$harness: expected exactly one outbox digest"
+    grep -F 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/58?' "$outbox"/*.msg >/dev/null \
+      || fail "$harness: the outbox digest lost the escalation text"
+    [ ! -e "$state/.subsuper-inject-wedged" ] || fail "$harness: a wedge alarm fired for a delivered digest"
+  done
+  pass "Claude and Codex primaries hand digests to their wake path at once, past a pane the captain is using"
+}
+
+test_outbox_transport_is_claude_and_codex_only() {
+  local harness got
+  for harness in claude codex opencode omp grok cursor kimi unknown; do
+    got=$(unset FM_DAEMON_TRANSPORT; FM_DAEMON_PRIMARY_HARNESS=$harness escalate_transport)
+    case "$harness" in
+      claude) [ "$got" = hook ] || fail "claude transport: $got" ;;
+      codex) [ "$got" = checkpoint ] || fail "codex transport: $got" ;;
+      *) [ "$got" = pane ] || fail "$harness transport: $got (pane injection must stay unchanged)" ;;
+    esac
+  done
+  pass "only Claude and Codex primaries switch to harness-path delivery"
+}
+
+test_outbox_publish_waits_while_afk_inactive() {
+  local dir state
+  dir=$(make_bordered_case outbox-afk-off)
+  state="$dir/state"
+  escalate_add "$state" "blocked: needs a credential"
+  ( unset FM_DAEMON_TRANSPORT; FM_DAEMON_PRIMARY_HARNESS=claude escalate_flush "$state" ) \
+    && fail "escalate_flush published while afk was inactive"
+  [ -s "$state/.subsuper-escalations" ] || fail "buffer lost while afk was inactive"
+  fm_outbox_pending "$state" && fail "outbox received a digest while afk was inactive"
+  pass "the outbox path keeps the presence gate: nothing is published while afk is off"
+}
+
+# An outbox digest its wake path never claims gets one pane attempt past
+# max-defer; when the pane cannot take it, the alarm names it and it stays.
+test_outbox_max_defer_alarms_and_keeps_unclaimed_digest() {
+  local dir state sent outbox old
+  dir=$(make_bordered_case outbox-maxdefer-pending)
+  state="$dir/state"
+  sent="$dir/sent.log"; : > "$sent"
+  printf '╭─────────────────╮\n│ > human draft   │\n╰─────────────────╯\n' > "$dir/composer"
+  afk_enter "$state"
+  outbox=$(fm_outbox_dir "$state"); mkdir -p "$outbox"
+  old=$(( $(date +%s) - 600 ))
+  printf 'Supervisor escalate (1 event(s)): needs-decision: pick A\n' > "$outbox/$old.1.0.msg"
+  (
+    unset FM_DAEMON_TRANSPORT
+    PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
+      FM_DAEMON_PRIMARY_HARNESS=claude FM_MAX_DEFER_SECS=60 FM_INJECT_CONFIRM_SLEEP=0.05 \
+      housekeeping "$state"
+  )
+  [ ! -s "$sent" ] || fail "the pane fallback typed into a pending composer"
+  [ -f "$outbox/$old.1.0.msg" ] || fail "the unclaimed digest was not put back in the outbox"
+  grep -F 'needs-decision: pick A' "$state/.subsuper-inject-wedged" >/dev/null \
+    || fail "the wedge alarm did not name the undelivered outbox digest"
+  grep -F 'unclaimed by the hook wake path' "$state/.subsuper-inject-wedged" >/dev/null \
+    || fail "the wedge alarm did not say which wake path left it unclaimed"
+  pass "an unclaimed outbox digest past max-defer alarms, names itself, and stays for its wake path"
+}
+
+test_outbox_max_defer_pane_fallback_delivers_once() {
+  local dir state sent outbox old
+  dir=$(make_bordered_case outbox-maxdefer-fallback)
+  state="$dir/state"
+  sent="$dir/sent.log"; : > "$sent"
+  afk_enter "$state"
+  printf 'old wedge\n' > "$state/.subsuper-inject-wedged"
+  touch -t 202601010000 "$state/.subsuper-inject-wedged"
+  outbox=$(fm_outbox_dir "$state"); mkdir -p "$outbox"
+  old=$(( $(date +%s) - 600 ))
+  printf 'Supervisor escalate (1 event(s)): done: PR https://x/y/pull/9\n' > "$outbox/$old.1.0.msg"
+  (
+    unset FM_DAEMON_TRANSPORT
+    PATH="$dir/fakebin:$PATH" FM_FAKE_COMPOSER="$dir/composer" FM_FAKE_SENT="$sent" \
+      FM_DAEMON_PRIMARY_HARNESS=claude FM_MAX_DEFER_SECS=60 FM_INJECT_CONFIRM_SLEEP=0.05 \
+      housekeeping "$state"
+  )
+  [ "$(delivered_digest "$sent" 2>/dev/null | grep -c 'pull/9' || true)" -eq 1 ] \
+    || fail "the pane fallback did not deliver the digest exactly once"
+  fm_outbox_pending "$state" && fail "a digest the pane fallback delivered stayed in the outbox"
+  [ -f "$outbox/delivered/$old.1.0.msg" ] || fail "the delivered digest was not archived"
+  [ ! -e "$state/.subsuper-inject-wedged" ] || fail "the wedge marker survived a delivered fallback"
+  pass "the outbox pane fallback delivers an unclaimed digest once and clears the alarm"
+}
+
+test_outbox_empty_clears_stale_wedge_marker() {
+  local dir state
+  dir=$(make_bordered_case outbox-clears-wedge)
+  state="$dir/state"
+  afk_enter "$state"
+  printf 'old wedge\n' > "$state/.subsuper-inject-wedged"
+  ( unset FM_DAEMON_TRANSPORT; FM_DAEMON_PRIMARY_HARNESS=codex housekeeping "$state" )
+  [ ! -e "$state/.subsuper-inject-wedged" ] || fail "an emptied outbox left the wedge marker behind"
+  pass "a drained outbox clears the wedge marker"
+}
+
 # The start-up catch-all scan turns each status log's unread span into one
 # buffered item, so a first digest can exceed the 131,071 bytes one transport
 # argument can carry. The fake tmux refuses any literal send above that.
@@ -3208,6 +3338,12 @@ test_max_defer_empty_swallow_types_once_and_alarms
 test_max_defer_flushes_empty_idle_pane
 test_max_defer_pending_composer_alarms_without_typing
 test_normal_flush_clears_stale_wedge_marker
+test_outbox_delivers_past_an_unprovable_pane_on_claude_and_codex
+test_outbox_transport_is_claude_and_codex_only
+test_outbox_publish_waits_while_afk_inactive
+test_outbox_max_defer_alarms_and_keeps_unclaimed_digest
+test_outbox_max_defer_pane_fallback_delivers_once
+test_outbox_empty_clears_stale_wedge_marker
 test_oversized_digest_is_bounded_and_kept_durable
 test_digest_budget_counts_omitted_events
 test_inject_send_failure_logs_stage_stderr_and_bytes

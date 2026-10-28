@@ -14,6 +14,18 @@
 # "supervision-host:" line other than the park boundary passes through as a
 # wake; the boundary alone is the ordinary quiet checkpoint. Without the file
 # nothing below changes.
+#
+# AWAY AND QUIET MODE. While state/.afk exists the away/quiet daemon owns the
+# watcher, so the checkpoint never runs one. It parks instead on the daemon's
+# escalation outbox (bin/fm-escalation-outbox-lib.sh owns the hand-off) and
+# prints every digest it claimed as its output, exiting 0, which is how a
+# Codex primary receives captain-relevant events while the daemon self-handles
+# routine wakes. Quiet mode keeps the ordinary bound, because a present
+# captain's queued message is read when the checkpoint returns; away mode
+# (the flag's first line is not "quiet") raises it to
+# FM_CODEX_WATCH_CHECKPOINT_AWAY (default 3600) when that is longer. A flag
+# that clears mid-park ends the checkpoint at once with its own line.
+# FM_OUTBOX_PARK_POLL (default 2) is the park's poll interval.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -110,6 +122,37 @@ run_bounded() {  # <seconds> <command...>
 positive_or() {  # <value> <default>
   case "$1" in ''|0*|*[!0-9]*) printf '%s\n' "$2" ;; *) printf '%s\n' "$1" ;; esac
 }
+
+if [ -e "$STATE/.afk" ]; then
+  # shellcheck source=bin/fm-escalation-outbox-lib.sh
+  . "$SCRIPT_DIR/fm-escalation-outbox-lib.sh"
+  BOUND=$SECONDS_ARG
+  if [ "$(head -n 1 "$STATE/.afk" 2>/dev/null)" != quiet ]; then
+    AWAY_BOUND=$(positive_or "${FM_CODEX_WATCH_CHECKPOINT_AWAY:-}" 3600)
+    [ "$AWAY_BOUND" -le "$BOUND" ] 2>/dev/null || BOUND=$AWAY_BOUND
+  fi
+  POLL=${FM_OUTBOX_PARK_POLL:-2}
+  case "$POLL" in ''|*[!0-9.]*) POLL=2 ;; esac
+  LATE=$(positive_or "${FM_MAX_DEFER_SECS:-}" 300)
+  DEADLINE=$(( $(date +%s) + BOUND ))
+  trap 'fm_outbox_release "$STATE"; rm -f "$OUT" "$ERR"; exit 124' TERM HUP INT
+  while :; do
+    if [ ! -e "$STATE/.afk" ]; then
+      echo "checkpoint: away/quiet mode ended during this checkpoint; resume normal supervision"
+      exit 124
+    fi
+    if fm_outbox_claim "$STATE"; then
+      fm_outbox_render_claimed "$LATE"
+      fm_outbox_commit "$STATE"
+      exit 0
+    fi
+    if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+      printf 'checkpoint: no actionable wake within %ss\n' "$BOUND"
+      exit 124
+    fi
+    sleep "$POLL"
+  done
+fi
 
 if [ -f "$CONFIG/supervision-host" ]; then
   BOUND=$SECONDS_ARG

@@ -115,8 +115,14 @@ test_quiet_mode_stanzas() {
   assert_contains "$out" "load /quiet" "quiet stanza did not name the /quiet skill"
   assert_contains "$out" "Ordinary captain chat does NOT exit it" "quiet stanza lost the explicit-only exit rule"
   assert_not_contains "$out" "- Away mode: active" "quiet mode incorrectly rendered as away mode"
+  assert_contains "$out" "- Daemon digests: keep the foreground checkpoint loop running" "codex quiet mode must keep the checkpoint that delivers daemon digests"
   out=$(FM_HOME="$home" "$RENDER" --harness codex --afk 1 --afk-mode quiet --repair-line)
   assert_contains "$out" "Quiet mode owns watcher supervision; load /quiet" "quiet repair line did not name /quiet"
+  assert_contains "$out" "Keep the foreground checkpoint running" "codex quiet repair line dropped the checkpoint that delivers daemon digests"
+  out=$(FM_HOME="$home" FM_CONFIG_OVERRIDE="$config" "$RENDER" --harness claude --afk 1 --afk-mode quiet)
+  assert_contains "$out" '- Daemon digests: they arrive as Stop hook feedback beginning "Supervisor escalate"' "claude quiet mode did not say how daemon digests arrive"
+  out=$(FM_HOME="$home" FM_CONFIG_OVERRIDE="$config" "$RENDER" --harness opencode --afk 1 --afk-mode quiet)
+  assert_not_contains "$out" "- Daemon digests:" "a pane-delivered primary gained a wake-path delivery line"
 
   out=$(FM_HOME="$home" "$RENDER" --harness codex --afk 1)
   assert_contains "$out" "- Away mode: active" "omitting --afk-mode did not default to away (regression)"

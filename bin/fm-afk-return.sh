@@ -70,6 +70,10 @@ RETURN_GRACE=${FM_GUARD_GRACE:-300}
 # shellcheck source=bin/fm-afk-contract.sh
 . "$SCRIPT_DIR/fm-afk-contract.sh"
 CONTRACT="$SCRIPT_DIR/fm-afk-contract.sh"
+# The daemon's escalation outbox: digests a Claude or Codex wake path had not
+# delivered yet are presented with the buffered escalations.
+# shellcheck source=bin/fm-escalation-outbox-lib.sh
+. "$SCRIPT_DIR/fm-escalation-outbox-lib.sh"
 
 usage() {
   sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -255,11 +259,15 @@ print_blockers() {  # <file>
 }
 
 clear_delivery_artifacts() {
+  local outbox
+  outbox=$(fm_outbox_dir "$STATE")
   rm -f \
     "$STATE/.subsuper-escalations" \
     "$STATE/.subsuper-escalations.since" \
     "$STATE/.subsuper-inject-wedged" \
-    "$STATE/.subsuper-unknown-acked"
+    "$STATE/.subsuper-unknown-acked" \
+    "$STATE/.subsuper-outbox-parker" \
+    "$outbox"/*.msg "$outbox"/*.msg.claimed.*
 }
 
 # The lifecycle retention reasons the gate kept, one per line, empty when the
@@ -725,6 +733,11 @@ EOF
   fi
   if [ -s "$STATE/.subsuper-escalations" ]; then
     escalations=$(cat "$STATE/.subsuper-escalations" 2>/dev/null || true)
+    append_evidence escalation "$escalations" "$evidence"
+  fi
+  fm_outbox_recover "$STATE"
+  escalations=$(fm_outbox_pending_files "$STATE" | while IFS= read -r f; do printf 'undelivered: '; tr '\n' ' ' < "$f"; printf '\n'; done)
+  if [ -n "$escalations" ]; then
     append_evidence escalation "$escalations" "$evidence"
   fi
 

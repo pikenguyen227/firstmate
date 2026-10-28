@@ -14,3 +14,5 @@ When this session owns supervision and away mode is not active:
 
 Codex cannot reason while a foreground tool call is running.
 The bounded checkpoint returns control regularly so user messages and queued wakes can be handled without relying on background-task wake semantics.
+
+While away or quiet mode is active, keep the same checkpoint loop: the checkpoint parks on the away/quiet daemon instead of running a watcher and returns each daemon digest, beginning `Supervisor escalate`, as its output; the [afk skill](../../.agents/skills/afk/SKILL.md) owns how to handle them.
