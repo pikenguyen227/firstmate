@@ -1,0 +1,19 @@
+tests/fm-session-start.test.sh
+  s_283ccf3cda8d8e::t_fc7b892a10eba6 2651-2653,2655-2657,2659,2661-2662
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e34cbc6f449b9dd97ea6b049cc20dca6a8415e37",
+  "prompts": {},
+  "sessions": {
+    "s_283ccf3cda8d8e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a181e1-2fa2-7e32-b93f-c0bf3e121ef8",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
