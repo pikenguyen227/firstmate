@@ -1,0 +1,22 @@
+tests/fm-daemon.test.sh
+  s_7559e687c2ab9e::t_54397948819a0d 1682
+  s_7559e687c2ab9e::t_d38f78a33e1163 1639,1654-1655,1671-1672,1680-1681,1683,1687,3434
+bin/fm-supervise-daemon.sh
+  s_7559e687c2ab9e::t_ae0f5a4e703289 669,1291-1295,2043,2081,2091
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fcd10e811febb6e599e4694ee229cc4d156ba9da",
+  "prompts": {},
+  "sessions": {
+    "s_7559e687c2ab9e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a181c7-e85d-78d2-adc3-efc54a103e4f",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
