@@ -1291,8 +1291,8 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events batched for up to 90 seconds | `/quiet`, captain-relevant events batched for up to 180 seconds |
 
 Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate.
-When an interactive worker launch or relaunch refuses a named 6.1 model with `model_not_found` for a ChatGPT account, Firstmate retries once on `gpt-6-sol` at the same effort and records the substitution.
-The launch checks its pane for that refusal for up to 60 seconds after submitting the first prompt.
+When an interactive Codex worker launch or relaunch for a named `gpt-6.1-*` model shows `model_not_found`, Firstmate retries once on `gpt-6-sol` at the same effort and records the substitution.
+The launch samples its pane up to 60 times, one second apart, and stops early when Codex shows the first prompt is being processed.
 Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
 The template table above is what renders when no plan is named.
 

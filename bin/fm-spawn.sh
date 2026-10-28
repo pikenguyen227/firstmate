@@ -223,8 +223,8 @@
 #   default, and task meta records the value actually launched.
 #   A named 6.1 model refused by the interactive Codex account is retried
 #   once on gpt-6-sol at the same effort in this same launch path. The pane
-#   is checked until it accepts its first prompt or 60 seconds pass; the task
-#   record and status report the effective model.
+#   is checked until it accepts its first prompt or the bounded watch ends.
+#   The task record and status report the effective model.
 #   A --secondmate spawn also propagates the primary's declared inherited local
 #   material, so the secondmate's OWN crewmates inherit primary config and the
 #   secondmate receives the primary's read-only shared captain-preference file
