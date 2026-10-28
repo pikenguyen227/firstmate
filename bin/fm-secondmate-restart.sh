@@ -48,15 +48,19 @@
 # dead one and race its own launch against the restart.
 #
 # A mate whose persist answer did not arrive or whose runtime cannot prove a
-# restart gets the ordinary re-read nudge and is reported as a nudge, never as a
-# clean reload. A failed local relaunch is classified from the control plane's
-# own transaction record and a fresh endpoint probe rather than from whatever
-# its output happened to print first: a relaunch refused before the old agent
-# was touched leaves that agent running and is reported as a nudge; one that
-# stopped the old agent and left no agent running is retried once, and is
-# reported as restarted only when a replacement is then proven running. Any
-# result that cannot be attributed to either incarnation is reported unreached
-# with the control plane's own last word on the state it left.
+# restart gets the ordinary re-read nudge, and is reported as a nudge - never as
+# a clean reload - only when a probe proves its agent is running; otherwise it
+# is unreached, with the message still queued for its next agent. A failed
+# relaunch is classified from the control plane's own transaction rows (the
+# local journal, or the phase the host's relaunch reports) and a fresh endpoint
+# probe, never from whatever its output printed first. bin/fm-control.sh runs
+# the launch owner's validation before it stops anything, so a predictable
+# refusal leaves the old agent running and is reported as a nudge. A mate whose
+# agent is gone is retried once through the guarded secondmate respawn, under
+# its liveness lock, and is reported restarted only when a replacement is then
+# proven running. A mate still left with no agent is reported DOWN with the
+# command that recovers it, and the batch stops there: every mate not yet
+# restarted keeps its old agent and gets the re-read message instead.
 #
 # Placement changes the transport and nothing else. A local mate is restarted
 # with bin/fm-control.sh <id> relaunch, which republishes this home's own
@@ -87,6 +91,9 @@
 # Environment knobs:
 #   FM_SECONDMATE_PERSIST_WAIT  seconds to wait for one mate's persist answer (900)
 #   FM_SECONDMATE_PERSIST_POLL  seconds between checks of that answer (5)
+#   FM_CONTROL_LIVENESS_WAIT    wait for another recovery of a down mate before
+#                               its retry (180)
+#   FM_SECONDMATE_LIVENESS_TIMEOUT  bound on that retry's launch (120)
 #
 # Exit status: 0 every named mate restarted; 3 at least one was nudged, skipped, or left
 # unreached and every mate was still accounted for; 1 the input itself is
@@ -97,7 +104,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FM_ROOT="${FM_ROOT_OVERRIDE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 usage() {
-  sed -n '2,93{s/^# \{0,1\}//;p;}' "$0"
+  sed -n '2,100{s/^# \{0,1\}//;p;}' "$0"
 }
 
 case "${1:-}" in
@@ -123,9 +130,13 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 . "$SCRIPT_DIR/fm-secondmate-liveness-lib.sh"
 
 PERSIST_WAIT=${FM_SECONDMATE_PERSIST_WAIT:-900}
+RETRY_LOCK_WAIT=${FM_CONTROL_LIVENESS_WAIT:-180}
+RETRY_TIMEOUT=${FM_SECONDMATE_LIVENESS_TIMEOUT:-120}
 PERSIST_POLL=${FM_SECONDMATE_PERSIST_POLL:-5}
 case "$PERSIST_WAIT" in ''|*[!0-9]*) echo "error: FM_SECONDMATE_PERSIST_WAIT must be a non-negative integer: $PERSIST_WAIT" >&2; exit 2 ;; esac
 case "$PERSIST_POLL" in ''|*[!0-9]*|0) echo "error: FM_SECONDMATE_PERSIST_POLL must be a positive integer: $PERSIST_POLL" >&2; exit 2 ;; esac
+case "$RETRY_LOCK_WAIT" in ''|*[!0-9]*|0) echo "error: FM_CONTROL_LIVENESS_WAIT must be a positive integer: $RETRY_LOCK_WAIT" >&2; exit 2 ;; esac
+case "$RETRY_TIMEOUT" in ''|*[!0-9]*|0) echo "error: FM_SECONDMATE_LIVENESS_TIMEOUT must be a positive integer: $RETRY_TIMEOUT" >&2; exit 2 ;; esac
 
 IDS=()
 FRESH_START=0
@@ -177,23 +188,50 @@ first_reported_line() {  # <text>
   printf '%s\n' "$1" | sed -n '/./{s/^error: //;s/[[:space:]]\{1,\}/ /g;p;q;}'
 }
 
+# A mate's endpoint as one read, left in MATE_STATE: alive, down (no agent is
+# running), or unknown. The shared liveness probe owns placement - a remote
+# route is read on its own host - and a mate with no durable record reads
+# unknown. The raw verdict is left in MATE_STATE_RAW for the report.
+mate_state() {  # <id>
+  MATE_STATE=unknown
+  MATE_STATE_RAW=unknown
+  [ -f "$STATE/$1.meta" ] || return 0
+  fm_secondmate_liveness_probe "$STATE/$1.meta" "$1" poll
+  MATE_STATE_RAW=$FM_SM_LIVE_STATE
+  case "$FM_SM_LIVE_STATUS" in
+    alive) MATE_STATE=alive ;;
+    relaunchable) MATE_STATE=down ;;
+  esac
+}
+
 # Send the ordinary re-read steer to a mate this pass will not restart, and say
-# plainly which it was. A nudge is a partial reload and is never reported as more.
+# plainly which it was. A nudge is a partial reload and is never reported as more,
+# and it is reported only for a mate whose agent a probe proves is running: a
+# queued message reaches no one while the agent is down, so an unconfirmed or
+# down mate is unreached, with the message still queued for its next agent.
 fall_back_to_nudge() {  # <id> <reason>
-  local id=$1 reason=$2 out
+  local id=$1 reason=$2 out state raw sent=1
   if [ "$FRESH_START" -eq 1 ]; then
     skipped_count=$((skipped_count + 1))
     printf 'skipped: %s: %s\n' "$id" "$reason"
     return
   fi
-  if out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
-    "$SCRIPT_DIR/fm-send.sh" "$id" "$FM_SECOND_MATE_NUDGE_MESSAGE" 2>&1); then
+  mate_state "$id"
+  state=$MATE_STATE
+  raw=$MATE_STATE_RAW
+  out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
+    "$SCRIPT_DIR/fm-send.sh" "$id" "$FM_SECOND_MATE_NUDGE_MESSAGE" 2>&1) || sent=0
+  if [ "$state" = alive ] && [ "$sent" -eq 1 ]; then
     nudged_count=$((nudged_count + 1))
     printf 'nudged: %s: %s\n' "$id" "$reason"
-  else
+  elif [ "$sent" -eq 0 ]; then
     unreached_count=$((unreached_count + 1))
     printf 'unreached: %s: %s; the re-read message could not be delivered either: %s\n' \
       "$id" "$reason" "$(first_reported_line "$out")"
+  else
+    unreached_count=$((unreached_count + 1))
+    printf "unreached: %s: %s; its agent could not be confirmed running (its endpoint reads '%s'), so the queued re-read message reaches no one yet\n" \
+      "$id" "$reason" "$raw"
   fi
 }
 
@@ -225,102 +263,135 @@ journal_field() {  # <id> <key>
   sed -n "s/^$2=//p" "$STATE/$1.control-relaunch" 2>/dev/null | tail -1
 }
 
-run_local_relaunch() {  # <id>; sets RELAUNCH_OUT and RELAUNCH_RC
-  RELAUNCH_RC=0
-  RELAUNCH_OUT=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
-    "$SCRIPT_DIR/fm-control.sh" "$1" relaunch 2>&1) || RELAUNCH_RC=$?
-}
-
-report_restarted() {  # <array-index> <control-output>
+report_restarted() {  # <array-index> <control-output> [note]
   local i=$1 ran_on
   ran_on=$(printf '%s\n' "$2" | sed -n 's/^relaunched .* harness=\([^ ]*\).*/\1/p' | tail -1)
+  [ -n "$ran_on" ] || ran_on=$(fm_meta_get "$STATE/${IDS[$i]}.meta" harness 2>/dev/null || true)
   [ -n "$ran_on" ] || ran_on=${HARNESS[i]}
   if [ "${PLACEMENT[i]}" = remote ]; then
-    printf 'restarted: %s on %s (%s)\n' "${IDS[$i]}" "${HOST[i]}" "$ran_on"
+    printf 'restarted: %s on %s (%s)%s\n' "${IDS[$i]}" "${HOST[i]}" "$ran_on" "${3:+; $3}"
   else
-    printf 'restarted: %s (%s)\n' "${IDS[$i]}" "$ran_on"
+    printf 'restarted: %s (%s)%s\n' "${IDS[$i]}" "$ran_on" "${3:+; $3}"
   fi
 }
 
-# Probe a local mate's endpoint after a failed relaunch: alive, down (no agent
-# is running), or unknown.
-local_mate_state() {  # <id>
-  fm_secondmate_liveness_probe "$STATE/$1.meta" "$1" poll
-  case "$FM_SM_LIVE_STATUS" in
-    alive) printf 'alive' ;;
-    relaunchable) printf 'down' ;;
-    *) printf 'unknown' ;;
-  esac
+# The one command that brings a mate with no agent back: the guarded secondmate
+# respawn, which re-resolves the mate's placement and endpoint itself.
+recovery_command() {  # <id>
+  printf "FM_HOME='%s' '%s/fm-spawn.sh' %s --secondmate" "$FM_HOME" "$SCRIPT_DIR" "$1"
 }
 
-# Settle a failed local relaunch into an outcome that matches the mate's real
-# state. <before> is the transaction record's fingerprint before the attempt.
-settle_local_failure() {  # <array-index> <before> <control-output>
-  local i=$1 before=$2 out=$3 id phase rollback reason now_state
+# A mate left with no agent: say so, name the command that recovers it, and mark
+# the batch so no further mate is stopped.
+report_down() {  # <array-index> <reason>
+  local id=${IDS[$1]}
+  : > "$RESULT_DIR/$1.down"
+  report_unreached "$id" "DOWN - no agent is running: its previous agent was stopped and its replacement could not be launched, even on a retry: $2; recover it with: $(recovery_command "$id")"
+}
+
+# One retry for a mate whose old agent is gone. A remote mate goes back through
+# its host-local relaunch, which takes the mate's liveness lock itself; a local
+# one goes through the same guarded respawn the watcher's recovery uses, under
+# that lock, so the watcher cannot act on the mate between this probe and this
+# launch. The state after the attempt is left in MATE_STATE, and a failed
+# launch's own words in RETRY_REASON.
+retry_down_mate() {  # <array-index>
+  local i=$1 id lock_rc=0 out
+  id=${IDS[$i]}
+  RETRY_REASON=
+  if [ "${PLACEMENT[i]}" = remote ]; then
+    out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
+      "$SCRIPT_DIR/fm-remote-secondmate-relaunch.sh" \
+      "$id" "${HARNESS[i]}" "${MODEL[i]:-default}" "${EFFORT[i]:-default}" < /dev/null 2>&1) \
+      || RETRY_REASON=$(final_reported_line "$out")
+    mate_state "$id"
+    return 0
+  fi
+  fm_secondmate_liveness_lock_wait "$id" "$RETRY_LOCK_WAIT" || lock_rc=$?
+  if [ "$lock_rc" -ne 0 ]; then
+    RETRY_REASON="another recovery of $id held its endpoint for ${RETRY_LOCK_WAIT}s"
+    mate_state "$id"
+    return 0
+  fi
+  mate_state "$id"
+  if [ "$MATE_STATE" = down ]; then
+    fm_secondmate_liveness_relaunch "$STATE/$id.meta" "$id" "$RETRY_TIMEOUT" >/dev/null 2>&1 \
+      || RETRY_REASON=$(final_reported_line "$FM_SM_LIVE_OUT")
+    mate_state "$id"
+  fi
+  fm_secondmate_liveness_unlock "$id"
+}
+
+# Settle a failed relaunch into an outcome that matches the mate's real state.
+# <phase> and <rollback> are the control plane's own transaction rows for this
+# attempt: "untouched" when it refused before opening one, empty when unknown.
+settle_failure() {  # <array-index> <phase> <rollback> <control-output>
+  local i=$1 phase=$2 rollback=$3 out=$4 id reason state stopped=0
   id=${IDS[$i]}
   reason=$(final_reported_line "$out")
   [ -n "$reason" ] || reason="the restart failed without a reported reason"
-  phase=
-  rollback=
-  if [ "$(journal_print "$id")" != "$before" ]; then
-    phase=$(journal_field "$id" phase)
-    rollback=$(journal_field "$id" rollback)
-  fi
   case "$phase:$rollback" in
-    :*|failed:checkpoint:*|failed:noted:*|failed:stopping:instructions-restored-agent-alive)
+    untouched:*|failed:checkpoint:*|failed:noted:*|failed:stopping:instructions-restored-agent-alive)
       fall_back_to_nudge "$id" "its restart was refused before its agent was touched, so it is still running its previous agent: $reason"
       return
       ;;
-    failed:exited:*|failed:launching:*|failed:stopping:prior-record-kept-agent-dead) ;;
-    *)
-      report_unreached "$id" "the restart outcome is unknown: $reason"
-      return
-      ;;
+    failed:exited:*|failed:launching:*|failed:stopping:prior-record-kept-agent-dead) stopped=1 ;;
   esac
-  # The old agent was proven stopped, so any agent running now is a
-  # replacement launched on the current code.
-  now_state=$(local_mate_state "$id")
-  if [ "$now_state" = down ]; then
-    run_local_relaunch "$id"
-    if [ "$RELAUNCH_RC" -eq 0 ]; then
-      report_restarted "$i" "$RELAUNCH_OUT"
-      return
-    fi
-    reason=$(final_reported_line "$RELAUNCH_OUT")
-    [ -n "$reason" ] || reason="the retried launch failed without a reported reason"
-    now_state=$(local_mate_state "$id")
+  mate_state "$id"
+  state=$MATE_STATE
+  if [ "$state" = down ]; then
+    # Nothing is running, so a launch cannot duplicate an agent.
+    stopped=1
+    retry_down_mate "$i"
+    state=$MATE_STATE
+    [ -z "$RETRY_REASON" ] || reason="$reason; the retry: $RETRY_REASON"
   fi
-  case "$now_state" in
-    alive) report_restarted "$i" "" ;;
-    down) report_unreached "$id" "no agent is running: its previous agent was stopped and its replacement could not be launched, even on a retry: $reason" ;;
-    *) report_unreached "$id" "its previous agent was stopped but whether a replacement is running cannot be confirmed: $reason" ;;
+  case "$state:$stopped" in
+    alive:1) report_restarted "$i" "" ;;
+    down:*) report_down "$i" "$reason" ;;
+    alive:0) report_unreached "$id" "an agent is running, but whether its restart replaced it cannot be confirmed: $reason" ;;
+    *) report_unreached "$id" "the restart outcome is unknown (its endpoint reads '$MATE_STATE_RAW'): $reason" ;;
   esac
 }
 
 restart_mate() {  # <array-index>
-  local i=$1 id restart_out restart_rc restart_reason before
+  local i=$1 id out rc before phase rollback
   id=${IDS[$i]}
+  rc=0
   if [ "${PLACEMENT[i]}" = remote ]; then
-    restart_out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
+    out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
       "$SCRIPT_DIR/fm-remote-secondmate-relaunch.sh" \
-      "$id" "${HARNESS[i]}" "${MODEL[i]:-default}" "${EFFORT[i]:-default}" < /dev/null 2>&1)
-    restart_rc=$?
-    if [ "$restart_rc" -eq 0 ]; then
-      report_restarted "$i" "$restart_out"
+      "$id" "${HARNESS[i]}" "${MODEL[i]:-default}" "${EFFORT[i]:-default}" < /dev/null 2>&1) || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      report_restarted "$i" "$out"
       return
     fi
-    restart_reason=$(final_reported_line "$restart_out")
-    [ -n "$restart_reason" ] || restart_reason="the restart failed without a reported reason"
-    report_unreached "$id" "the restart outcome is unknown: $restart_reason"
-    return
+    # The host relaunched and confirmed its route, but this home's copy of the
+    # route could not be republished: the replacement is running.
+    if printf '%s\n' "$out" | grep -q "^relaunched $id " \
+      && printf '%s\n' "$out" | grep -q '^schema=fm-remote-secondmate-control.v1$' \
+      && mate_state "$id" && [ "$MATE_STATE" = alive ]; then
+      report_restarted "$i" "$out" "this home's route record could not be updated: $(final_reported_line "$out")"
+      return
+    fi
+    phase=$(printf '%s\n' "$out" | sed -n 's/^relaunch_phase=//p' | tail -1)
+    rollback=$(printf '%s\n' "$out" | sed -n 's/^relaunch_rollback=//p' | tail -1)
+  else
+    before=$(journal_print "$id")
+    out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
+      "$SCRIPT_DIR/fm-control.sh" "$id" relaunch 2>&1) || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      report_restarted "$i" "$out"
+      return
+    fi
+    phase=untouched
+    rollback=
+    if [ "$(journal_print "$id")" != "$before" ]; then
+      phase=$(journal_field "$id" phase)
+      rollback=$(journal_field "$id" rollback)
+    fi
   fi
-  before=$(journal_print "$id")
-  run_local_relaunch "$id"
-  if [ "$RELAUNCH_RC" -eq 0 ]; then
-    report_restarted "$i" "$RELAUNCH_OUT"
-    return
-  fi
-  settle_local_failure "$i" "$before" "$RELAUNCH_OUT"
+  settle_failure "$i" "$phase" "$rollback" "$out"
 }
 
 launch_restart() {  # <array-index>
@@ -370,8 +441,30 @@ harvest_restarts() {
       skipped:*) skipped_count=$((skipped_count + 1)) ;;
       *) unreached_count=$((unreached_count + 1)) ;;
     esac
+    [ ! -e "$RESULT_DIR/$i.down" ] || [ -n "$HALTED_BY" ] || HALTED_BY=${IDS[$i]}
     PLAN[i]="done"
     restart_active_count=$((restart_active_count - 1))
+    i=$((i + 1))
+  done
+}
+
+# After a mate is left with no agent, stop the batch: every mate still waiting
+# for its answer or its turn keeps its old agent and gets the re-read message.
+# A still-pending persist expectation stays open for the ordinary recovery
+# ladder, exactly as a timeout leaves it.
+halt_remaining() {
+  local i
+  [ -n "$HALTED_BY" ] || return 0
+  i=0
+  while [ "$i" -lt "${#IDS[@]}" ]; do
+    case "${PLAN[i]}" in
+      ready) ready_count=$((ready_count - 1)) ;;
+      persisted-pending) pending_count=$((pending_count - 1)) ;;
+      *) i=$((i + 1)); continue ;;
+    esac
+    fall_back_to_nudge "${IDS[$i]}" \
+      "it was not restarted because the batch stopped after $HALTED_BY was left with no agent running"
+    PLAN[i]="done"
     i=$((i + 1))
   done
 }
@@ -451,6 +544,7 @@ RESULT_DIR=$(mktemp -d "$STATE/.secondmate-restart.XXXXXX") || {
 trap 'rm -rf -- "$RESULT_DIR"' EXIT
 pending_count=0
 ready_count=0
+HALTED_BY=
 restart_active_count=0
 i=0
 while [ "$i" -lt "${#IDS[@]}" ]; do
@@ -520,6 +614,7 @@ while [ "$((pending_count + ready_count + restart_active_count))" -gt 0 ]; do
     i=$((i + 1))
   done
   harvest_restarts
+  halt_remaining
   launch_next_ready
   [ "$((pending_count + ready_count + restart_active_count))" -eq 0 ] || sleep "$next_wait"
 done

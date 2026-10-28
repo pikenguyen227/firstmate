@@ -132,10 +132,46 @@ case "${1:-}" in
     printf 'fakepane\n'; exit 0 ;;
   capture-pane) printf '╭────╮\n│    │\n╰────╯\n'; exit 0 ;;
   list-windows) [ -f "$D/windows" ] && cat "$D/windows"; exit 0 ;;
+  kill-window)
+    # A closed window leaves the session inventory, as the guarded respawn
+    # expects before it creates the replacement.
+    target=
+    prev=
+    for a in "$@"; do
+      [ "$prev" != -t ] || target=$a
+      prev=$a
+    done
+    name=${target##*:}
+    name=${name#=}
+    if [ -n "$name" ] && [ -f "$D/windows" ]; then
+      grep -vFx "$name" "$D/windows" > "$D/windows.tmp" || true
+      mv "$D/windows.tmp" "$D/windows"
+    fi
+    exit 0 ;;
+  new-window)
+    name=
+    prev=
+    for a in "$@"; do
+      [ "$prev" != -n ] || name=$a
+      prev=$a
+    done
+    [ -z "$name" ] || printf '%s\n' "$name" >> "$D/windows"
+    printf '@%s\n' "$name"
+    exit 0 ;;
 esac
 exit 0
 SH
   chmod +x "$fb/tmux"
+  # Every case runs on the stubbed tmux backend only. A real herdr call would
+  # reach whatever live session the test happens to run beside, so the client is
+  # shadowed by one that records the call and refuses it; run_restart asserts
+  # it was never reached.
+  cat > "$fb/herdr" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$FM_FAKE_DIR/herdr-calls"
+exit 1
+SH
+  chmod +x "$fb/herdr"
   cat > "$fb/sleep" <<'SH'
 #!/usr/bin/env bash
 case "${1:-}" in
@@ -243,8 +279,10 @@ add_repo_backed_mate() {  # <case-dir> <id> [harness] [backend]
 # run_update_in_case <case-dir>: the real /updatefirstmate mechanics over that world.
 run_update_in_case() {
   local dir=$1
-  env PATH="$dir/fakebin:$PATH" FM_FAKE_DIR="$dir/fake" \
-    FM_ROOT_OVERRIDE="$dir/fmrepo" FM_HOME="$dir/home" \
+  env -u HERDR_ENV -u HERDR_SESSION -u HERDR_PANE_ID -u HERDR_TAB_ID \
+    -u HERDR_WORKSPACE_ID -u HERDR_SOCKET_PATH -u TMUX -u TMUX_PANE \
+    PATH="$dir/fakebin:$PATH" FM_FAKE_DIR="$dir/fake" \
+    FM_ROOT_OVERRIDE="$dir/fmrepo" FM_HOME="$dir/home" FM_BACKEND=tmux \
     FM_SSH_BIN="${FM_TEST_SSH_BIN:-ssh}" \
     "$ROOT/bin/fm-update.sh" 2>/dev/null
 }
@@ -256,14 +294,23 @@ arm_answer() {
   printf '%s' "$dir/home/state/$id.status" > "$dir/fake/answer-status"
 }
 
+# The pass runs hermetically: inherited terminal-multiplexer identity is
+# dropped and the backend is pinned to the stubbed tmux, so no path - including
+# the guarded secondmate respawn a retry takes - can auto-detect a real session.
 run_restart() {  # <case-dir> <args...>
-  local dir=$1; shift
-  env PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
-    FM_SPAWN_NO_GUARD=1 FM_SECONDMATE_PERSIST_POLL=1 \
+  local dir=$1 rc=0; shift
+  env -u HERDR_ENV -u HERDR_SESSION -u HERDR_PANE_ID -u HERDR_TAB_ID \
+    -u HERDR_WORKSPACE_ID -u HERDR_SOCKET_PATH -u TMUX -u TMUX_PANE \
+    PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
+    FM_BACKEND=tmux FM_SPAWN_NO_GUARD=1 FM_SECONDMATE_PERSIST_POLL=1 \
     FM_SECONDMATE_PERSIST_WAIT="${FM_TEST_PERSIST_WAIT:-30}" \
     FM_CONTROL_POLL=0.01 FM_CONTROL_EXIT_WAIT=0.05 FM_CONTROL_LAUNCH_WAIT=0.05 \
+    FM_SECONDMATE_LIVENESS_TIMEOUT=30 \
     FM_SSH_BIN="${FM_TEST_SSH_BIN:-ssh}" \
-    "$RESTART" "$@" 2>&1
+    "$RESTART" "$@" 2>&1 || rc=$?
+  [ ! -s "$dir/fake/herdr-calls" ] \
+    || fail "the restart pass reached a real herdr client: $(cat "$dir/fake/herdr-calls")"
+  return "$rc"
 }
 
 # --- T1: the persist request is the task subset of /stow, and it gates --------
@@ -388,8 +435,12 @@ test_unprovable_runtime_falls_back() {
   out=$(run_restart "$dir" sm1); rc=$?
 
   expect_code 3 "$rc" "an unprovable runtime must not report a reload"$'\n'"$out"
-  assert_contains "$out" "nudged: sm1:" "an unprovable runtime must fall back to the re-read message"
+  # Its liveness cannot be proven either, so the queued message is not reported
+  # as a nudge that reached a running agent.
+  assert_contains "$out" "unreached: sm1:" "an unprovable runtime cannot be confirmed to hold the re-read message"
   assert_contains "$out" "cannot prove an agent stopped" "the fallback must name the runtime limit"
+  assert_contains "$out" "could not be confirmed running" "the report must say the agent's liveness is unconfirmed"
+  assert_not_contains "$out" "nudged: sm1" "a nudge is reported only for an agent proven running"
   assert_not_contains "$out" "restarted: sm1" "an unprovable runtime must not be reported as restarted"
   # It is never even asked to spend a turn persisting, because it could not be
   # restarted afterwards either way; the only thing it was handed is the nudge.
@@ -397,7 +448,7 @@ test_unprovable_runtime_falls_back() {
     "a mate that cannot be restarted should not be asked to persist first"
   assert_grep 're-read your AGENTS.md' "$dir/home/state/sm1.inbox/001.msg" \
     "the fallback should hand the mate the ordinary re-read message"
-  pass "T3 a runtime that cannot prove a restart falls back to the re-read message"
+  pass "T3 a runtime that cannot prove a restart gets the re-read message and is never claimed nudged"
 }
 
 # --- T3b: --fresh-start asks for the project map too, and skips instead of nudging
@@ -518,6 +569,11 @@ case "${FM_FAKE_SSH_MODE:-ok}" in
   unreachable) exit 255 ;;
 esac
 case "${rargs[1]:-}" in
+  state)
+    # The remote endpoint's own verdict: dead once a modelled relaunch stopped
+    # the agent and its replacement failed, alive otherwise.
+    if [ -e "$FM_FAKE_DIR/remote-down" ]; then printf 'dead\n'; else printf 'alive\n'; fi
+    ;;
   send)
     # Model the live remote mate: act on the instruction and report back on the
     # parent channel, carrying the correlation token the request embedded.
@@ -529,6 +585,17 @@ case "${rargs[1]:-}" in
     ;;
   relaunch)
     case "${FM_FAKE_SSH_MODE:-ok}" in
+      stop-then-fail-once)
+        if [ ! -e "$FM_FAKE_DIR/remote-relaunch-failed" ]; then
+          : > "$FM_FAKE_DIR/remote-relaunch-failed"
+          : > "$FM_FAKE_DIR/remote-down"
+          printf "error: %s's agent was stopped but the replacement did not launch; no agent is running\n" "${rargs[2]}"
+          printf 'relaunch_phase=failed:launching\n'
+          printf 'relaunch_rollback=prior-record-kept\n'
+          exit 1
+        fi
+        rm -f "$FM_FAKE_DIR/remote-down"
+        ;;
       slow-relaunch)
         : > "$FM_FAKE_DIR/remote-relaunch-start"
         /bin/sleep 2
@@ -685,7 +752,9 @@ test_persist_waits_are_polled_together() {
   add_local_mate "$dir" sm2
   arm_answer "$dir" sm2
 
-  out=$(FM_TEST_PERSIST_WAIT=3 run_restart "$dir" sm1 sm2); rc=$?
+  # The bound comfortably exceeds one relaunch, so the confirmed mate's stop
+  # landing first proves it was not held behind the unanswered mate's wait.
+  out=$(FM_TEST_PERSIST_WAIT=20 run_restart "$dir" sm1 sm2); rc=$?
 
   expect_code 3 "$rc" "the unanswered mate should fall back after the confirmed mate restarts"$'\n'"$out"
   exit_line=$(grep -n '^/exit$' "$dir/fake/literal" | head -1 | cut -d: -f1)
@@ -706,8 +775,10 @@ test_post_stop_failure_is_reported_unreached() {
   out=$(run_restart "$dir" sm1); rc=$?
 
   expect_code 3 "$rc" "a post-stop relaunch failure must remain accounted for"$'\n'"$out"
-  assert_contains "$out" "unreached: sm1: no agent is running" "a stopped mate left down must be reported as down"
+  assert_contains "$out" "unreached: sm1: DOWN - no agent is running" "a stopped mate left down must be reported as down"
   assert_contains "$out" "even on a retry" "the report must say the replacement was retried"
+  assert_contains "$out" "recover it with: FM_HOME='$dir/home' '$ROOT/bin/fm-spawn.sh' sm1 --secondmate" \
+    "the down report must carry the exact command that recovers the mate"
   [ "$(grep -c '^/exit$' "$dir/fake/literal")" -eq 1 ] \
     || fail "the retry must not stop anything again"
   assert_not_contains "$out" "nudged: sm1" "a durable enqueue must not masquerade as a running mate's nudge"
@@ -718,7 +789,7 @@ test_post_stop_failure_is_reported_unreached() {
 
 # --- T11b: a replacement that fails once is retried and proven running ------
 test_post_stop_launch_failure_is_retried() {
-  local dir out rc
+  local dir out rc window
   dir=$(new_case post-stop-retry)
   add_local_mate "$dir" sm1
   arm_answer "$dir" sm1
@@ -731,9 +802,96 @@ test_post_stop_launch_failure_is_retried() {
   assert_contains "$out" "summary: 1 of 1 restarted, 0 nudged, 0 unreached" "the summary must count the restart"
   [ "$(grep -c '^/exit$' "$dir/fake/literal")" -eq 1 ] \
     || fail "the retry must launch the replacement without stopping anything again"
-  [ "$(cat "$dir/fake/command.fmses:fm-sm1")" = claude ] \
-    || fail "the mate is not running after the retried launch"
+  window=$(sed -n 's/^window=//p' "$dir/home/state/sm1.meta" | tail -1)
+  [ -n "$window" ] && [ "$(cat "$dir/fake/command.$window" 2>/dev/null)" = claude ] \
+    || fail "the mate is not running at its recorded endpoint '$window' after the retried launch"
   pass "T11b a replacement that fails once is retried and proven running"
+}
+
+# --- T11c: a predictable launch refusal is caught before the stop ----------
+# The launch owner refuses a home without bin/, a check it used to reach only
+# after the old agent was gone. The relaunch now proves it first, so the old
+# agent is never touched and the mate is reported on its previous agent.
+test_launch_refusal_is_caught_before_the_stop() {
+  local dir out rc
+  dir=$(new_case pre-stop-refusal)
+  add_local_mate "$dir" sm1
+  arm_answer "$dir" sm1
+  printf 'claude' > "$dir/fake/command.fmses:fm-sm1"
+  rmdir "$dir/sm1-home/bin"
+
+  out=$(run_restart "$dir" sm1); rc=$?
+
+  expect_code 3 "$rc" "a launch the owner would refuse must not be reported as a restart"$'\n'"$out"
+  assert_contains "$out" "nudged: sm1: its restart was refused before its agent was touched" \
+    "the predictable refusal must leave the old agent running and say so"
+  assert_contains "$out" "missing bin/" "the report must carry the launch owner's own refusal"
+  assert_no_grep '/exit' "$dir/fake/literal" "the old agent was stopped for a launch that was always going to be refused"
+  [ "$(cat "$dir/fake/command.fmses:fm-sm1")" = claude ] || fail "the old agent is no longer running"
+  pass "T11c a predictable launch refusal is caught before the old agent is stopped"
+}
+
+# --- T11d: a nudge is reported only to an agent proven running --------------
+test_dead_mate_is_never_reported_nudged() {
+  local dir out rc
+  dir=$(new_case dead-nudge)
+  add_local_mate "$dir" sm1
+  printf 'zsh' > "$dir/fake/command.fmses:fm-sm1"
+
+  out=$(FM_TEST_PERSIST_WAIT=0 run_restart "$dir" sm1); rc=$?
+
+  expect_code 3 "$rc" "a mate with no running agent is not a success"$'\n'"$out"
+  assert_contains "$out" "unreached: sm1:" "a queued message to a dead agent must not count as a nudge"
+  assert_contains "$out" "could not be confirmed running (its endpoint reads 'dead')" \
+    "the report must say the agent is not running"
+  assert_not_contains "$out" "nudged: sm1" "a dead agent must never be reported nudged"
+  pass "T11d a mate whose agent is not running is never reported nudged"
+}
+
+# --- T11e: a remote mate left down by its relaunch is retried once -----------
+test_remote_stop_then_failed_launch_is_retried() {
+  local dir out rc
+  dir=$(new_case remote-retry)
+  setup_remote_case "$dir" sm1 stop-then-fail-once
+  export FM_FAKE_ANSWER_STATUS="$dir/home/state/sm1.status"
+
+  out=$(run_restart "$dir" sm1); rc=$?
+  unset FM_FAKE_ANSWER_STATUS
+
+  expect_code 0 "$rc" "a remote replacement that comes up on the retry is a restart"$'\n'"$out"
+  assert_contains "$out" "restarted: sm1 on remote-mac (claude)" "the retried remote replacement must be reported restarted"
+  [ "$(grep -c '^fm-remote-secondmate-control.sh relaunch sm1 ' "$dir/ssh.log")" -eq 2 ] \
+    || fail "a remote stop with a failed launch must be retried exactly once"
+  pass "T11e a remote mate whose relaunch stopped it and failed is retried once"
+}
+
+# --- T11f: the batch stops after a mate is left down ------------------------
+# Every launch of sm1 fails, so it ends down; sm2 must then keep its old agent
+# rather than risk a second mate down.
+test_batch_stops_after_a_down_mate() {
+  local dir out rc
+  dir=$(new_case batch-halt)
+  add_local_mate "$dir" sm1
+  add_local_mate "$dir" sm2
+  printf 'claude' > "$dir/fake/command.fmses:fm-sm1"
+  printf 'claude' > "$dir/fake/command.fmses:fm-sm2"
+  printf '9' > "$dir/fake/launch-failures.fmses:fm-sm1"
+  printf '9' > "$dir/fake/launch-failures.firstmate:fm-sm1"
+  # A respawned window the stub has not seen yet holds a bare shell.
+  printf 'zsh' > "$dir/fake/command"
+  make_batch_hooks "$dir"
+  rm -f "$dir/fake/on-exit"
+
+  out=$(run_restart "$dir" sm1 sm2); rc=$?
+
+  expect_code 3 "$rc" "a down mate is not a success"$'\n'"$out"
+  assert_contains "$out" "unreached: sm1: DOWN - no agent is running" "the first mate must be reported down"
+  assert_contains "$out" "nudged: sm2: it was not restarted because the batch stopped after sm1 was left with no agent running" \
+    "the next mate must be left on its old agent with the reason"
+  [ "$(cat "$dir/fake/command.fmses:fm-sm2")" = claude ] || fail "the next mate's old agent was touched"
+  [ "$(grep -c '^/exit$' "$dir/fake/literal")" -eq 1 ] || fail "a second mate was stopped after the first was left down"
+  assert_contains "$out" "summary: 0 of 2 restarted, 1 nudged, 1 unreached" "the summary must count the halt"
+  pass "T11f the batch stops after a mate is left down and leaves the rest on their old agents"
 }
 
 # --- T12: restarts run one at a time while answers keep arriving -----------
@@ -989,12 +1147,13 @@ test_already_current_unprovable_mate_stays_on_the_nudge_path() {
   out=$(run_restart "$dir" sm1); rc=$?
 
   expect_code 3 "$rc" "an unprovable restart must not report success"$'\n'"$out"
-  assert_contains "$out" "nudged: sm1:" "the fallback must be reported as a nudge"
+  assert_contains "$out" "unreached: sm1:" "an unprovable runtime cannot be confirmed to hold the re-read message"
+  assert_contains "$out" "could not be confirmed running" "the report must say the agent's liveness is unconfirmed"
   assert_not_contains "$out" "restarted: sm1" "an unprovable mate must never be reported as reloaded"
   [ "$(cat "$dir/fake/command")" = "$before" ] \
     || fail "the unprovable mate's agent was stopped anyway"
   assert_no_grep '^/exit$' "$dir/fake/literal" "nothing may be stopped on the nudge path"
-  pass "T16 an already-current mate with an unprovable runtime keeps the honest nudge path"
+  pass "T16 an already-current mate with an unprovable runtime gets the re-read message and an honest report"
 }
 
 test_persist_gates_and_asks_only_for_open_records
@@ -1013,6 +1172,10 @@ test_concurrent_reply_cannot_release_persist_gate
 test_persist_waits_are_polled_together
 test_post_stop_failure_is_reported_unreached
 test_post_stop_launch_failure_is_retried
+test_launch_refusal_is_caught_before_the_stop
+test_dead_mate_is_never_reported_nudged
+test_remote_stop_then_failed_launch_is_retried
+test_batch_stops_after_a_down_mate
 test_relaunches_do_not_block_persist_polling
 test_batch_restart_is_not_raced_by_liveness_recovery
 test_unpublished_worker_result_is_accounted_for

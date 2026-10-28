@@ -82,8 +82,9 @@ fm_secondmate_liveness_unlock() {  # <id>
   fm_lock_release "$STATE/.secondmate-liveness-$1.lock" 2>/dev/null || true
 }
 
-# A deliberate lifecycle transaction on a mate - bin/fm-control.sh's exit or
-# relaunch, or bin/fm-remote-secondmate-relaunch.sh - stops the agent on
+# A deliberate lifecycle transaction on a mate - bin/fm-control.sh's relaunch,
+# bin/fm-remote-secondmate-relaunch.sh, or the restart pass's retry of a mate
+# it left down (bin/fm-secondmate-restart.sh) - stops or replaces the agent on
 # purpose, and the endpoint then reads exactly like the `dead` or `missing`
 # verdict this library recovers from. Holding the same per-task lock for the
 # whole transaction is what keeps the watcher tick and the session-start sweep

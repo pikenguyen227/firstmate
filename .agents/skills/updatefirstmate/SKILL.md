@@ -73,9 +73,10 @@ This touches only the firstmate repo and its own worktrees, never anything under
 
    Read its per-mate lines and its closing `summary:` line as the outcome:
    - `restarted: <id>` - that mate is now genuinely running the current instructions and launch-time settings.
-   - `nudged: <id>: <reason>` - the restart was not safe, so the mate got the older re-read message instead and is still running the conversation and launch-time settings it started with.
+   - `nudged: <id>: <reason>` - the restart was not safe or the batch stopped first, so the mate got the older re-read message instead and a probe confirmed it is still running the conversation and launch-time settings it started with.
      Never report one of these as a clean reload.
-   - `unreached: <id>: <reason>` - no safe running outcome could be confirmed; the reason says whether the mate was left with no agent running after a retried launch, or whether its state could not be confirmed at all.
+   - `unreached: <id>: <reason>` - no running outcome could be confirmed; the reason says what is known.
+     A reason starting `DOWN - no agent is running` means that mate's old agent was stopped and its replacement failed even on a retry; it names the exact command that recovers it, and the pass restarted no further mate after it.
 
 4. **Send the re-read message to the rest.**
    For every target on the `nudge-secondmates:` line (do nothing when it says `none`), send the one-line re-read steer:
@@ -104,4 +105,4 @@ This touches only the firstmate repo and its own worktrees, never anything under
   A local or remote second mate gets a tracked-files fast-forward only when its own checkout is safe to advance, and a mate whose home was skipped is not restarted either.
   A restart replaces that mate's agent in the same home and endpoint after its open work is written down; it is never a teardown and never forced.
   Its crewmates keep running in their own endpoints, and every durable record - backlog, held captain calls, unread status, unhandled instructions - is re-presented to the replacement at startup.
-  A restart refused before it is attempted leaves that mate on the re-read path; once a relaunch is attempted, any failed or ambiguous result is reported as unknown rather than attributed to either incarnation.
+  A restart refused before its agent is touched leaves that mate on the re-read path; a relaunch that stopped the agent is either proven restarted, reported down with its recovery command, or reported unknown rather than attributed to either incarnation.

@@ -42,7 +42,7 @@
 #   first in the private launch-brief overlay, including the exact task-owned
 #   steering inbox. This never rewrites a project's instruction files or a
 #   secondmate's charter.
-#        fm-spawn.sh <task-id> --relaunch [--harness <name>] [--model <name>] [--effort <level>]
+#        fm-spawn.sh <task-id> --relaunch [--preflight] [--harness <name>] [--model <name>] [--effort <level>]
 #   --relaunch launches a replacement agent for an EXISTING task into that
 #   task's own recorded worktree, reusing its recorded endpoint when that
 #   endpoint still exists, instead of creating either from scratch. It is
@@ -70,6 +70,10 @@
 #   rebind is a recovery, never a teardown. Only a crewmate or scout rebinds: a
 #   secondmate whose endpoint is gone is respawned by its own owner
 #   (`--secondmate`, driven by the session-start liveness sweep).
+#   --preflight, valid only with --relaunch, runs every validation a relaunch
+#   would and stops before any endpoint, record, or brief is touched, also
+#   accepting an endpoint whose agent is still alive; bin/fm-control.sh runs it
+#   before stopping the agent it replaces, and it prints "preflight-ok".
 #   Every fresh ship/scout launch and replacement explicitly enters the recorded
 #   worktree immediately before trust setup and brief delivery, and a pre-launch
 #   cwd check refuses any endpoint that still reports another copy; a Herdr shell
@@ -664,6 +668,7 @@ YOLO_SET=0
 BRANCH_PREFIX_SET=0
 TRACEPARENT_SET=0
 RELAUNCH=0
+PREFLIGHT=0
 POS=()
 want_value=
 for a in "$@"; do
@@ -725,6 +730,7 @@ for a in "$@"; do
     KIND_SET=1
     ;;
   --relaunch) RELAUNCH=1 ;;
+  --preflight) PREFLIGHT=1 ;;
   --harness) want_value=harness ;;
   --harness=*)
     HARNESS_ARG=${a#--harness=}
@@ -825,6 +831,10 @@ esac
 # so every axis this block resolves for a fresh spawn instead comes from that
 # task's own durable record below. Contradicting it on the command line is a
 # refusal rather than a silently-ignored flag.
+if [ "$PREFLIGHT" -eq 1 ] && [ "$RELAUNCH" -ne 1 ]; then
+  echo "error: --preflight applies to --relaunch only" >&2
+  exit 1
+fi
 if [ "$RELAUNCH" -eq 1 ]; then
   [ "$BACKEND_SET" -eq 0 ] || {
     echo "error: --relaunch reuses the task's recorded backend; --backend cannot override it" >&2
@@ -1768,6 +1778,14 @@ if [ "$RELAUNCH" -eq 1 ]; then
   case "$RELAUNCH_STATE" in
     dead) ;;
     missing) RELAUNCH_REBIND=1 ;;
+    alive)
+      # A preflight runs while the agent it would replace is still up; it
+      # validates and stops before any endpoint is touched.
+      [ "$PREFLIGHT" -eq 1 ] || {
+        echo "error: task $ID's endpoint reads '$RELAUNCH_STATE'; a relaunch requires a positively agent-free endpoint (stop the agent first with bin/fm-control.sh $ID exit)" >&2
+        exit 1
+      }
+      ;;
     *)
       echo "error: task $ID's endpoint reads '$RELAUNCH_STATE'; a relaunch requires a positively agent-free endpoint (stop the agent first with bin/fm-control.sh $ID exit)" >&2
       exit 1
@@ -2962,7 +2980,7 @@ if [ "$KIND" = secondmate ]; then
   # already synced the home to ITS primary commit, and $FM_ROOT here is only that
   # host's own Firstmate copy; syncing again would target the wrong checkout, so
   # the caller turns this step off (bin/fm-remote-secondmate-control.sh).
-  if [ "${FM_SKIP_SECONDMATE_SYNC:-0}" = 1 ]; then
+  if [ "${FM_SKIP_SECONDMATE_SYNC:-0}" = 1 ] || [ "$PREFLIGHT" -eq 1 ]; then
     :
   elif sm_primary_head=$(primary_head_commit "$FM_ROOT"); then
     sm_ff_out=$(ff_target "$PROJ_ABS" "secondmate $ID" "$sm_primary_head" yes yes "$ID" "$STATE" 2>&1 || true)
@@ -2977,11 +2995,11 @@ if [ "$KIND" = secondmate ]; then
   else
     echo "warning: secondmate $ID sync skipped before launch: primary default-branch commit cannot be resolved" >&2
   fi
-  mkdir -p "$PROJ_ABS/state" || {
+  [ "$PREFLIGHT" -eq 1 ] || mkdir -p "$PROJ_ABS/state" || {
     echo "error: could not create secondmate state directory for $PROJ_ABS" >&2
     exit 1
   }
-  if [ "${FM_SKIP_SECONDMATE_INHERIT:-0}" != 1 ]; then
+  if [ "${FM_SKIP_SECONDMATE_INHERIT:-0}" != 1 ] && [ "$PREFLIGHT" -eq 0 ]; then
     CONFIG_INHERIT_LOCK=$(fm_config_inherit_lock_path "$PROJ_ABS") || {
       echo "error: could not resolve secondmate inheritance lock for $PROJ_ABS" >&2
       exit 1
@@ -3629,6 +3647,28 @@ fi
 if [ -e "$STATE/$ID.backlog-close" ] || [ -L "$STATE/$ID.backlog-close" ]; then
   echo "error: task $ID has a pending authoritative backlog close at $STATE/$ID.backlog-close; finish or repair that close before dispatching a new worker" >&2
   exit 1
+fi
+
+# --preflight ends here, before any endpoint, record, or brief is touched. The
+# one launch prerequisite that sits later in the launch - Claude's workspace
+# trust pre-registration - is idempotent and needed by the replacement anyway,
+# so it is proven now too.
+if [ "$PREFLIGHT" -eq 1 ]; then
+  case "$HARNESS" in
+  claude*)
+    if [ "$KIND" = secondmate ]; then
+      preflight_trust_args=(--secondmate-home "$PROJ_ABS" "$ID")
+    else
+      preflight_trust_args=("$RELAUNCH_WT" "$PROJ_ABS")
+    fi
+    if ! "$FM_ROOT/bin/fm-claude-trust.sh" "${preflight_trust_args[@]}" >/dev/null; then
+      echo "error: could not pre-register Claude workspace trust for $ID; a claude replacement would wedge on the trust dialog" >&2
+      exit 1
+    fi
+    ;;
+  esac
+  echo "preflight-ok $ID harness=$HARNESS"
+  exit 0
 fi
 
 W="fm-$ID"

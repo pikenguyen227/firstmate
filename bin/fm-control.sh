@@ -120,12 +120,17 @@
 #     classified state acts.
 #   - A composer that visibly holds pending text refuses before an exit command
 #     is typed, so existing text is preserved instead of being concatenated.
-#   - `exit` and `relaunch` of a secondmate hold its endpoint-liveness lock
+#   - `relaunch` of a secondmate holds its endpoint-liveness lock
 #     (bin/fm-secondmate-liveness-lib.sh) for the whole transaction, so the
 #     watcher's dead-secondmate recovery and the session-start sweep never read
 #     the deliberately stopped agent as dead, close its endpoint, or race their
 #     own launch against this one. An episode already in flight is waited out,
 #     and one that outlasts the bound refuses before the agent is touched.
+#   - `relaunch` runs the launch owner's own validation
+#     (bin/fm-spawn.sh --relaunch --preflight) before the old agent is stopped,
+#     so a replacement the launch owner would predictably refuse - an invalid
+#     home, an unresolvable profile, a trust pre-registration that fails -
+#     refuses with the old agent still running instead of after it is gone.
 #
 # Environment knobs (all bounded waits, seconds):
 #   FM_CONTROL_POLL              poll interval for postcondition waits (0.5)
@@ -136,7 +141,7 @@
 #   FM_CONTROL_LAUNCH_WAIT       dead->alive wait after a relaunch (90)
 #   FM_CONTROL_EXIT_RETRIES      Enter retries for the exit command (3)
 #   FM_CONTROL_LIVENESS_WAIT     wait for a secondmate's in-flight liveness
-#                                recovery before exit or relaunch (180)
+#                                recovery before relaunch (180)
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -370,8 +375,8 @@ fm_control_harness_supported "$HARNESS" \
 
 fm_backend_validate "$BACKEND" || exit 1
 
-case "$LIVENESS_WAIT" in ''|*[!0-9]*|0) die "FM_CONTROL_LIVENESS_WAIT must be a positive integer: $LIVENESS_WAIT" ;; esac
-if [ "$KIND" = secondmate ] && [ "$VERB" != interrupt ]; then
+if [ "$KIND" = secondmate ] && [ "$VERB" = relaunch ]; then
+  case "$LIVENESS_WAIT" in ''|*[!0-9]*|0) die "FM_CONTROL_LIVENESS_WAIT must be a positive integer: $LIVENESS_WAIT" ;; esac
   liveness_rc=0
   fm_secondmate_liveness_lock_wait "$ID" "$LIVENESS_WAIT" || liveness_rc=$?
   [ "$liveness_rc" -eq 0 ] \
@@ -1015,6 +1020,24 @@ do_relaunch() {
     note_line="note=none"
   fi
   safe_checkpoint
+  # Everything the launch owner would refuse is proven now, while the old agent
+  # is still running: a refusal here leaves it exactly as it was.
+  # Run directly, not in a command substitution: the launch owner recognizes
+  # this transaction's control lock by its parent pid.
+  local -a preflight_args
+  preflight_args=("$ID" --relaunch --preflight --harness "$TARGET_HARNESS")
+  [ "$TARGET_MODEL" = default ] || preflight_args+=(--model "$TARGET_MODEL")
+  [ "$TARGET_EFFORT" = default ] || preflight_args+=(--effort "$TARGET_EFFORT")
+  local preflight_err preflight_reason
+  preflight_err=$(mktemp "${TMPDIR:-/tmp}/fm-control-preflight.XXXXXX") \
+    || die "relaunch of $ID could not stage its launch preflight; nothing changed"
+  if ! "$SCRIPT_DIR/fm-spawn.sh" "${preflight_args[@]}" >/dev/null 2>"$preflight_err"; then
+    cat "$preflight_err" >&2
+    preflight_reason=$(sed -n 's/^error: //p' "$preflight_err" | head -n 1)
+    rm -f "$preflight_err"
+    die "relaunch of $ID was refused before its agent was touched: the replacement launch would be refused: ${preflight_reason:-see the output above}; nothing changed"
+  fi
+  rm -f "$preflight_err"
   cp -p "$META" "$META_PRIOR" || die "could not preserve task $ID's durable record before relaunching"
   RELAUNCH_ACTIVE=1
   journal_write checkpoint "${CHECKPOINT_LINES[@]}" "$note_line"

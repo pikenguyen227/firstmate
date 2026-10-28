@@ -232,7 +232,7 @@ cmd_launch() {
 # re-resolve it here would silently drift the mate onto another runtime. `default`
 # explicitly clears an absent parent pin; `-` remains its compatibility spelling.
 cmd_relaunch() {
-  local id=$1 harness=$2 model=$3 effort=$4
+  local id=$1 harness=$2 model=$3 effort=$4 journal journal_before control_rc
   local -a control_args
 
   validate_id "$id"
@@ -254,11 +254,27 @@ cmd_relaunch() {
   # the dedicated fm-remote session, and the parent already owns both convergence
   # legs, so the host-local spawn must not re-sync or re-inherit against this
   # host's own Firstmate copy.
+  # A failed relaunch reports how far the host's own transaction got, so the
+  # parent can tell a refusal that never touched the agent from one that
+  # stopped it: relaunch_phase=untouched when this call opened no transaction,
+  # else the journal's own phase and rollback rows.
+  journal="$CONTROL_STATE/$id.control-relaunch"
+  journal_before=$({ cksum < "$journal"; } 2>/dev/null || printf 'none')
+  control_rc=0
   HERDR_SESSION="$REMOTE_HERDR_SESSION" FM_HOME="$FM_ROOT" FM_ROOT_OVERRIDE="$FM_ROOT" \
     FM_STATE_OVERRIDE="$CONTROL_STATE" FM_DATA_OVERRIDE="$CONTROL_DATA" \
     FM_CONFIG_OVERRIDE="$TARGET_HOME/config" FM_SKIP_SECONDMATE_INHERIT=1 \
     FM_SKIP_SECONDMATE_SYNC=1 \
-    "$SCRIPT_DIR/fm-control.sh" "${control_args[@]}"
+    "$SCRIPT_DIR/fm-control.sh" "${control_args[@]}" || control_rc=$?
+  if [ "$control_rc" -ne 0 ]; then
+    if [ "$({ cksum < "$journal"; } 2>/dev/null || printf 'none')" = "$journal_before" ]; then
+      printf 'relaunch_phase=untouched\n'
+    else
+      printf 'relaunch_phase=%s\n' "$(sed -n 's/^phase=//p' "$journal" 2>/dev/null | tail -1)"
+      printf 'relaunch_rollback=%s\n' "$(sed -n 's/^rollback=//p' "$journal" 2>/dev/null | tail -1)"
+    fi
+    return "$control_rc"
+  fi
   # A parent tracking this route needs the identity the relaunch actually
   # produced, not the one it asked for, so it can republish its own record the
   # same way cmd_launch's caller already does. Reading it back from the
