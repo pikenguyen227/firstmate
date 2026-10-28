@@ -1,0 +1,37 @@
+bin/fm-project-mode.sh
+  s_55309c034c2f2e::t_53e9c99742162d 32,36,165-169,190,208,212,223
+  s_55309c034c2f2e::t_5b3ba65aec1dfc 162-164
+.agents/skills/project-management/SKILL.md
+  s_55309c034c2f2e::t_ff765e0a22352b 68
+bin/fm-branch-convention.py
+  s_55309c034c2f2e::t_ff765e0a22352b 187-188,191
+  s_55309c034c2f2e::t_9c59b4986ad342 52,105,107
+  s_55309c034c2f2e::t_be414eacc9d4f9 51
+  s_55309c034c2f2e::t_e82199dd0a05ab 26,41-50,53-68,88,91,93,95-99,102,104,106,163-166,171,189,192,197
+.agents/skills/task-intake/SKILL.md
+  s_55309c034c2f2e::t_ff765e0a22352b 39
+docs/scripts.md
+  s_55309c034c2f2e::t_ff765e0a22352b 79
+tests/fm-branch-convention.test.sh
+  s_55309c034c2f2e::t_be414eacc9d4f9 115,117
+  s_55309c034c2f2e::t_5b3ba65aec1dfc 135,138
+  s_55309c034c2f2e::t_cc351520ff22d7 30-31,34,73,77-78,95,104-108,110-113,136-137,139
+  s_55309c034c2f2e::t_9c59b4986ad342 44-48,80-82
+  s_55309c034c2f2e::t_9a71c77d171d4c 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e841d8d08b99fa5f9ff3fb60a7fbb0664538d977",
+  "prompts": {},
+  "sessions": {
+    "s_55309c034c2f2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18358-0fe0-7680-9e99-251861b649d6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
