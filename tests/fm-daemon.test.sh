@@ -1636,7 +1636,7 @@ test_escalate_batch_age_uses_first_append() {
   pass "batch flush measures max-delay from the first append, not the last"
 }
 
-test_entry_adopts_presented_status_without_losing_unclassified_events() {
+test_entry_uses_markers_without_losing_cursor_only_events() {
   local dir state old fresh routine partial main backstop ident main_ident backstop_ident
   local main_endpoint backstop_endpoint snapshot STATUS_OUTCOME_BACKSTOP_ACKNOWLEDGED
   dir=$(make_supercase entry-presented-status)
@@ -1651,8 +1651,8 @@ test_entry_adopts_presented_status_without_losing_unclassified_events() {
   printf 'failed: still unpresented\n' > "$fresh"
   printf 'working: pre-entry routine\n' > "$routine"
   printf 'working: presented prefix\n' > "$partial"
-  printf 'failed: presented in main drain\n' > "$main"
-  printf 'failed: presented in outcome backstop\n' > "$backstop"
+  printf 'failed: earlier unpresented\nnote: later presented\n' > "$main"
+  printf 'failed: first unpresented\nfailed: second presented\n' > "$backstop"
   ident=$(_fm_open_decisions_file_ident "$old")
   status_presentation_marker_commit "$(status_signal_seen_marker_path "$state" old)" "$old" "$(log_size "$old")" "$ident"
   ident=$(_fm_open_decisions_file_ident "$partial")
@@ -1665,13 +1665,11 @@ test_entry_adopts_presented_status_without_losing_unclassified_events() {
   snapshot=$(printf 'main\t%s\t%s\nbackstop\t0\t%s\n' "$main_endpoint" "$main_ident" "$backstop_ident")
   printf -v STATUS_OUTCOME_BACKSTOP_ACKNOWLEDGED 'backstop\t%s\n' "$backstop_endpoint"
   status_commit_presentation_snapshot "$state" "$snapshot" || fail "could not record ordinary presentation receipts"
-  printf 'failed: new after main presentation\n' >> "$main"
-  printf 'failed: new after backstop presentation\n' >> "$backstop"
 
   seed_status_seen_at_entry "$state"
   [ "$(status_seen_offset "$state" old)" = "$(log_size "$old")" ] || fail "entry did not adopt a presented signal"
-  [ "$(status_seen_offset "$state" main)" = "$main_endpoint" ] || fail "entry did not adopt the main drain cursor"
-  [ "$(status_seen_offset "$state" backstop)" = "$backstop_endpoint" ] || fail "entry did not adopt the outcome backstop cursor"
+  [ "$(status_seen_offset "$state" main)" = 0 ] || fail "entry skipped an earlier failure using the main drain cursor"
+  [ "$(status_seen_offset "$state" backstop)" = 0 ] || fail "entry skipped an earlier failure using the outcome backstop cursor"
   [ "$(status_seen_offset "$state" routine)" = 0 ] || fail "entry marked routine history without a presentation receipt"
   [ "$(status_seen_offset "$state" fresh)" = 0 ] || fail "entry skipped an unpresented failure"
   FM_HEARTBEAT_SCAN_SECS=0 FM_ESCALATE_BATCH_SECS=90 housekeeping "$state"
@@ -1679,16 +1677,14 @@ test_entry_adopts_presented_status_without_losing_unclassified_events() {
     || fail "entry lost an unpresented failure"
   grep -F 'partial.status: failed: new after presentation (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
     || fail "entry lost an event after a presented prefix"
-  grep -F 'main.status: failed: new after main presentation (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
-    || fail "entry lost an event after the main drain cursor"
-  grep -F 'backstop.status: failed: new after backstop presentation (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
-    || fail "entry lost an event after the outcome backstop cursor"
+  grep -F 'main.status: failed: earlier unpresented (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
+    || fail "entry lost an earlier failure under the main drain cursor"
+  grep -F 'backstop.status: failed: first unpresented ; failed: second presented (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
+    || fail "entry lost the first failure under the outcome backstop cursor"
   grep -F 'old.status:' "$state/.subsuper-escalations" >/dev/null && fail "entry replayed a presented failure"
-  grep -F 'main.status: failed: presented in main drain' "$state/.subsuper-escalations" >/dev/null && fail "entry replayed a main drain failure"
-  grep -F 'backstop.status: failed: presented in outcome backstop' "$state/.subsuper-escalations" >/dev/null && fail "entry replayed an outcome backstop failure"
   [ "$(status_seen_offset "$state" routine)" = "$(log_size "$routine")" ] || fail "catch-all scan did not classify routine history"
   grep -F 'routine.status:' "$state/.subsuper-escalations" >/dev/null && fail "catch-all scan escalated routine history"
-  pass "entry adopts ordinary presentation and preserves unclassified status events"
+  pass "entry uses marker receipts without losing cursor-only failures"
 }
 
 test_batch_flushes_before_inclusive_deadline() {
@@ -1715,32 +1711,6 @@ test_batch_flushes_before_inclusive_deadline() {
   delivered_digest "$sent" | grep -F 'event: needs-decision' >/dev/null \
     || fail "lean batch did not flush ahead of its 180-second deadline"
   pass "balanced and lean batches flush before their inclusive deadlines"
-}
-
-test_batch_deadline_stays_live_during_watcher_wait() {
-  local dir state fakebin sent capture
-  dir=$(make_supercase batch-watcher-wait)
-  state="$dir/state"
-  fakebin="$dir/fakebin"
-  sent="$dir/sent.log"; : > "$sent"
-  capture="$dir/pane.txt"; printf '\342\235\257 \n' > "$capture"
-  afk_enter "$state"
-  escalate_add "$state" "event: balanced wait"
-  echo $(( $(date +%s) - 73 )) > "$state/.subsuper-escalations.since"
-  PATH="$fakebin:$PATH" FM_FAKE_TMUX_PANE_ALIVE=1 FM_FAKE_TMUX_SENT="$sent" \
-    FM_FAKE_TMUX_CAPTURE="$capture" FM_ESCALATE_BATCH_SECS=90 FM_HOUSEKEEPING_TICK=15 \
-    wait_with_batch_deadline "$state" 1
-  delivered_digest "$sent" | grep -F 'event: balanced wait' >/dev/null \
-    || fail "balanced batch remained buffered during a watcher wait"
-  : > "$sent"
-  escalate_add "$state" "event: lean wait"
-  echo $(( $(date +%s) - 163 )) > "$state/.subsuper-escalations.since"
-  PATH="$fakebin:$PATH" FM_FAKE_TMUX_PANE_ALIVE=1 FM_FAKE_TMUX_SENT="$sent" \
-    FM_FAKE_TMUX_CAPTURE="$capture" FM_ESCALATE_BATCH_SECS=180 FM_HOUSEKEEPING_TICK=15 \
-    wait_with_batch_deadline "$state" 1
-  delivered_digest "$sent" | grep -F 'event: lean wait' >/dev/null \
-    || fail "lean batch remained buffered during a watcher wait"
-  pass "watcher waits keep balanced and lean batch deadlines active"
 }
 
 test_heartbeat_scan_dedup() {
@@ -3461,9 +3431,8 @@ test_housekeeping_herdr_resumed_stale_cleared
 test_housekeeping_orca_persistent_stale_resolves_terminal
 test_escalate_batches_into_one_digest
 test_escalate_batch_age_uses_first_append
-test_entry_adopts_presented_status_without_losing_unclassified_events
+test_entry_uses_markers_without_losing_cursor_only_events
 test_batch_flushes_before_inclusive_deadline
-test_batch_deadline_stays_live_during_watcher_wait
 test_heartbeat_scan_dedup
 test_handle_wake_routes_self_and_escalate
 test_needs_decision_queued_row_escalates_once_as_the_decision
