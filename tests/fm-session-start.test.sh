@@ -2652,7 +2652,7 @@ EOF
     "Codex startup left its first monitoring cycle implicit"
   assert_contains "$out" "even if no workers or checks are present" \
     "Codex startup made its first checkpoint conditional"
-  assert_contains "$out" 'bin/fm-watch-checkpoint.sh --seconds "${FM_CODEX_WATCH_CHECKPOINT:-180}"' \
+  assert_contains "$out" "bin/fm-watch-checkpoint.sh --seconds \"\${FM_CODEX_WATCH_CHECKPOINT:-180}\"" \
     "Codex startup omitted its foreground monitoring command"
   assert_contains "$out" "Do not describe monitoring as active based on a startup digest" \
     "Codex startup permitted a false active-monitoring claim"
