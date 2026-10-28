@@ -666,16 +666,20 @@ mark_status_seen() {  # <state> <task> <captured-end-offset> <captured-identity>
 
 # Adopt positions already classified by ordinary supervision at entry.
 seed_status_seen_at_entry() {  # <state>
-  local state=$1 f task signal heartbeat daemon offset ident
+  local state=$1 f task signal heartbeat presented backstop daemon offset ident
   for f in "$state"/*.status; do
     [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] || continue
     task=$(basename "$f"); task=${task%.status}
     daemon=$(status_seen_offset "$state" "$task")
     signal=$(status_presentation_marker_offset "$(status_signal_seen_marker_path "$state" "$task")" "$f")
     heartbeat=$(status_presentation_marker_offset "$(status_heartbeat_seen_marker_path "$state" "$task")" "$f")
+    presented=$(status_presentation_cursor_offset "$f" 2>/dev/null) || presented=0
+    backstop=$(status_outcome_backstop_cursor_offset "$f" 2>/dev/null) || backstop=0
     offset=$daemon
     [ "$signal" -le "$offset" ] || offset=$signal
     [ "$heartbeat" -le "$offset" ] || offset=$heartbeat
+    [ "$presented" -le "$offset" ] || offset=$presented
+    [ "$backstop" -le "$offset" ] || offset=$backstop
     [ "$offset" -gt "$daemon" ] || continue
     ident=$(_fm_open_decisions_file_ident "$f") || continue
     mark_status_seen "$state" "$task" "$offset" "$ident" || true
@@ -1288,12 +1292,9 @@ _oldest_line_age() {  # <buf> -> seconds since the oldest buffered item first ar
 #     the window (repeating bounded re-surface, never a wedge).
 #  3) heartbeat scan: every HEARTBEAT_SCAN_SECS, grep state/*.status for a
 #     captain-relevant line the per-wake classifier missed and escalate it.
-housekeeping() {  # <state>
-  local state=$1 now due f key task win marker age last max_defer oldest hung_turn pause_secs marker_epoch until bounded_until pause_reason
-  now=$(_now)
-  migrate_watcher_pause_markers "$state"
-
-  # (1) batch flush
+escalate_batch_deadline_check() {  # <state>
+  local state=$1 due
+  [ -s "$state/.subsuper-escalations" ] || return 0
   if [ "$(escalate_batch_secs)" -le 0 ]; then
     escalate_flush "$state" || true
   else
@@ -1305,6 +1306,22 @@ housekeeping() {  # <state>
       escalate_flush "$state" || true
     fi
   fi
+}
+
+wait_with_batch_deadline() {  # <state> <seconds>
+  local state=$1 remaining=$2
+  while [ "$remaining" -gt 0 ]; do
+    sleep 1
+    escalate_batch_deadline_check "$state"
+    remaining=$((remaining - 1))
+  done
+}
+
+housekeeping() {  # <state>
+  local state=$1 now f key task win marker age last max_defer oldest hung_turn pause_secs marker_epoch until bounded_until pause_reason
+  now=$(_now)
+  migrate_watcher_pause_markers "$state"
+  escalate_batch_deadline_check "$state"
 
   # (1b) max-defer escape. If anything is still buffered past MAX_DEFER_SECS,
   # retry the normal delivery path. If that still cannot confirm, raise a loud
@@ -2041,7 +2058,7 @@ fm_super_main() {
   }
 
   start_watcher() {
-    CUR_TMP=$(mktemp "${TMPDIR:-/tmp}/fm-watch.XXXXXX") || { log "error: mktemp failed; retrying in 5s"; sleep 5; return 1; }
+    CUR_TMP=$(mktemp "${TMPDIR:-/tmp}/fm-watch.XXXXXX") || { log "error: mktemp failed; retrying in 5s"; wait_with_batch_deadline "$STATE" 5; return 1; }
     "$WATCH" >"$CUR_TMP" 2>>"$WATCH_ERR" &
     WATCHER_PID=$!
   }
@@ -2079,7 +2096,7 @@ fm_super_main() {
           record_crash
           log "watcher exited rc=$rc reason='$reason'; restarting after ${backoff_secs}s"
           WATCHER_PID=""
-          sleep "$backoff_secs"
+          wait_with_batch_deadline "$STATE" "$backoff_secs"
           continue
         fi
         # Non-wake stdout (e.g. a watcher singleton-collision "already running"
@@ -2089,7 +2106,7 @@ fm_super_main() {
         if ! is_wake_reason "$reason"; then
           log "watcher non-wake stdout, idling: $reason"
           WATCHER_PID=""
-          sleep "${HOUSEKEEPING_TICK:-$HOUSEKEEPING_TICK_DEFAULT}"
+          wait_with_batch_deadline "$STATE" "${HOUSEKEEPING_TICK:-$HOUSEKEEPING_TICK_DEFAULT}"
           continue
         fi
         log "wake: $reason"
