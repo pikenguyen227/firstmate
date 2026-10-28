@@ -1,0 +1,36 @@
+tests/fm-spawn-dispatch-profile.test.sh
+  s_35f8eef27b21d2::t_27128ebe8273b9 120-121,614,640,650-665,1952
+tests/fm-control-relaunch.test.sh
+  s_35f8eef27b21d2::t_27128ebe8273b9 124
+tests/fixtures.sh
+  s_35f8eef27b21d2::t_27128ebe8273b9 123,125,127-131
+bin/fm-spawn.sh
+  s_35f8eef27b21d2::t_27128ebe8273b9 226-227,5530,5574
+  s_b9a3a76fbb8b1a::t_30a0fc2b162398 5575-5576
+bin/fm-codex-launch-lib.sh
+  s_35f8eef27b21d2::t_27128ebe8273b9 20-21,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2931bd85ad141dd253b71dc534d359087a3c2a1b",
+  "prompts": {},
+  "sessions": {
+    "s_35f8eef27b21d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a181ac-84b5-71d1-a6e4-9bcd13f2c7e6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    },
+    "s_b9a3a76fbb8b1a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1815e-d1ca-7041-b4fd-09a02104c6bf",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
