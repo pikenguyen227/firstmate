@@ -119,6 +119,13 @@ case "${1:-}" in
     exit 0
     ;;
   has-session|new-session|new-window|kill-window|set-window-option) exit 0 ;;
+  capture-pane)
+    if [ -n "${FM_FAKE_CODEX_REJECT_MODEL:-}" ] && [ -f "${FM_FAKE_LAUNCH_LOG:-/dev/null}" ] &&
+      ! grep -Fq -- "--model 'gpt-6-sol'" "${FM_FAKE_LAUNCH_LOG}" 2>/dev/null; then
+      printf '■ {"type":"error","status":400,"error":{"type":"invalid_request_error","message":"The '\''%s'\'' model is not\nsupported when using Codex with a ChatGPT account.","code":"model_not_found"}}\n' "$FM_FAKE_CODEX_REJECT_MODEL"
+    fi
+    exit 0
+    ;;
   send-keys)
     if [ -n "${FM_FAKE_LAUNCH_LOG:-}" ]; then
       prev=

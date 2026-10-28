@@ -513,7 +513,7 @@ test_plan_profiles() {
   assert_contains "$out" $'    claude:\n      model: claude-opus-5-5\n      effort: high' "Pro validation stays Opus high"
   assert_contains "$out" $'    codex:\n      model: gpt-6.1-sol\n      effort: high' "Plus validation stays 6.1 Sol high"
   assert_contains "$out" "second mates: off by default" "Pro lean turns second mates off"
-  assert_contains "$out" "gpt-6.1-terra needs Codex CLI 0.159.0 or later; where it is unavailable, gpt-6.1-sol at low effort is the fallback" "a Terra route names its Codex CLI minimum and fallback"
+  assert_contains "$out" "gpt-6.1-terra needs Codex CLI 0.159.0 or later; an interactive model_not_found refusal falls back once to gpt-6-sol at the same effort" "a Terra route names its Codex CLI minimum and fallback"
   assert_contains "$out" "the first whose floor holds is used" "show explains a ladder"
   assert_contains "$(jq -r '.rules[] | select(.strategy == "claude-model-requested") | .why' "$home/config/crew-dispatch.json")" \
     "bills usage credits" "the requested-model rule on Pro says a Fable request bills usage credits"

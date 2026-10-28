@@ -117,6 +117,14 @@ case "${1:-}" in
     printf 'fakepane\n'; exit 0 ;;
   capture-pane)
     [ -z "${FM_FAKE_COMPOSER_READ_FAIL:-}" ] || exit 1
+    if [ -s "$D/reject-model" ]; then
+      rejected=$(cat "$D/reject-model")
+      if grep -Fq -- "--model '$rejected'" "$D/literal" &&
+        ! grep -Fq -- "--model 'gpt-6-sol'" "$D/literal"; then
+        printf 'The '\''%s'\'' model is not supported when using Codex with a ChatGPT account. model_not_found\n' "$rejected"
+        exit 0
+      fi
+    fi
     if [ -s "$D/composer" ]; then
       printf '╭────╮\n│ %s  │\n╰────╯\n' "$(cat "$D/composer")"
     else
@@ -248,6 +256,7 @@ run_control() {  # <case-dir> <args...>
     FM_FAKE_TRACE_RELEASE="${FM_FAKE_TRACE_RELEASE:-}" \
     FM_FAKE_META_WRITER_READY="${FM_FAKE_META_WRITER_READY:-}" \
     FM_FAKE_TRACE_EXPORTED="${FM_FAKE_TRACE_EXPORTED:-}" \
+    FM_CODEX_MODEL_REFUSAL_POLLS=1 \
     "$CONTROL" "$@" 2>&1
 }
 
@@ -739,6 +748,26 @@ test_same_harness_relaunch_keeps_the_profile_axes() {
   [ "$(meta_field "$dir" rl6 model)" = opus ] || fail "the model should carry across a same-harness relaunch"
   [ "$(meta_field "$dir" rl6 effort)" = high ] || fail "the effort should carry across a same-harness relaunch"
   pass "fm-control relaunch: a same-harness relaunch keeps the profile axes it was running with"
+}
+
+test_codex_relaunch_recovers_from_interactive_model_refusal() {
+  local dir out rc id=rl-codex-refusal
+  dir=$(new_case codex-refusal "$id")
+  add_ship_task "$dir" "$id" codex
+  printf codex >"$dir/fake/command"
+  printf codex >"$dir/fake/becomes"
+  printf gpt-6.1-sol >"$dir/fake/reject-model"
+  out=$(run_control "$dir" "$id" relaunch --model gpt-6.1-sol --effort medium --note "retry the model"); rc=$?
+  expect_code 0 "$rc" "a rejected Codex model should recover on relaunch: $out"
+  [ "$(meta_field "$dir" "$id" model)" = gpt-6-sol ] || fail "the relaunched model should be Sol"
+  [ "$(meta_field "$dir" "$id" effort)" = medium ] || fail "the fallback should preserve effort"
+  assert_contains "$out" "model=gpt-6-sol fallback_from=gpt-6.1-sol effort=medium" \
+    "control did not report the effective fallback profile"
+  assert_contains "$(cat "$dir/fake/literal")" "--model 'gpt-6.1-sol'" \
+    "the relaunch did not attempt the requested model"
+  assert_contains "$(cat "$dir/fake/literal")" "--model 'gpt-6-sol'" \
+    "the relaunch did not deliver Sol fallback"
+  pass "a Codex relaunch recovers once from an interactive model refusal"
 }
 
 test_native_ultra_relaunch_preserves_profile_and_rejects_before_stop() {
@@ -2408,6 +2437,7 @@ test_harness_switch_does_not_carry_the_old_profile_axes
 test_harness_switch_resolves_a_prefixed_recorded_harness
 test_prefixed_recorded_harness_requires_explicit_replacement
 test_same_harness_relaunch_keeps_the_profile_axes
+test_codex_relaunch_recovers_from_interactive_model_refusal
 test_native_ultra_relaunch_preserves_profile_and_rejects_before_stop
 test_signed_out_worker_account_pin_refuses_before_stop
 test_worker_account_pin_follows_the_relaunch
