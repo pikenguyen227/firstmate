@@ -142,7 +142,7 @@ A separate review or audit happens only at the captain's explicit request or as 
 - Every mode then waits for the configured merge authority.
 
 Delivery mode and `yolo` are orthogonal; `yolo` governs merge authority only: off, the captain approves every PR merge and local-only landing; on, firstmate merges green, in-scope work itself.
-Never merge a red PR, or one with a required check that has not reported, under either setting unless a current explicit captain instruction names the GitHub check to waive (`bin/fm-pr-merge.sh` owns the waiver); standing `yolo` never authorizes a red merge.
+Never merge a red PR, or one with a required check that has not reported, under either setting unless a current explicit captain instruction names each GitHub check to waive (`bin/fm-pr-merge.sh` owns the waiver); standing `yolo` never authorizes a red merge.
 Destructive, irreversible, and security-sensitive merges still escalate.
 Load `ask-user-authority` and `validation-supervision` before deciding or answering any ask-user finding; the implementation worker never answers its own finding.
 Use `bin/fm-pr-merge.sh` for every task PR merge and `bin/fm-merge-local.sh` for approved local-only landing, never a lower-level merge command around their guards.
