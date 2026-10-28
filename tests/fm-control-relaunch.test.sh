@@ -121,7 +121,7 @@ case "${1:-}" in
       rejected=$(cat "$D/reject-model")
       if grep -Fq -- "--model '$rejected'" "$D/literal" &&
         ! grep -Fq -- "--model 'gpt-6-sol'" "$D/literal"; then
-        printf 'The '\''%s'\'' model is not supported when using Codex with a ChatGPT account. model_not_found\n' "$rejected"
+        printf '■ {"error":{"code":"model_not_found"}}\n'
         exit 0
       fi
     fi
@@ -256,7 +256,6 @@ run_control() {  # <case-dir> <args...>
     FM_FAKE_TRACE_RELEASE="${FM_FAKE_TRACE_RELEASE:-}" \
     FM_FAKE_META_WRITER_READY="${FM_FAKE_META_WRITER_READY:-}" \
     FM_FAKE_TRACE_EXPORTED="${FM_FAKE_TRACE_EXPORTED:-}" \
-    FM_CODEX_MODEL_REFUSAL_POLLS=1 \
     "$CONTROL" "$@" 2>&1
 }
 

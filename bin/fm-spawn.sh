@@ -223,8 +223,8 @@
 #   default, and task meta records the value actually launched.
 #   A named 6.1 model refused by the interactive Codex account is retried
 #   once on gpt-6-sol at the same effort in this same launch path. The pane
-#   is checked for FM_CODEX_MODEL_REFUSAL_POLLS (default 60) seconds after its
-#   first prompt; the task record and status report the effective model.
+#   is checked until it accepts its first prompt or 60 seconds pass; the task
+#   record and status report the effective model.
 #   A --secondmate spawn also propagates the primary's declared inherited local
 #   material, so the secondmate's OWN crewmates inherit primary config and the
 #   secondmate receives the primary's read-only shared captain-preference file
@@ -5527,8 +5527,7 @@ if [ "$HARNESS" = codex ] && [ "$RAW_LAUNCH" = 0 ]; then
       # model in exec but reject that same model here after the TUI starts.
       # Watch this launch's pane, then replace it once in the same endpoint.
       codex_poll=0
-      codex_limit=${FM_CODEX_MODEL_REFUSAL_POLLS:-60}
-      while [ "$codex_poll" -lt "$codex_limit" ]; do
+      while [ "$codex_poll" -lt 60 ]; do
         if fm_backend_visible_capture_supported "$BACKEND"; then
           codex_pane=$(fm_backend_visible_capture "$BACKEND" "$T" "$W" 2>/dev/null) || codex_pane=
         else
@@ -5570,6 +5569,9 @@ if [ "$HARNESS" = codex ] && [ "$RAW_LAUNCH" = 0 ]; then
             exit 1
           fi
           printf '%s\n' "$(status_stamp_line "working: Codex model $SPAWN_MODEL_FALLBACK after interactive model_not_found")" >>"$STATE/$ID.status"
+          break
+        fi
+        if printf '%s\0' "$codex_pane" | fm_busy_lines_match codex; then
           break
         fi
         codex_poll=$((codex_poll + 1))
