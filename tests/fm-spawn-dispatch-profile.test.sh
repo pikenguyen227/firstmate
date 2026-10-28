@@ -116,6 +116,9 @@ run_spawn() {
     FM_FAKE_PI_VERSION="${FM_TEST_PI_VERSION:-0.84.0}" \
     FM_FAKE_CURSOR_MODELS="${FM_TEST_CURSOR_MODELS:-}" \
     FM_FAKE_CURSOR_LIST_STATUS="${FM_TEST_CURSOR_LIST_STATUS:-0}" \
+    FM_FAKE_CODEX_REJECT_MODEL="${FM_TEST_CODEX_REJECT_MODEL:-}" \
+    FM_FAKE_CODEX_RESPONSE_CODE="${FM_TEST_CODEX_RESPONSE_CODE:-}" \
+    FM_FAKE_CODEX_CAPTURE_LOG="${FM_TEST_CODEX_CAPTURE_LOG:-}" \
     GROK_HOME="$home/grok-home" \
     fm_test_run_spawn "$home" "$wt" "$fakebin" "$@"
 }
@@ -600,6 +603,64 @@ test_codex_launch_fills_the_fallback_profile_and_doc_budget() {
   assert_contains "$launch" "-c project_doc_max_bytes=$FM_CODEX_PROJECT_DOC_MAX_BYTES" \
     "codex launch did not raise the project-doc budget"
   pass "a codex launch with no profile names the fallback model and effort and loads the whole contract"
+}
+
+test_codex_interactive_model_refusal_relaunches_once() {
+  local rec id out status launch model
+  for model in gpt-6.1-sol gpt-6.1-terra; do
+    id="profile-codex-refused-${model##*-}"
+    rec=$(make_spawn_case "$id" codex "$id")
+    read_case_record "$rec"
+    out=$(FM_TEST_CODEX_REJECT_MODEL="$model" \
+      run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" \
+      --model "$model" --effort medium 2>&1)
+    status=$?
+    expect_code 0 "$status" "Codex refusal should relaunch on Sol: $out"
+    assert_meta_profile "$HOME_DIR/state/$id.meta" codex gpt-6-sol medium
+    launch=$(cat "$LAUNCH_LOG")
+    assert_contains "$launch" "codex --model '$model' -c 'model_reasoning_effort=\"medium\"'" \
+      "first Codex launch did not attempt the requested model"
+    assert_contains "$launch" "codex --model 'gpt-6-sol' -c 'model_reasoning_effort=\"medium\"'" \
+      "Codex fallback did not preserve effort"
+    [ "$(grep -c 'codex --model' "$LAUNCH_LOG")" = 2 ] || fail "Codex model refusal should launch exactly twice"
+    assert_contains "$launch" "/quit" "the refused Codex session was not exited before replacement"
+    assert_contains "$out" "$model -> gpt-6-sol after interactive model_not_found" \
+      "Codex fallback was not reported"
+    assert_grep "Codex model $model -> gpt-6-sol" "$HOME_DIR/state/$id.status" \
+      "Codex fallback was not recorded for supervision"
+  done
+  pass "an interactive Codex model refusal relaunches once on Sol at the same effort"
+}
+
+test_codex_unrelated_model_error_does_not_change_the_route() {
+  local rec id out status
+  id=profile-codex-unrelated-error
+  rec=$(make_spawn_case "$id" codex "$id")
+  read_case_record "$rec"
+  out=$(FM_TEST_CODEX_REJECT_MODEL=gpt-6.1-sol FM_TEST_CODEX_RESPONSE_CODE=rate_limit_exceeded \
+    run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" \
+    --model gpt-6.1-sol --effort high 2>&1)
+  status=$?
+  expect_code 0 "$status" "an unrelated model error should leave this route alone: $out"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" codex gpt-6.1-sol high
+  [ "$(wc -l <"$LAUNCH_LOG" | tr -d ' ')" = 1 ] || fail "an unrelated model error changed this route"
+  pass "an unrelated model error cannot trigger the Codex fallback"
+}
+
+test_codex_accepted_first_prompt_ends_refusal_watch() {
+  local rec id out status captures
+  id=profile-codex-accepted
+  rec=$(make_spawn_case "$id" codex "$id")
+  read_case_record "$rec"
+  captures="$TMP_ROOT/$id.captures"
+  out=$(FM_TEST_CODEX_CAPTURE_LOG="$captures" \
+    run_ship_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" "$LAUNCH_LOG" "$id" "$PROJ_DIR" \
+    --model gpt-6.1-sol --effort medium 2>&1)
+  status=$?
+  expect_code 0 "$status" "an accepted Codex prompt should launch: $out"
+  assert_meta_profile "$HOME_DIR/state/$id.meta" codex gpt-6.1-sol medium
+  [ "$(wc -l <"$captures" | tr -d ' ')" = 1 ] || fail "an accepted Codex prompt kept the refusal watch open"
+  pass "an accepted Codex prompt ends the refusal watch after one capture"
 }
 
 test_codex_explicit_model_keeps_it_and_fills_only_effort() {
@@ -1886,6 +1947,9 @@ test_codex_threads_model_and_effort
 test_codex_threads_model_and_max_effort
 test_codex_omits_max_effort_for_unsupported_model
 test_codex_launch_fills_the_fallback_profile_and_doc_budget
+test_codex_interactive_model_refusal_relaunches_once
+test_codex_unrelated_model_error_does_not_change_the_route
+test_codex_accepted_first_prompt_ends_refusal_watch
 test_codex_explicit_model_keeps_it_and_fills_only_effort
 test_codex_crewmate_launch_disables_the_hook_layer
 test_codex_secondmate_launch_keeps_the_hook_layer

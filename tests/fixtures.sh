@@ -119,6 +119,19 @@ case "${1:-}" in
     exit 0
     ;;
   has-session|new-session|new-window|kill-window|set-window-option) exit 0 ;;
+  capture-pane)
+    [ -z "${FM_FAKE_CODEX_CAPTURE_LOG:-}" ] || printf 'capture\n' >> "$FM_FAKE_CODEX_CAPTURE_LOG"
+    if [ -n "${FM_FAKE_CODEX_REJECT_MODEL:-}" ] && [ -f "${FM_FAKE_LAUNCH_LOG:-/dev/null}" ] &&
+      grep -Fq -- "--model '$FM_FAKE_CODEX_REJECT_MODEL'" "${FM_FAKE_LAUNCH_LOG}" 2>/dev/null &&
+      ! grep -Fq -- "--model 'gpt-6-sol'" "${FM_FAKE_LAUNCH_LOG}" 2>/dev/null; then
+      printf '■ {"error":{"code":"%s"}}\n' "${FM_FAKE_CODEX_RESPONSE_CODE:-model_not_found}"
+      [ "${FM_FAKE_CODEX_RESPONSE_CODE:-model_not_found}" = model_not_found ] || printf 'esc to interrupt\n'
+    elif [ -f "${FM_FAKE_LAUNCH_LOG:-/dev/null}" ] &&
+      grep -Fq -- "--model 'gpt-6.1-" "${FM_FAKE_LAUNCH_LOG}" 2>/dev/null; then
+      printf 'esc to interrupt\n'
+    fi
+    exit 0
+    ;;
   send-keys)
     if [ -n "${FM_FAKE_LAUNCH_LOG:-}" ]; then
       prev=
