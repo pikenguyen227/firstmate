@@ -1054,24 +1054,6 @@ load /afk and ensure the daemon is running, because the daemon owns watcher
 supervision.
 
 EOF
-elif [ "$PRIMARY_HARNESS" = codex ]; then
-  cat <<'EOF'
-This digest did not start Codex monitoring.
-This session holds the fleet lock. Before giving a final status, drain and
-acknowledge queued wakes, then start this exact command in the foreground,
-even when there are no workers or registered checks:
-EOF
-  printf 'bin/fm-watch-checkpoint.sh --seconds %s\n' "${FM_CODEX_WATCH_CHECKPOINT:-180}"
-  cat <<'EOF'
-If X mode is active, source its environment as directed in the operating
-block before the checkpoint. If work is under way or any check, process-event
-source, or X-mode polling remains registered when a checkpoint returns, drain
-and handle wakes, then run the same foreground command again instead of ending
-the turn. Repeat at every checkpoint return while supervision is needed.
-Only a currently live watcher or checkpoint proves monitoring is active.
-If the next checkpoint cannot start, report that monitoring is down.
-
-EOF
 elif [ -f "$CONFIG/x-mode.env" ]; then
   cat <<EOF
 Follow the supervision operating instructions block above for harness '$PRIMARY_HARNESS'.

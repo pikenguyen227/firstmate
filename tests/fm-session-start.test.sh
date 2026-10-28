@@ -2648,16 +2648,18 @@ EOF
   assert_contains "$out" "primary harness: codex" "Codex startup selected the wrong supervision block"
   assert_contains "$out" "1 registered custom check(s), but no watcher has a fresh beacon" \
     "check-only startup did not expose the missing watcher"
-  assert_contains "$out" "This digest did not start Codex monitoring" \
-    "Codex startup implied the digest started monitoring"
-  assert_contains "$out" "bin/fm-watch-checkpoint.sh --seconds 180" \
-    "Codex startup omitted its exact foreground monitoring command"
-  assert_contains "$out" "even when there are no workers or registered checks" \
+  assert_contains "$out" "start the first foreground checkpoint during the startup turn" \
+    "Codex startup left its first monitoring cycle implicit"
+  assert_contains "$out" "even if no workers or checks are present" \
     "Codex startup made its first checkpoint conditional"
-  assert_contains "$out" "Only a currently live watcher or checkpoint proves monitoring is active" \
+  assert_contains "$out" 'bin/fm-watch-checkpoint.sh --seconds "${FM_CODEX_WATCH_CHECKPOINT:-180}"' \
+    "Codex startup omitted its foreground monitoring command"
+  assert_contains "$out" "Do not describe monitoring as active based on a startup digest" \
     "Codex startup permitted a false active-monitoring claim"
-  assert_contains "$out" "then run the same foreground command again instead of ending" \
+  assert_contains "$out" "run the same foreground command again" \
     "Codex startup permitted the turn to end after its first checkpoint"
+  assert_contains "$out" "This script never starts supervision itself" \
+    "Codex closing reminder implied monitoring had started"
   assert_absent "$home/state/.last-watcher-beat" \
     "Codex startup unexpectedly created watcher proof without a checkpoint"
   pass "check-only Codex startup reports supervision down and requires its own first checkpoint"
