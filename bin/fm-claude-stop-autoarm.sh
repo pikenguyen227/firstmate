@@ -22,9 +22,16 @@
 #     confirmed through bin/fm-lock.sh the same way. Any other live owner, a
 #     missing lock, malformed lock, or unresolved ancestry remains inert, so a
 #     competing session never arms or rewakes.
-#   - AFK: while state/.afk exists the away daemon owns the watcher and triage;
-#     this hook exits 0 and NEVER rewakes the primary (checked again at
-#     translation time so a mid-cycle AFK transition is honored).
+#   - AFK: while state/.afk exists the away daemon owns the watcher and triage,
+#     so this hook never arms (checked again at translation time so a mid-cycle
+#     AFK transition is honored). It is instead the daemon's delivery path: a
+#     firing from the lock-owning session parks on the daemon's escalation
+#     outbox (bin/fm-escalation-outbox-lib.sh owns the hand-off) and rewakes
+#     with exactly the digests it claimed. The newest firing supersedes older
+#     parks, which exit 0 silently; a park ends silently when the flag clears,
+#     and a park that reaches FM_OUTBOX_PARK_MAX (default 27000, below the
+#     28800-second registration Claude would kill it at without delivering)
+#     rewakes once with a short no-action line so a fresh park replaces it.
 #   - Need: arms only while the home needs supervision, as
 #     bin/fm-supervision-lib.sh defines it; an idle home exits 0.
 #   - Single-flight: Claude does not dedupe async hooks, so exactly one
@@ -170,6 +177,42 @@ if [ -n "$PAYLOAD" ] && command -v jq >/dev/null 2>&1; then
   printf '%s' "$PAYLOAD" | jq -e '(.transcript_path // "") | type == "string" and contains("/.pi/")' >/dev/null 2>&1 && exit 0
 fi
 
+# afk_outbox_park: deliver the away/quiet daemon's escalation digests through
+# this hook's exit-2 rewake (see the AFK bullet in the header). Never returns.
+afk_outbox_park() {
+  local parker="$STATE/.subsuper-outbox-parker" me deadline poll late tmp
+  # shellcheck source=bin/fm-escalation-outbox-lib.sh
+  . "$SCRIPT_DIR/fm-escalation-outbox-lib.sh"
+  me="$$ $(date +%s) ${RANDOM}${RANDOM}"
+  tmp="$parker.$$"
+  if ! { printf '%s\n' "$me" > "$tmp" && mv -f "$tmp" "$parker"; } 2>/dev/null; then
+    rm -f "$tmp"
+    exit 0
+  fi
+  poll=${FM_OUTBOX_PARK_POLL:-2}
+  case "$poll" in ''|*[!0-9.]*) poll=2 ;; esac
+  deadline=${FM_OUTBOX_PARK_MAX:-27000}
+  case "$deadline" in ''|*[!0-9]*) deadline=27000 ;; esac
+  deadline=$(( $(date +%s) + deadline ))
+  late=${FM_MAX_DEFER_SECS:-300}
+  case "$late" in ''|*[!0-9]*) late=300 ;; esac
+  trap 'fm_outbox_release "$STATE"; exit 0' TERM HUP INT
+  while :; do
+    [ -e "$STATE/.afk" ] || exit 0
+    [ "$(cat "$parker" 2>/dev/null)" = "$me" ] || exit 0
+    if fm_outbox_claim "$STATE"; then
+      fm_outbox_render_claimed "$late" >&2
+      fm_outbox_commit "$STATE"
+      exit 2
+    fi
+    if [ "$(date +%s)" -ge "$deadline" ]; then
+      printf 'Supervisor: the away/quiet delivery channel parked with nothing to deliver and is being refreshed; no action needed - end the turn so the next park replaces it.\n' >&2
+      exit 2
+    fi
+    sleep "$poll"
+  done
+}
+
 # --- scope: genuine primary checkout only -----------------------------------
 fm_primary_scope_matches "$FM_ROOT" "$STATE" || exit 0
 
@@ -194,8 +237,13 @@ if ! fm_session_lock_owned_by_self "$STATE"; then
   RECOVER_SESSION_LOCK=1
 fi
 
-# --- AFK: the away daemon owns the watcher and triage; never rewake ----------
-[ -e "$STATE/.afk" ] && exit 0
+# --- AFK: the away daemon owns the watcher and triage; deliver its digests ---
+if [ -e "$STATE/.afk" ]; then
+  # Only the lock owner's own session parks; a lock this firing would first
+  # have to recover stays inert, exactly as before.
+  [ "$RECOVER_SESSION_LOCK" -eq 0 ] || exit 0
+  afk_outbox_park
+fi
 
 # --- need: whatever bin/fm-supervision-lib.sh counts as supervision need ------
 need_supervision() {

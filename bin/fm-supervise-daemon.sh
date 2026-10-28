@@ -65,6 +65,18 @@
 #     undelivered past FM_MAX_DEFER_SECS, the daemon retries a normal flush and
 #     writes state/.subsuper-inject-wedged and attempts a configurable active
 #     alert if submit still cannot be confirmed.
+#   - Harness-path delivery: on a Claude or Codex primary the daemon never types
+#     a digest into the captain's pane. It publishes each digest to the durable
+#     outbox (bin/fm-escalation-outbox-lib.sh owns the hand-off and why), and the
+#     primary's own wake path delivers it: Claude's Stop asyncRewake hook and
+#     Codex's foreground checkpoint both park on the outbox while state/.afk
+#     exists. A digest is delivered when the coordinator's current turn ends,
+#     so while that turn is live (pane busy) the daemon neither types into the
+#     pane nor alarms. A digest still unclaimed past FM_MAX_DEFER_SECS on an
+#     idle pane (a turn ended without claiming it) gets one pane-typed attempt
+#     as a last resort, then the same wedge alarm; one unclaimed past
+#     FM_OUTBOX_HUNG_TURN_SECS behind a pane that stays busy alarms as a
+#     possibly hung turn, without typing.
 #   - Cheap heartbeat catch-all: every HEARTBEAT_SCAN_SECS the daemon greps all
 #     state/*.status for a captain-relevant line the per-wake classifier might
 #     have missed (e.g. a status verb outside CAPTAIN_RE) and escalates it.
@@ -109,7 +121,15 @@
 #                                   captain-held transfer is never rechecked
 #                                   while the away-posture record exists
 #          FM_ESCALATE_BATCH_SECS   buffer window for batched escalation
-#                                   digests; 0 = flush immediately (default 90)
+#                                   digests; 0 = flush immediately (default 90,
+#                                   or 180 when config/strategy names
+#                                   mode=lean)
+#          FM_OUTBOX_HUNG_TURN_SECS how long an outbox digest may wait behind a
+#                                   coordinator turn that stays busy before the
+#                                   wedge alarm treats it as hung (default 3600)
+#          FM_DAEMON_TRANSPORT      hook|checkpoint|pane override of the
+#                                   delivery path the primary harness selects
+#                                   (fm_outbox_transport); tests and diagnosis
 #          FM_HEARTBEAT_SCAN_SECS   cadence for the catch-all status scan
 #                                   (default 300)
 #          FM_HOUSEKEEPING_TICK     seconds between housekeeping passes while
@@ -201,6 +221,10 @@ FM_HOME="${FM_HOME:-${FM_ROOT_OVERRIDE:-$FM_ROOT}}"
 # shellcheck source=bin/fm-busy-lib.sh
 . "$FM_DAEMON_DIR/fm-busy-lib.sh"
 
+# The durable outbox a Claude or Codex primary's own wake path delivers from.
+# shellcheck source=bin/fm-escalation-outbox-lib.sh
+. "$FM_DAEMON_DIR/fm-escalation-outbox-lib.sh"
+
 # --- tunables ---------------------------------------------------------------
 # Supervisor backends this daemon knows how to inject into today. zellij, orca,
 # and cmux are real backends elsewhere in firstmate (bin/fm-backend.sh) but this
@@ -213,6 +237,8 @@ FM_SUPERVISOR_SUPPORTED_BACKENDS="tmux herdr"
 INJECT_SKIP_DEFAULT="heartbeat"
 STALE_ESCALATE_SECS_DEFAULT=240
 ESCALATE_BATCH_SECS_DEFAULT=90
+LEAN_ESCALATE_BATCH_SECS_DEFAULT=180
+OUTBOX_HUNG_TURN_SECS_DEFAULT=3600
 HEARTBEAT_SCAN_SECS_DEFAULT=300
 HOUSEKEEPING_TICK_DEFAULT=15
 # Max time a buffered escalation may sit undelivered before the daemon retries
@@ -692,6 +718,39 @@ fm_daemon_primary_harness() {
   printf '%s' "$FM_DAEMON_PRIMARY_HARNESS"
 }
 
+# escalate_transport: how this daemon's digests reach the primary - hook or
+# checkpoint through the outbox, or pane injection
+# (fm_outbox_transport owns the mapping). Memoized in the calling shell.
+escalate_transport() {
+  case "${FM_DAEMON_TRANSPORT:-}" in
+    hook|checkpoint|pane) ;;
+    *) FM_DAEMON_TRANSPORT= ;;
+  esac
+  if [ -z "$FM_DAEMON_TRANSPORT" ]; then
+    fm_daemon_primary_harness >/dev/null
+    FM_DAEMON_TRANSPORT=$(fm_outbox_transport "$FM_DAEMON_PRIMARY_HARNESS")
+  fi
+  printf '%s' "$FM_DAEMON_TRANSPORT"
+}
+
+escalate_uses_outbox() {
+  escalate_transport >/dev/null
+  [ "$FM_DAEMON_TRANSPORT" != pane ]
+}
+
+# escalate_batch_secs: the digest batch window. The lean strategy batches
+# longer than balanced so it spends fewer coordinator turns; both stay bounded.
+escalate_batch_secs() {
+  local secs=${FM_ESCALATE_BATCH_SECS:-} mode
+  if [ -z "$secs" ]; then
+    secs=$ESCALATE_BATCH_SECS_DEFAULT
+    mode=$(sed -n 's/^mode=//p' "${FM_CONFIG_OVERRIDE:-$FM_HOME/config}/strategy" 2>/dev/null | head -n 1)
+    [ "$mode" != lean ] || secs=$LEAN_ESCALATE_BATCH_SECS_DEFAULT
+  fi
+  case "$secs" in ''|*[!0-9]*) secs=0 ;; esac
+  printf '%s' "$secs"
+}
+
 pane_is_busy() {  # <target> [backend]
   local target=$1 backend=${2:-tmux} native tail40 harness
   harness=$(fm_daemon_primary_harness)
@@ -866,6 +925,30 @@ escalate_flush() {  # <state>
   # Single-line wrapper: no embedded newlines (inject_msg also collapses as a
   # safety net, but keeping the source single-line makes the intent explicit).
   msg=$(printf 'Supervisor escalate (%s event(s)): %s (pre-read; re-arm not needed — watcher daemon-managed)' "$ESCALATE_EVENTS" "$msg")
+  if escalate_uses_outbox; then
+    # Hand the digest to the primary's own wake path. Publishing is the whole
+    # delivery step here: the outbox is durable, so the buffer clears once the
+    # digest is in it, and the max-defer escape below watches the outbox.
+    INJECT_LAST_FAILURE=
+    INJECT_SUBMIT_ATTEMPTED=0
+    if ! afk_active "$state"; then
+      INJECT_LAST_FAILURE="deferred: afk inactive"
+      log "outbox $INJECT_LAST_FAILURE"
+      return 1
+    fi
+    if ! fm_outbox_publish "$state" "$(_collapse_newlines "$msg")"; then
+      INJECT_LAST_FAILURE="the digest could not be published to $(fm_outbox_dir "$state")"
+      log "outbox failed: $INJECT_LAST_FAILURE; buffer preserved"
+      [ "$fresh" != 1 ] || rm -f "$full"
+      return 1
+    fi
+    log "outbox: ${ESCALATE_EVENTS} event(s) handed to the $FM_DAEMON_TRANSPORT wake path"
+    unknown_wake_acknowledge_flushed "$state" "$buf" \
+      || log "unknown-wake acknowledgement write failed; a delivered unknown wake may escalate again"
+    : > "$buf"; rm -f "${buf}.since"
+    ESCALATE_KEPT_FULL=
+    return 0
+  fi
   if inject_msg "$msg" "$state"; then
     unknown_wake_acknowledge_flushed "$state" "$buf" \
       || log "unknown-wake acknowledgement write failed; a delivered unknown wake may escalate again"
@@ -1140,6 +1223,7 @@ inject_wedge_alarm() {  # <state> <age-seconds>
     printf 'Last delivery failure: %s\n' "${INJECT_LAST_FAILURE:-not recorded}"
     printf 'The supervisor pane could not accept an escalation. Buffered items:\n'
     cat "$state/.subsuper-escalations" 2>/dev/null
+    fm_outbox_pending_files "$state" | while IFS= read -r f; do cat "$f" 2>/dev/null; done
   } 2>/dev/null > "$marker" || true
   target="${FM_SUPERVISOR_TARGET:-$FM_SUPERVISOR_TARGET_DEFAULT}"
   backend="${FM_SUPERVISOR_BACKEND:-$FM_SUPERVISOR_BACKEND_DEFAULT}"
@@ -1187,16 +1271,16 @@ _oldest_line_age() {  # <buf> -> seconds since the oldest buffered item first ar
 #  3) heartbeat scan: every HEARTBEAT_SCAN_SECS, grep state/*.status for a
 #     captain-relevant line the per-wake classifier missed and escalate it.
 housekeeping() {  # <state>
-  local state=$1 now due f key task win marker age last max_defer oldest pause_secs marker_epoch until bounded_until pause_reason
+  local state=$1 now due f key task win marker age last max_defer oldest hung_turn pause_secs marker_epoch until bounded_until pause_reason
   now=$(_now)
   migrate_watcher_pause_markers "$state"
 
   # (1) batch flush
-  if [ "${FM_ESCALATE_BATCH_SECS:-$ESCALATE_BATCH_SECS_DEFAULT}" -le 0 ]; then
+  if [ "$(escalate_batch_secs)" -le 0 ]; then
     escalate_flush "$state" || true
   else
     due=$(_oldest_line_age "$state/.subsuper-escalations")
-    if [ "$due" -ge "${FM_ESCALATE_BATCH_SECS:-$ESCALATE_BATCH_SECS_DEFAULT}" ]; then
+    if [ "$due" -ge "$(escalate_batch_secs)" ]; then
       escalate_flush "$state" || true
     fi
   fi
@@ -1216,6 +1300,41 @@ housekeeping() {  # <state>
         log "inject recovered: max-defer flush succeeded after ${oldest}s undelivered"
         rm -f "$state/.subsuper-inject-wedged"
       else
+        inject_wedge_alarm "$state" "$oldest"
+      fi
+    fi
+  fi
+
+  # (1c) outbox max-defer. The wake path delivers at the end of the current
+  # coordinator turn, so a busy pane is waited on: no pane typing and no alarm
+  # until the digest outlives OUTBOX_HUNG_TURN_SECS, which alarms as a possibly
+  # hung turn. On an idle pane a digest unclaimed past MAX_DEFER_SECS means a
+  # turn ended without claiming it: it gets one pane-typed attempt; if that
+  # cannot confirm, the wedge alarm fires and the digest stays in the outbox for
+  # the wake path, the next attempt, or the return brief. An empty outbox clears
+  # the alarm marker.
+  if escalate_uses_outbox; then
+    oldest=$(fm_outbox_oldest_age "$state")
+    hung_turn=${FM_OUTBOX_HUNG_TURN_SECS:-$OUTBOX_HUNG_TURN_SECS_DEFAULT}
+    case "$hung_turn" in ''|*[!0-9]*) hung_turn=$OUTBOX_HUNG_TURN_SECS_DEFAULT ;; esac
+    if [ -z "$oldest" ]; then
+      [ -s "$state/.subsuper-escalations" ] || rm -f "$state/.subsuper-inject-wedged"
+    elif ! afk_active "$state" || [ "$max_defer" -le 0 ] || [ "$oldest" -lt "$max_defer" ] \
+       || [ "$(_file_age "$state/.subsuper-inject-wedged")" -lt "$max_defer" ]; then
+      :
+    elif pane_is_busy "${FM_SUPERVISOR_TARGET:-$FM_SUPERVISOR_TARGET_DEFAULT}" "${FM_SUPERVISOR_BACKEND:-tmux}"; then
+      if [ "$oldest" -ge "$hung_turn" ]; then
+        INJECT_LAST_FAILURE="unclaimed by the $FM_DAEMON_TRANSPORT wake path for ${oldest}s while the coordinator turn stayed busy (possibly hung)"
+        inject_wedge_alarm "$state" "$oldest"
+      fi
+    elif fm_outbox_claim "$state"; then
+      if inject_msg "$(fm_outbox_render_claimed "$max_defer")" "$state"; then
+        fm_outbox_commit "$state"
+        log "outbox recovered: pane fallback delivered after ${oldest}s unclaimed by the $FM_DAEMON_TRANSPORT wake path"
+        rm -f "$state/.subsuper-inject-wedged"
+      else
+        fm_outbox_release "$state"
+        INJECT_LAST_FAILURE="unclaimed by the $FM_DAEMON_TRANSPORT wake path, and the pane fallback did not land (${INJECT_LAST_FAILURE:-no reason recorded})"
         inject_wedge_alarm "$state" "$oldest"
       fi
     fi
@@ -1625,7 +1744,7 @@ handle_wake() {  # <reason> <state>
         # housekeeping re-escalates the same pane as a false wedge later.
         [ "$kind" = "stale" ] && stale_marker_remove "$arg" "$state"
         mark_escalated_seen "$state" "$capture" || classification_failed=1
-        [ "${FM_ESCALATE_BATCH_SECS:-$ESCALATE_BATCH_SECS_DEFAULT}" -le 0 ] && { escalate_flush "$state" || true; }
+        [ "$(escalate_batch_secs)" -le 0 ] && { escalate_flush "$state" || true; }
       else
         classification_failed=1
       fi
@@ -1855,7 +1974,8 @@ fm_super_main() {
 
   local afk_status="off"
   afk_active "$STATE" && afk_status="on"
-  log "daemon starting (pid $$); target=$TARGET; target_source=$target_source; backend=$BACKEND; backend_source=$backend_source; afk=$afk_status; inject_skip='${FM_INJECT_SKIP:-$INJECT_SKIP_DEFAULT}'; stale_escalate=${FM_STALE_ESCALATE_SECS:-$STALE_ESCALATE_SECS_DEFAULT}s; batch=${FM_ESCALATE_BATCH_SECS:-$ESCALATE_BATCH_SECS_DEFAULT}s"
+  escalate_transport >/dev/null
+  log "daemon starting (pid $$); target=$TARGET; target_source=$target_source; backend=$BACKEND; backend_source=$backend_source; afk=$afk_status; inject_skip='${FM_INJECT_SKIP:-$INJECT_SKIP_DEFAULT}'; stale_escalate=${FM_STALE_ESCALATE_SECS:-$STALE_ESCALATE_SECS_DEFAULT}s; delivery=$FM_DAEMON_TRANSPORT; batch=$(escalate_batch_secs)s"
   migrate_watcher_pause_markers "$STATE"
 
   # --- shutdown: flush buffered escalations, reap child, release lock -------

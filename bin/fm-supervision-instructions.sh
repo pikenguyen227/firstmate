@@ -162,9 +162,14 @@ repair_line() {
   fi
   if [ "$AFK" -eq 1 ]; then
     if [ "$AFK_MODE" = quiet ]; then
-      printf '%s\n' 'Quiet mode owns watcher supervision; load /quiet and ensure the daemon is running instead of starting normal supervision directly.'
+      printf '%s' 'Quiet mode owns watcher supervision; load /quiet and ensure the daemon is running instead of starting normal supervision directly.'
     else
-      printf '%s\n' 'Away mode owns watcher supervision; load /afk and ensure the daemon is running instead of starting normal supervision directly.'
+      printf '%s' 'Away mode owns watcher supervision; load /afk and ensure the daemon is running instead of starting normal supervision directly.'
+    fi
+    if [ "$HARNESS" = codex ]; then
+      printf ' %s%s%s\n' 'Keep the foreground checkpoint running (bin/fm-watch-checkpoint.sh --seconds ' "$checkpoint_seconds" '); it delivers the daemon digests.'
+    else
+      printf '\n'
     fi
     return 0
   fi
@@ -250,11 +255,21 @@ else
   printf '%s\n' '- Lock: held by this session; this session owns normal supervision unless away mode says otherwise.'
 fi
 if [ "$AFK" -eq 1 ]; then
+  afk_paused='keep normal harness supervision paused while the daemon owns the watcher'
+  [ "$HARNESS" != codex ] || afk_paused='start no watcher yourself while the daemon owns it, but keep the foreground checkpoint loop running'
   if [ "$AFK_MODE" = quiet ]; then
-    printf '%s\n' '- Quiet mode: active; load /quiet and keep normal harness supervision paused while the daemon owns the watcher. Ordinary captain chat does NOT exit it - only an explicit /quiet off does.'
+    printf '%s%s%s\n' '- Quiet mode: active; load /quiet and ' "$afk_paused" '. Ordinary captain chat does NOT exit it - only an explicit /quiet off does.'
   else
-    printf '%s\n' '- Away mode: active; load /afk and keep normal harness supervision paused while the daemon owns the watcher.'
+    printf '%s%s%s\n' '- Away mode: active; load /afk and ' "$afk_paused" '.'
   fi
+  case "$HARNESS" in
+    claude)
+      printf '%s\n' '- Daemon digests: they arrive as Stop hook feedback beginning "Supervisor escalate"; the Stop hook delivers them, so arm nothing yourself.'
+      ;;
+    codex)
+      printf '%s%s%s\n' '- Daemon digests: keep the foreground checkpoint loop running (bin/fm-watch-checkpoint.sh --seconds ' "$checkpoint_seconds" '); while the daemon runs it parks on the daemon instead of a watcher and returns each digest, beginning "Supervisor escalate", as its output.'
+      ;;
+  esac
 else
   printf '%s\n' '- Away/quiet mode: inactive.'
 fi

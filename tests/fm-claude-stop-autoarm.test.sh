@@ -21,6 +21,9 @@ FAKEBIN=$(fm_fakebin "$TMP_ROOT/fakebin")
 ln -s /bin/bash "$FAKEBIN/claude"
 FAKE_CLAUDE="$FAKEBIN/claude"
 export FAKE_CLAUDE
+# Away/quiet-mode parks poll the escalation outbox; keep them fast here.
+FM_OUTBOX_PARK_POLL=0.1
+export FM_OUTBOX_PARK_POLL
 
 # Copy the hook and its sourced dependencies into a fixture checkout.
 install_autoarm_scripts() {
@@ -35,6 +38,7 @@ install_autoarm_scripts() {
   cp "$ROOT/bin/fm-cursor-lib.sh" "$dir/bin/fm-cursor-lib.sh"
   cp "$ROOT/bin/fm-hook-host-lib.sh" "$dir/bin/fm-hook-host-lib.sh"
   cp "$ROOT/bin/fm-lock.sh" "$dir/bin/fm-lock.sh"
+  cp "$ROOT/bin/fm-escalation-outbox-lib.sh" "$dir/bin/fm-escalation-outbox-lib.sh"
   chmod +x "$dir/bin/fm-claude-stop-autoarm.sh" "$dir/bin/fm-lock.sh"
 }
 
@@ -325,20 +329,113 @@ test_inert_when_lock_held_by_other_harness() {
   pass "auto-arm: inert without arm, rewake, or lock replacement when another live harness owns the home"
 }
 
+wait_for_park() {  # <dir>
+  local deadline=$((SECONDS + 10))
+  until [ -s "$1/state/.subsuper-outbox-parker" ] || [ "$SECONDS" -ge "$deadline" ]; do sleep 0.05; done
+  [ -s "$1/state/.subsuper-outbox-parker" ] || fail "the hook never parked under away/quiet mode"
+}
+
 test_inert_when_afk() {
-  local dir out status
+  local dir out status pid
   dir=$(make_primary_dir "$TMP_ROOT/afk")
   : > "$dir/state/task.meta"
   : > "$dir/state/.afk"
   : > "$dir/state/.claude-autoarm-failure-notified"
   : > "$dir/state/.claude-autoarm-failure-alarmed"
   write_arm_fixture "$dir" actionable
-  out=$(run_autoarm "$dir" 2>/dev/null); status=$?
-  expect_code 0 "$status" "hook must never arm or rewake while away mode owns triage"
+  run_autoarm "$dir" > "$dir/hook.out" 2>&1 & pid=$!
+  wait_for_park "$dir"
+  rm -f "$dir/state/.afk"
+  wait "$pid"; status=$?
+  out=$(grep -v '^RC=' "$dir/hook.out")
+  expect_code 0 "$status" "hook must never arm, and must end silently when away mode ends with nothing to deliver"
+  [ -z "$out" ] || fail "hook printed while away mode had nothing to deliver: $out"
   [ ! -e "$dir/state/arm-ran" ] || fail "hook armed while state/.afk existed"
   assert_present "$dir/state/.claude-autoarm-failure-notified" "AFK without positive recovery reset the failure notice"
   assert_present "$dir/state/.claude-autoarm-failure-alarmed" "AFK without positive recovery reset the attended alarm"
   pass "auto-arm: inert while AFK owns supervision"
+}
+
+# While away or quiet mode is active the hook is the daemon's delivery path: it
+# parks on the escalation outbox and rewakes with exactly what it claimed.
+publish_digest() {  # <dir> <text>
+  ( . "$ROOT/bin/fm-escalation-outbox-lib.sh"; fm_outbox_publish "$1/state" "$2" )
+}
+
+test_afk_park_delivers_outbox_digest() {
+  local dir out status
+  dir=$(make_primary_dir "$TMP_ROOT/afk-deliver")
+  : > "$dir/state/task.meta"
+  printf 'quiet\n' > "$dir/state/.afk"
+  write_arm_fixture "$dir" actionable
+  publish_digest "$dir" 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/58?'
+  out=$(run_autoarm "$dir" 2>&1); status=$?
+  expect_code 2 "$status" "a parked hook must rewake with an outbox digest"
+  assert_contains "$out" 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/58?' "the rewake did not carry the digest"
+  [ ! -e "$dir/state/arm-ran" ] || fail "the delivering park also armed a watcher"
+  [ -z "$(find "$dir/state/.subsuper-outbox" -maxdepth 1 -name '*.msg*')" ] || fail "the delivered digest stayed in the outbox"
+  pass "auto-arm: under away/quiet mode the hook delivers an outbox digest through its rewake"
+}
+
+test_afk_park_waits_then_delivers_a_later_digest() {
+  local dir status pid
+  dir=$(make_primary_dir "$TMP_ROOT/afk-later")
+  printf 'away\n' > "$dir/state/.afk"
+  write_arm_fixture "$dir" actionable
+  run_autoarm "$dir" > "$dir/hook.out" 2>&1 & pid=$!
+  wait_for_park "$dir"
+  publish_digest "$dir" 'Supervisor escalate (1 event(s)): blocked: needs a credential'
+  wait "$pid"; status=$?
+  expect_code 2 "$status" "a park must deliver a digest published after it started"
+  assert_contains "$(cat "$dir/hook.out")" 'blocked: needs a credential' "the later digest was not delivered"
+  pass "auto-arm: a parked hook delivers a digest that arrives while it waits"
+}
+
+test_afk_newer_park_supersedes_older() {
+  local dir first second rc1 rc2 deadline
+  dir=$(make_primary_dir "$TMP_ROOT/afk-supersede")
+  printf 'quiet\n' > "$dir/state/.afk"
+  write_arm_fixture "$dir" actionable
+  run_autoarm "$dir" > "$dir/first.out" 2>&1 & first=$!
+  deadline=$((SECONDS + 10))
+  until [ -s "$dir/state/.subsuper-outbox-parker" ] || [ "$SECONDS" -ge "$deadline" ]; do sleep 0.05; done
+  cp "$dir/state/.subsuper-outbox-parker" "$dir/first.parker"
+  run_autoarm "$dir" > "$dir/second.out" 2>&1 & second=$!
+  until ! cmp -s "$dir/first.parker" "$dir/state/.subsuper-outbox-parker" || [ "$SECONDS" -ge "$deadline" ]; do sleep 0.05; done
+  wait "$first"; rc1=$?
+  publish_digest "$dir" 'Supervisor escalate (1 event(s)): done: PR https://x/y/pull/7 ready'
+  wait "$second"; rc2=$?
+  expect_code 0 "$rc1" "a superseded park must exit silently"
+  ! grep -qv '^RC=' "$dir/first.out" || fail "a superseded park printed: $(cat "$dir/first.out")"
+  expect_code 2 "$rc2" "the newest park must deliver"
+  [ "$(grep -c 'pull/7' "$dir/second.out")" = 1 ] || fail "the digest was not delivered exactly once"
+  pass "auto-arm: the newest Stop's park supersedes older ones, so a digest is delivered once"
+}
+
+test_afk_park_refreshes_before_hook_timeout() {
+  local dir out status
+  dir=$(make_primary_dir "$TMP_ROOT/afk-refresh")
+  printf 'away\n' > "$dir/state/.afk"
+  write_arm_fixture "$dir" actionable
+  out=$(FM_OUTBOX_PARK_MAX=1 run_autoarm "$dir" 2>&1); status=$?
+  expect_code 2 "$status" "a park reaching its bound must rewake so a fresh park replaces it"
+  assert_contains "$out" 'no action needed' "the refresh rewake did not say it needs no action"
+  [ ! -e "$dir/state/arm-ran" ] || fail "the refresh armed a watcher under away mode"
+  pass "auto-arm: an empty park refreshes itself before Claude's hook timeout could drop it"
+}
+
+test_afk_park_recovers_a_dead_claim() {
+  local dir out status old
+  dir=$(make_primary_dir "$TMP_ROOT/afk-dead-claim")
+  printf 'quiet\n' > "$dir/state/.afk"
+  write_arm_fixture "$dir" actionable
+  mkdir -p "$dir/state/.subsuper-outbox"
+  old=$(( $(date +%s) - 30 ))
+  printf 'Supervisor escalate (1 event(s)): failed: build broke\n' > "$dir/state/.subsuper-outbox/$old.1.0.msg.claimed.9999999"
+  out=$(run_autoarm "$dir" 2>&1); status=$?
+  expect_code 2 "$status" "a digest claimed by a consumer that died must still be delivered"
+  assert_contains "$out" 'failed: build broke' "the dead claim's digest was lost"
+  pass "auto-arm: a digest left claimed by a dead consumer is recovered and delivered"
 }
 
 test_stale_lock_recovery_preserves_afk_and_need_gates() {
@@ -1556,6 +1653,11 @@ test_inert_without_session_lock
 test_reclaims_stale_session_lock_before_arming
 test_inert_when_lock_held_by_other_harness
 test_inert_when_afk
+test_afk_park_delivers_outbox_digest
+test_afk_park_waits_then_delivers_a_later_digest
+test_afk_newer_park_supersedes_older
+test_afk_park_refreshes_before_hook_timeout
+test_afk_park_recovers_a_dead_claim
 test_stale_lock_recovery_preserves_afk_and_need_gates
 test_resolves_outermost_claude_pid_in_nested_bgspare_chain
 test_inert_when_fleet_idle

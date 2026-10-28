@@ -179,3 +179,53 @@ test_existing_singleton_watcher_is_not_success
 test_host_checkpoint_bounds_the_park_by_posture
 test_host_checkpoint_passes_a_handback_and_reports_a_stand_down
 test_real_host_checkpoint_ends_quietly_at_its_bound
+
+# While away or quiet mode is active the daemon owns the watcher, and the
+# checkpoint is the Codex delivery path for its digests (bin/fm-escalation-outbox-lib.sh).
+publish_digest() {  # <home> <text>
+  ( . "$ROOT/bin/fm-escalation-outbox-lib.sh"; fm_outbox_publish "$1/state" "$2" )
+}
+
+test_afk_checkpoint_returns_a_daemon_digest() {
+  local home status
+  home=$(make_home afk-digest)
+  printf 'quiet\n' > "$home/state/.afk"
+  ( sleep 1; publish_digest "$home" 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/58?' ) &
+  status=0
+  FM_HOME="$home" FM_OUTBOX_PARK_POLL=0.1 "$CHECKPOINT" --seconds 10 >"$home/out.txt" 2>"$home/err.txt" || status=$?
+  wait
+  expect_code 0 "$status" "a digest must end the checkpoint as a wake"
+  assert_contains "$(cat "$home/out.txt")" 'Supervisor escalate (1 event(s)): needs-decision: merge PR https://x/y/pull/58?' "the digest was not returned"
+  assert_absent "$home/state/.watch.lock" "the checkpoint ran a watcher while the daemon owns it"
+  [ -z "$(find "$home/state/.subsuper-outbox" -maxdepth 1 -name '*.msg*')" ] || fail "the returned digest stayed in the outbox"
+  pass "checkpoint: under away/quiet mode it returns a daemon digest instead of running a watcher"
+}
+
+test_afk_quiet_checkpoint_keeps_its_bound() {
+  local home status
+  home=$(make_home afk-quiet-bound)
+  printf 'quiet\n' > "$home/state/.afk"
+  status=0
+  FM_HOME="$home" FM_OUTBOX_PARK_POLL=0.1 FM_CODEX_WATCH_CHECKPOINT_AWAY=3600 "$CHECKPOINT" --seconds 1 >"$home/out.txt" 2>"$home/err.txt" || status=$?
+  expect_code 124 "$status" "an empty quiet checkpoint ends at its own bound"
+  assert_contains "$(cat "$home/out.txt")" "checkpoint: no actionable wake within 1s" "quiet mode must keep the ordinary bound for a present captain"
+  assert_absent "$home/state/.watch.lock" "the checkpoint ran a watcher while the daemon owns it"
+  pass "checkpoint: quiet mode keeps the ordinary bound so a present captain's messages are read"
+}
+
+test_afk_checkpoint_ends_when_the_mode_ends() {
+  local home status
+  home=$(make_home afk-ends)
+  printf 'away\n' > "$home/state/.afk"
+  ( sleep 1; rm -f "$home/state/.afk" ) &
+  status=0
+  FM_HOME="$home" FM_OUTBOX_PARK_POLL=0.1 "$CHECKPOINT" --seconds 30 >"$home/out.txt" 2>"$home/err.txt" || status=$?
+  wait
+  expect_code 124 "$status" "a cleared flag ends the park"
+  assert_contains "$(cat "$home/out.txt")" "away/quiet mode ended" "the checkpoint did not say the mode ended"
+  pass "checkpoint: a park ends at once when away/quiet mode ends"
+}
+
+test_afk_checkpoint_returns_a_daemon_digest
+test_afk_quiet_checkpoint_keeps_its_bound
+test_afk_checkpoint_ends_when_the_mode_ends

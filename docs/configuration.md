@@ -1288,7 +1288,7 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Automatic fresh starts | enabled | enabled | disabled |
 | Extra discretionary fleet reviews | enabled | disabled | disabled |
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
-| While the captain is present | normal supervision | `/quiet`, with bounded batching | `/quiet`, routine turns suppressed |
+| While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events batched for up to 90 seconds | `/quiet`, captain-relevant events batched for up to 180 seconds |
 
 Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate; where an Enterprise or Edu workspace has not enabled it, `gpt-6-sol` is the fallback to route by hand.
 Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
@@ -1299,7 +1299,9 @@ The template table above is what renders when no plan is named.
 The templates' `autonomy` object owns the rendered level, dispatch policy, automatic fix-round allowance (`null` means existing pipeline limits), fresh-start enablement, discretionary fleet-review choice, and step-up posture.
 [`strategy-autonomy`](../.agents/skills/strategy-autonomy/SKILL.md) owns coordinator application, approval reuse, round accounting, and session transitions, using the existing quiet lifecycle instead of new notification filtering.
 A confirmed selection requests that posture; the command records it but does not itself launch or stop quiet supervision, and later explicit session choices win.
-Quiet batches only within its existing bound and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
+Quiet batches only within its bound (`FM_ESCALATE_BATCH_SECS`, 90 seconds, or 180 under lean) and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
+On Claude and Codex primaries quiet delivers through the harness's own wake path instead of typing into the captain's pane: routine wakes are handled in bash without a model turn, and each batched decision, failure, credential need, or review-ready result reaches the coordinator at the next turn end through Claude's Stop-hook rewake or Codex's foreground checkpoint, so a busy session delays it to that turn end but never loses it.
+A digest still unclaimed after the daemon's max-defer bound once the turn has ended gets one pane attempt and the wedge alarm, one held behind a turn that stays busy past `FM_OUTBOX_HUNG_TURN_SECS` raises the alarm, and anything left when quiet ends appears in the return brief; the [afk skill](../.agents/skills/afk/SKILL.md) owns that mechanism.
 Fix-round limits pause for approval rather than bypassing validation, and indivisible tool-internal retry boundaries must be disclosed rather than represented as enforceable caps.
 A stronger model is reached only through the [one-tier step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a real worker failure.
 
@@ -2664,8 +2666,9 @@ FM_PENDING_REPLY_GRACE_SECS=120   # seconds after marked-request delivery before
 FM_SUPERVISOR_BACKEND=             # optional supervisor pane backend override; tmux/herdr only, otherwise detects $TMUX_PANE then HERDR_ENV/HERDR_PANE_ID before tmux fallback
 FM_SUPERVISOR_TARGET=              # optional supervisor pane target override; tmux target or herdr <session>:<pane-id>, otherwise auto-detected
 FM_INJECT_SKIP=heartbeat           # |-prefixes force-self-handled bypassing classification; empty disables
-FM_ESCALATE_BATCH_SECS=90          # buffer window for batched escalation digests; 0 = flush immediately
+FM_ESCALATE_BATCH_SECS=90          # buffer window for batched escalation digests (180 under mode=lean); 0 = flush immediately
 FM_MAX_DEFER_SECS=300              # max buffered escalation age before retry plus wedge alarm; 0 disables
+FM_OUTBOX_HUNG_TURN_SECS=3600      # Claude/Codex: max outbox digest age behind a still-busy turn before the wedge alarm
 FM_WEDGE_ALARM_CHANNEL=            # override config/wedge-alarm with one active-alert directive for the wedge alarm; off|auto|osascript|herdr|command:<cmd>; absent = auto (macOS -> an OS notification)
 FM_WEDGE_ALARM_EXEC=              # notifier seam: route every channel (osascript, herdr, command:) through this command as `<cmd> <channel> <summary>`; "discard" fires nothing; unset in production; the daemon defaults it to "discard" when sourced so no test posts a real notification (docs/wedge-alarm.md)
 FM_WEDGE_ALARM_TIMEOUT_SECS=10    # maximum seconds for each osascript, herdr, override, or command: notifier before its watchdog terminates it and continues to the next channel; invalid or zero values use 10

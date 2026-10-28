@@ -33,6 +33,8 @@ install_runner() {  # <case-dir>
   # store owner, and the backlog reader with its tasks-axi probe.
   cp "$ROOT/bin/fm-afk-contract.sh" "$dir/bin/"
   cp "$ROOT/bin/fm-branch-outcome.sh" "$dir/bin/"
+  # The daemon's escalation outbox owner (digests a wake path never delivered).
+  cp "$ROOT/bin/fm-escalation-outbox-lib.sh" "$dir/bin/"
   cp "$ROOT/bin/fm-tasks-axi-lib.sh" "$dir/bin/"
   cp "$ROOT/bin/fm-backlog-transition-lib.sh" "$dir/bin/"
   # The merge-notification marker reader behind the brief's landed section.
@@ -118,6 +120,8 @@ test_return_gate_owns_remediation_and_reports_catchup_to_bearings() {
   printf 'repair-task.status: blocked synthetic dependency\n' > "$dir/home/state/.subsuper-escalations"
   printf 'fm away-mode inject WEDGED: 4555s undelivered\n' > "$dir/home/state/.subsuper-inject-wedged"
   printf 'unknown wake: frobnicate: handled\n' > "$dir/home/state/.subsuper-unknown-acked"
+  mkdir -p "$dir/home/state/.subsuper-outbox"
+  printf 'Supervisor escalate (1 event(s)): pyr.status: needs-decision merge PR 58\n' > "$dir/home/state/.subsuper-outbox/1784074000.1.0.msg"
   {
     printf '1784074271\t2\tsignal\trepair-task.status\tsignal: synthetic status\n'
     printf 'wake annotation: latest wake-EVENT observed at drain, not current state: repair-task.status: blocked synthetic dependency\n'
@@ -136,6 +140,8 @@ test_return_gate_owns_remediation_and_reports_catchup_to_bearings() {
     || fail "the separate drain annotation was not retained as away-return evidence"
   grep -F $'evidence\twedge\tfm away-mode inject WEDGED: 4555s undelivered' "$gate" >/dev/null || fail "wedge evidence was not retained in the durable gate"
   grep -F $'evidence\tescalation\trepair-task.status: blocked synthetic dependency' "$gate" >/dev/null || fail "buffered escalation evidence was not retained in the durable gate"
+  grep -F $'evidence\tescalation\tundelivered: Supervisor escalate (1 event(s)): pyr.status: needs-decision merge PR 58' "$gate" >/dev/null \
+    || fail "an outbox digest the wake path never delivered was not retained in the durable gate"
   [ "$(wc -l < "$dir/home/stop.log" | tr -d ' ')" -eq 1 ] || fail "return begin did not stop away mode exactly once"
   [ -s "$dir/home/state/.fake-drain" ] || fail "blocked return acknowledged its emitted wake before handling completed"
   [ ! -e "$dir/home/state/.fake-drain-acks" ] || fail "blocked return crossed the post-handling acknowledgement boundary"
@@ -186,7 +192,7 @@ test_return_gate_owns_remediation_and_reports_catchup_to_bearings() {
   wake_count=$(grep -c $'^evidence\twake\t1784074271' "$gate" || true)
   [ "$wake_count" -eq 1 ] || fail "repeated begin duplicated retained wake evidence ($wake_count copies)"
   [ "$(grep -c $'^evidence\twedge\t' "$gate" || true)" -eq 1 ] || fail "repeated begin duplicated retained wedge evidence"
-  [ "$(grep -c $'^evidence\tescalation\t' "$gate" || true)" -eq 1 ] || fail "repeated begin duplicated retained escalation evidence"
+  [ "$(grep -c $'^evidence\tescalation\t' "$gate" || true)" -eq 2 ] || fail "repeated begin duplicated retained escalation evidence"
 
   printf 'resolved [key=synthetic-dependency]: refreshed the synthetic token and resumed the task\n' >> "$dir/home/state/repair-task.status"
   out=$(run_return "$dir" check) || fail "resolved blocker did not clear return catch-up: $out"
@@ -198,6 +204,7 @@ test_return_gate_owns_remediation_and_reports_catchup_to_bearings() {
   [ ! -e "$dir/home/state/.subsuper-escalations" ] || fail "successful check left delivered escalation state behind"
   [ ! -e "$dir/home/state/.subsuper-inject-wedged" ] || fail "successful check left the wedge marker behind"
   [ ! -e "$dir/home/state/.subsuper-unknown-acked" ] || fail "successful check left the away session's unknown-wake acknowledgements behind"
+  [ -z "$(find "$dir/home/state/.subsuper-outbox" -maxdepth 1 -name '*.msg*')" ] || fail "successful check left a presented outbox digest behind"
   [ -s "$dir/home/state/.fake-drain" ] || fail "successful return consumed its wake before handling completed"
   [ ! -e "$dir/home/state/.fake-drain-acks" ] || fail "successful return acknowledged its wake inside evidence publication"
   assert_contains "$out" 'WAKE_ACK_REQUIRED: after handling completes' "successful return did not hand acknowledgement to the handling turn"

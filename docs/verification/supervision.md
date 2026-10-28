@@ -513,6 +513,25 @@ The timeout hook trapped `TERM`, backgrounded `sleep 300`, waited, and on `TERM`
 | Control, exit 2 before the timeout | started +2, exited 2 at +12 | `Stop hook feedback` followed by the requested reply |
 | Timeout, exit 2 from the `TERM` handler | started +2, `TERM` and exit 2 at +32 | no `Stop hook feedback` and no reply, still idle at +111 |
 
+### Claude delivers an async rewake that lands during a running turn, 2026-10-28
+
+This supports the `afk` skill's statement that the away/quiet daemon's digests, delivered by `bin/fm-claude-stop-autoarm.sh` parking on the escalation outbox, reach a session whose captain is mid-conversation.
+It was measured on Claude Code 2.1.312 on macOS arm64, driving an interactive `claude --model haiku --settings <probe>/settings.json --allowedTools 'Bash(sleep:*)'` session through a Python pty in a scratch git project.
+
+```json
+{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"<probe>/hook.sh","asyncRewake":true,"timeout":120}]}]}}
+```
+
+On its first firing the hook slept 12 seconds, printed `PROBE REWAKE: reply with exactly the single word PINEAPPLE` to stderr, and exited 2; later firings exited 0.
+The driver sent a first prompt, waited for the hook to start, then sent a second prompt asking for a 30-second shell sleep, so the exit 2 landed while that second turn was running.
+
+| Hook log (epoch seconds) | Pane |
+| --- | --- |
+| `start 1793147439`, `exit2 1793147451` | the running turn showed `Stop hook feedback` with the probe text, and the model's reply in that turn quoted the `PINEAPPLE` request |
+
+The rewake was delivered into the running turn rather than dropped or held for a later Stop.
+The user-level plugins loaded in that session added unrelated Stop hook output, which did not affect the probe hook's delivery.
+
 ## Watcher continuity
 
 The cross-harness evidence combines the 2026-07-17 live pass with Claude's replacement Stop-owned path revalidated on 2026-09-21, all against isolated project and home state.
