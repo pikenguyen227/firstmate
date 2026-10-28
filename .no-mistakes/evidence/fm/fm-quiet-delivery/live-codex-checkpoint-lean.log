@@ -1,0 +1,10 @@
+away
+10:18:47 checkpoint start
+Supervisor escalate (1 event(s)): labG.status: failed: lab codex worker: CI red on PR https://github.com/example/playerium/pull/140 (lab scenario G) (pre-read; re-arm not needed — watcher daemon-managed)
+rc= elapsed=92s at 10:20:19
+[2026-10-28T10:18:31+0700] daemon starting (pid 83961); target=fm-lab-quietdeliv-44476-769:w1:p1; target_source=FM_SUPERVISOR_TARGET; backend=herdr; backend_source=FM_SUPERVISOR_BACKEND; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=checkpoint; batch=180s
+[2026-10-28T10:19:39+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.bVQGAt/state/labG.status
+[2026-10-28T10:19:42+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.bVQGAt/state/labG.status -> labG.status: failed: lab codex worker: CI red on PR https://github.com/example/playerium/pull/140 (lab scenario G)
+[2026-10-28T10:20:18+0700] outbox: 1 event(s) handed to the checkpoint wake path
+[2026-10-28T10:20:18+0700] inject recovered: max-defer flush succeeded after 36s undelivered
+nowedge

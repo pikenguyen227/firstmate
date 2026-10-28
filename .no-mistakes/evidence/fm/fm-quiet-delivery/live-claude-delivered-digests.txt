@@ -1,0 +1,5 @@
+Supervisor escalate (1 event(s)): labA.status: needs-decision: merge PR https://github.com/example/playerium/pull/58? (lab scenario A) (pre-read; re-arm not needed — watcher daemon-managed)
+Supervisor escalate (1 event(s)): labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2) (pre-read; re-arm not needed — watcher daemon-managed)
+Supervisor escalate (1 event(s)): labC1.status: done: PR https://github.com/example/playerium/pull/101 ready for review (lab scenario C1) (pre-read; re-arm not needed — watcher daemon-managed)
+Supervisor escalate (1 event(s)): labD1.status: failed: lab scenario D1 worker crashed: exit 137 in integration tests (pre-read; re-arm not needed — watcher daemon-managed)
+Supervisor escalate (1 event(s)): labD2.status: needs-decision: no-mistakes ask-user: accept the schema migration finding F7? (lab scenario D2) (pre-read; re-arm not needed — watcher daemon-managed) [delivered 218s after it was buffered]

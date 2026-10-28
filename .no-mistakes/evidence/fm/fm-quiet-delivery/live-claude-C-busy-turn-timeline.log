@@ -1,0 +1,126 @@
+09:03:32 parker before: 14648 1793152921 79655224
+09:03:33 prompt sent
+09:03:38 C1 status written
+09:03:42 outbox=[] nowedge parker=14648 busyhint=1
+09:03:45 outbox=[] nowedge parker=14648 busyhint=1
+09:03:48 outbox=[] nowedge parker=14648 busyhint=1
+09:03:53 outbox=[] nowedge parker=14648 busyhint=1
+09:03:57 outbox=[] nowedge parker=14648 busyhint=1
+09:04:00 outbox=[] nowedge parker=14648 busyhint=1
+09:04:03 outbox=[] nowedge parker=14648 busyhint=1
+09:04:07 outbox=[] nowedge parker=14648 busyhint=1
+09:04:10 outbox=[] nowedge parker=14648 busyhint=1
+09:04:13 outbox=[] nowedge parker=14648 busyhint=1
+09:04:16 outbox=[] nowedge parker=14648 busyhint=1
+09:04:20 outbox=[] nowedge parker=14648 busyhint=1
+09:04:23 outbox=[] nowedge parker=14648 busyhint=1
+09:04:26 outbox=[] nowedge parker=14648 busyhint=1
+09:04:29 outbox=[] nowedge parker=14648 busyhint=1
+09:04:33 outbox=[] nowedge parker=14648 busyhint=1
+09:04:36 outbox=[] nowedge parker=14648 busyhint=1
+09:04:39 outbox=[] nowedge parker=14648 busyhint=1
+09:04:44 outbox=[] nowedge parker=14648 busyhint=1
+09:04:47 outbox=[] nowedge parker=14648 busyhint=1
+09:04:51 outbox=[] nowedge parker=14648 busyhint=1
+09:04:54 outbox=[] nowedge parker=14648 busyhint=1
+09:04:57 outbox=[] nowedge parker=14648 busyhint=1
+09:05:00 outbox=[1793153100.75287.0.msg ] nowedge parker=14648 busyhint=1
+09:05:04 outbox=[] nowedge parker=14648 busyhint=1
+09:05:07 outbox=[] nowedge parker=14648 busyhint=1
+09:05:11 outbox=[] nowedge parker=14648 busyhint=1
+09:05:14 outbox=[] nowedge parker=14648 busyhint=1
+09:05:17 outbox=[] nowedge parker=14648 busyhint=1
+09:05:20 outbox=[] nowedge parker=14648 busyhint=1
+09:05:24 outbox=[] nowedge parker=14648 busyhint=1
+09:05:27 outbox=[] nowedge parker=14648 busyhint=1
+09:05:31 outbox=[] nowedge parker=14648 busyhint=1
+09:05:34 outbox=[] nowedge parker=14648 busyhint=1
+09:05:38 outbox=[] nowedge parker=14648 busyhint=1
+09:05:42 outbox=[] nowedge parker=14648 busyhint=1
+09:05:45 outbox=[] nowedge parker=14648 busyhint=1
+09:05:48 outbox=[] nowedge parker=14648 busyhint=1
+09:05:52 outbox=[] nowedge parker=14648 busyhint=1
+09:05:55 outbox=[] nowedge parker=14648 busyhint=1
+09:05:58 outbox=[] nowedge parker=14648 busyhint=1
+09:06:02 outbox=[] nowedge parker=14648 busyhint=1
+09:06:05 outbox=[] nowedge parker=14648 busyhint=1
+09:06:08 outbox=[] nowedge parker=14648 busyhint=1
+09:06:12 outbox=[] nowedge parker=14648 busyhint=1
+09:06:15 outbox=[] nowedge parker=14648 busyhint=1
+09:06:18 outbox=[] nowedge parker=14648 busyhint=1
+09:06:22 outbox=[] nowedge parker=14648 busyhint=1
+09:06:25 outbox=[] nowedge parker=14648 busyhint=1
+09:06:29 outbox=[] nowedge parker=14648 busyhint=1
+09:06:32 outbox=[] nowedge parker=14648 busyhint=1
+09:06:35 outbox=[] nowedge parker=14648 busyhint=1
+09:06:39 outbox=[] nowedge parker=14648 busyhint=1
+09:06:42 outbox=[] nowedge parker=14648 busyhint=1
+09:06:45 outbox=[] nowedge parker=14648 busyhint=1
+09:06:48 outbox=[] nowedge parker=14648 busyhint=1
+09:06:52 outbox=[] nowedge parker=14648 busyhint=1
+09:06:55 outbox=[] nowedge parker=14648 busyhint=1
+09:06:58 outbox=[] nowedge parker=14648 busyhint=1
+09:07:02 outbox=[] nowedge parker=14648 busyhint=1
+09:07:05 outbox=[] nowedge parker=14648 busyhint=1
+09:07:08 outbox=[] nowedge parker=14648 busyhint=1
+09:07:12 outbox=[] nowedge parker=14648 busyhint=1
+09:07:17 outbox=[] nowedge parker=14648 busyhint=1
+09:07:21 outbox=[] nowedge parker=14648 busyhint=1
+09:07:25 outbox=[] nowedge parker=14648 busyhint=1
+09:07:28 outbox=[] nowedge parker=14648 busyhint=1
+09:07:31 outbox=[] nowedge parker=14648 busyhint=0
+09:07:35 outbox=[] nowedge parker=14648 busyhint=0
+09:07:38 outbox=[] nowedge parker=14648 busyhint=0
+09:07:41 outbox=[] nowedge parker=35571 busyhint=0
+09:07:45 outbox=[] nowedge parker=35571 busyhint=0
+09:07:50 outbox=[] nowedge parker=35571 busyhint=0
+09:07:54 outbox=[] nowedge parker=35571 busyhint=0
+09:07:59 outbox=[] nowedge parker=35571 busyhint=0
+09:08:04 outbox=[] nowedge parker=35571 busyhint=0
+09:08:08 outbox=[] nowedge parker=35571 busyhint=0
+09:08:13 outbox=[] nowedge parker=35571 busyhint=0
+09:08:18 outbox=[] nowedge parker=35571 busyhint=0
+09:08:22 outbox=[] nowedge parker=35571 busyhint=0
+09:08:27 outbox=[] nowedge parker=35571 busyhint=0
+09:08:32 outbox=[] nowedge parker=35571 busyhint=0
+09:08:36 outbox=[] nowedge parker=35571 busyhint=0
+09:08:41 outbox=[] nowedge parker=35571 busyhint=0
+09:08:46 outbox=[] nowedge parker=35571 busyhint=0
+09:08:51 outbox=[] nowedge parker=35571 busyhint=0
+09:08:57 outbox=[] nowedge parker=35571 busyhint=0
+09:09:02 outbox=[] nowedge parker=35571 busyhint=0
+09:09:06 outbox=[] nowedge parker=35571 busyhint=0
+09:09:10 outbox=[] nowedge parker=35571 busyhint=0
+09:09:14 outbox=[] nowedge parker=35571 busyhint=0
+09:09:19 outbox=[] nowedge parker=35571 busyhint=0
+09:09:23 outbox=[] nowedge parker=35571 busyhint=0
+09:09:29 outbox=[] nowedge parker=35571 busyhint=0
+09:09:33 outbox=[] nowedge parker=35571 busyhint=0
+09:09:37 outbox=[] nowedge parker=35571 busyhint=0
+09:09:42 outbox=[] nowedge parker=35571 busyhint=0
+09:09:46 outbox=[] nowedge parker=35571 busyhint=0
+09:09:51 outbox=[] nowedge parker=35571 busyhint=0
+09:09:56 outbox=[] nowedge parker=35571 busyhint=0
+09:10:00 outbox=[] nowedge parker=35571 busyhint=0
+09:10:04 outbox=[] nowedge parker=35571 busyhint=0
+09:10:09 outbox=[] nowedge parker=35571 busyhint=0
+09:10:13 outbox=[] nowedge parker=35571 busyhint=0
+09:10:18 outbox=[] nowedge parker=35571 busyhint=0
+09:10:22 outbox=[] nowedge parker=35571 busyhint=0
+09:10:26 outbox=[] nowedge parker=35571 busyhint=0
+09:10:31 outbox=[] nowedge parker=35571 busyhint=0
+09:10:35 outbox=[] nowedge parker=35571 busyhint=0
+09:10:40 outbox=[] nowedge parker=35571 busyhint=0
+[2026-10-28T08:57:26+0700] daemon starting (pid 75287); target=fm-lab-quietdeliv-44476-769:w1:p1; target_source=HERDR_ENV(HERDR_PANE_ID); backend=herdr; backend_source=HERDR_ENV; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=hook; batch=10s
+[2026-10-28T08:58:19+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status
+[2026-10-28T08:58:26+0700] escalate: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status -> labA.status: needs-decision: merge PR https://github.com/example/playerium/pull/58? (lab scenario A)
+[2026-10-28T08:58:45+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:01:13+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status
+[2026-10-28T09:01:22+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status -> labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2)
+[2026-10-28T09:01:23+0700] self-handle: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status -> signal already escalated (catch-all scan): labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2)
+[2026-10-28T09:01:42+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:04:33+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labC1.status
+[2026-10-28T09:04:41+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labC1.status -> labC1.status: done: PR https://github.com/example/playerium/pull/101 ready for review (lab scenario C1)
+[2026-10-28T09:05:00+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:07:34+0700] wake: heartbeat
+[2026-10-28T09:07:42+0700] wake force-self (FM_INJECT_SKIP): heartbeat

@@ -1,0 +1,121 @@
+09:11:05 parker before: 35571 1793153260 1605224565
+09:11:06 prompt sent
+09:11:11 D1 status written
+09:11:15 outbox=[] nowedge parker=35571 build2done=1
+09:11:18 outbox=[] nowedge parker=35571 build2done=1
+09:11:21 outbox=[] nowedge parker=35571 build2done=1
+09:11:24 outbox=[] nowedge parker=35571 build2done=1
+09:11:28 outbox=[] nowedge parker=35571 build2done=1
+09:11:31 outbox=[] nowedge parker=35571 build2done=1
+09:11:35 outbox=[] nowedge parker=35571 build2done=1
+09:11:38 outbox=[] nowedge parker=35571 build2done=1
+09:11:41 outbox=[] nowedge parker=35571 build2done=1
+09:11:44 outbox=[] nowedge parker=35571 build2done=1
+09:11:48 outbox=[] nowedge parker=35571 build2done=1
+09:11:51 outbox=[] nowedge parker=35571 build2done=1
+09:11:54 outbox=[] nowedge parker=35571 build2done=1
+09:11:58 outbox=[] nowedge parker=35571 build2done=1
+09:12:01 outbox=[] nowedge parker=35571 build2done=1
+09:12:04 outbox=[] nowedge parker=35571 build2done=1
+09:12:07 outbox=[] nowedge parker=35571 build2done=1
+09:12:11 outbox=[] nowedge parker=35571 build2done=1
+09:12:14 outbox=[] nowedge parker=35571 build2done=1
+09:12:17 outbox=[] nowedge parker=35571 build2done=1
+09:12:21 outbox=[] nowedge parker=35571 build2done=1
+09:12:24 outbox=[] nowedge parker=35571 build2done=1
+09:12:28 outbox=[] nowedge parker=35571 build2done=1
+09:12:31 outbox=[] nowedge parker=35571 build2done=1
+09:12:35 outbox=[] nowedge parker=35571 build2done=1
+09:12:38 outbox=[] nowedge parker=35571 build2done=1
+09:12:38 D2 status written after D1 digest was claimed
+09:12:38 turn ended and outbox empty
+[2026-10-28T09:12:05+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD1.status
+[2026-10-28T09:12:14+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD1.status -> labD1.status: failed: lab scenario D1 worker crashed: exit 137 in integration tests
+[2026-10-28T09:12:35+0700] outbox: 1 event(s) handed to the hook wake path
+09:12:50 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:12:54 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:12:57 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:00 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:03 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:06 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:09 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:12 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:16 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:19 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:22 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:25 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:28 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:32 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:35 outbox=[] nowedge parker=35571 paneD2mentions=1
+09:13:38 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:13:41 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:13:44 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:13:47 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:13:50 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:13:53 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:13:57 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:00 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:03 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:06 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:10 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:14 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:17 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:20 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:23 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:27 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:30 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:33 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:36 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:39 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:42 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:45 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:49 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:52 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:55 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:14:59 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:02 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:05 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:08 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:12 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:15 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:18 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:21 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:24 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:27 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:30 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:34 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:37 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:40 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:43 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:46 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:49 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:53 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:15:57 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:01 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:04 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:07 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:10 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:13 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:17 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:20 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:23 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:26 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:29 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:32 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:36 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:39 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:42 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:45 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:48 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:52 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:55 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:16:58 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:17:01 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:17:04 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:17:08 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:17:11 outbox=[1793153615.75287.0.msg ] nowedge parker=35571 paneD2mentions=1
+09:17:14 outbox=[] nowedge parker=12407 paneD2mentions=3
+09:17:14 D2 delivered
+[2026-10-28T09:13:13+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD2.status
+[2026-10-28T09:13:18+0700] escalate: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD2.status -> labD2.status: needs-decision: no-mistakes ask-user: accept the schema migration finding F7? (lab scenario D2)
+[2026-10-28T09:13:35+0700] outbox: 1 event(s) handed to the hook wake path

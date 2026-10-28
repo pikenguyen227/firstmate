@@ -1,0 +1,20 @@
+[2026-10-28T08:57:26+0700] daemon starting (pid 75287); target=fm-lab-quietdeliv-44476-769:w1:p1; target_source=HERDR_ENV(HERDR_PANE_ID); backend=herdr; backend_source=HERDR_ENV; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=hook; batch=10s
+[2026-10-28T08:58:19+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status
+[2026-10-28T08:58:26+0700] escalate: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status -> labA.status: needs-decision: merge PR https://github.com/example/playerium/pull/58? (lab scenario A)
+[2026-10-28T08:58:45+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:01:13+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status
+[2026-10-28T09:01:22+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status -> labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2)
+[2026-10-28T09:01:23+0700] self-handle: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status -> signal already escalated (catch-all scan): labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2)
+[2026-10-28T09:01:42+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:04:33+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labC1.status
+[2026-10-28T09:04:41+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labC1.status -> labC1.status: done: PR https://github.com/example/playerium/pull/101 ready for review (lab scenario C1)
+[2026-10-28T09:05:00+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:07:34+0700] wake: heartbeat
+[2026-10-28T09:07:42+0700] wake force-self (FM_INJECT_SKIP): heartbeat
+[2026-10-28T09:12:05+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD1.status
+[2026-10-28T09:12:14+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD1.status -> labD1.status: failed: lab scenario D1 worker crashed: exit 137 in integration tests
+[2026-10-28T09:12:35+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:13:13+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD2.status
+[2026-10-28T09:13:18+0700] escalate: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labD2.status -> labD2.status: needs-decision: no-mistakes ask-user: accept the schema migration finding F7? (lab scenario D2)
+[2026-10-28T09:13:35+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:17:47+0700] wake: heartbeat

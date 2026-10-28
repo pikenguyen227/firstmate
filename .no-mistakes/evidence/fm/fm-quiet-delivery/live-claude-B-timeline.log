@@ -1,0 +1,32 @@
+09:00:17 prompt sent (100s busy turn)
+09:00:23 B1 status written
+09:00:31 outbox=[] nowedge
+09:00:37 outbox=[] nowedge
+09:00:44 outbox=[] nowedge
+09:00:50 outbox=[] nowedge
+09:00:57 outbox=[] nowedge
+09:01:04 outbox=[] nowedge
+09:01:04 B2 status written
+09:01:10 outbox=[] nowedge
+09:01:17 outbox=[] nowedge
+09:01:24 outbox=[] nowedge
+09:01:31 outbox=[] nowedge
+09:01:37 outbox=[] nowedge
+09:01:44 outbox=[] nowedge
+09:01:51 outbox=[] nowedge
+09:01:58 outbox=[] nowedge
+09:02:05 outbox=[] nowedge
+09:02:11 outbox=[] nowedge
+09:02:19 outbox=[] nowedge
+09:02:25 outbox=[] nowedge
+09:02:31 outbox=[] nowedge
+09:02:38 outbox=[] nowedge
+09:02:38 end of busy window poll
+[2026-10-28T08:57:26+0700] daemon starting (pid 75287); target=fm-lab-quietdeliv-44476-769:w1:p1; target_source=HERDR_ENV(HERDR_PANE_ID); backend=herdr; backend_source=HERDR_ENV; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=hook; batch=10s
+[2026-10-28T08:58:19+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status
+[2026-10-28T08:58:26+0700] escalate: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status -> labA.status: needs-decision: merge PR https://github.com/example/playerium/pull/58? (lab scenario A)
+[2026-10-28T08:58:45+0700] outbox: 1 event(s) handed to the hook wake path
+[2026-10-28T09:01:13+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status
+[2026-10-28T09:01:22+0700] escalate: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status -> labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2)
+[2026-10-28T09:01:23+0700] self-handle: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB1.status /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labB2.status -> signal already escalated (catch-all scan): labB1.status: done: PR https://github.com/example/playerium/pull/91 ready for review (lab scenario B1) | labB2.status: needs-decision: credentials: rotate the PLAYERIUM_DEPLOY_TOKEN? (lab scenario B2)
+[2026-10-28T09:01:42+0700] outbox: 1 event(s) handed to the hook wake path

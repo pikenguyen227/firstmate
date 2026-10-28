@@ -1,0 +1,4 @@
+[2026-10-28T08:57:26+0700] daemon starting (pid 75287); target=fm-lab-quietdeliv-44476-769:w1:p1; target_source=HERDR_ENV(HERDR_PANE_ID); backend=herdr; backend_source=HERDR_ENV; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=hook; batch=10s
+[2026-10-28T08:58:19+0700] wake: signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status
+[2026-10-28T08:58:26+0700] escalate: needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.rVKxDq/state/labA.status -> labA.status: needs-decision: merge PR https://github.com/example/playerium/pull/58? (lab scenario A)
+[2026-10-28T08:58:45+0700] outbox: 1 event(s) handed to the hook wake path

@@ -1,0 +1,29 @@
+not ok - resolved blocker did not clear return catch-up: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-afk-return-tests.TBo13a/ordering/bin/fm-afk-return.sh: line 452: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-afk-return-tests.TBo13a/ordering/bin/fm-supervision-engine-lib.sh: No such file or directory
+=== Return brief (away 2026-10-28T01:47:51Z -> 2026-10-28T01:47:55Z, 4s) ===
+Supervisor health:
+  - GAP: the away daemon was not running at return (the away flag stood with no live daemon)
+  - GAP: the watcher beat was 999999s old at return (grace 300s)
+  - delivery wedged: fm away-mode inject WEDGED: 4555s undelivered
+Your instructions:
+  (no away-posture record for this window; legacy away flag only)
+Waiting on you:
+  held listing unavailable: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-afk-return-tests.TBo13a/ordering/home/data/backlog.md: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-afk-return-tests.TBo13a/ordering/bin/fm-backlog-transition-lib.sh: line 338: exec: tasks-axi: not found; catch-up stays gated
+Tried and failed, or could not be fixed:
+  (nothing)
+Landed, cleanup due:
+  (nothing)
+Handled while away:
+  0 outcome(s) handled by the away session (0 routine, 0 escalated above)
+  (no routine outcomes recorded in the store for this window)
+Cost: 0 supervision outcome(s) recorded (0 routine, 0 captain); 1 task(s) live at return.
+fm-afk-return: catch-up must finish before the captain request
+catch-up health: GAP: the away daemon was not running at return (the away flag stood with no live daemon)
+catch-up health: GAP: the watcher beat was 999999s old at return (grace 300s)
+catch-up health: delivery wedged: fm away-mode inject WEDGED: 4555s undelivered
+catch-up wake: 1784074271 2 signal repair-task.status signal: synthetic status
+catch-up wake: wake annotation: latest wake-EVENT observed at drain, not current state: repair-task.status: blocked synthetic dependency
+catch-up wedge: fm away-mode inject WEDGED: 4555s undelivered
+catch-up escalation: repair-task.status: blocked synthetic dependency
+catch-up escalation: undelivered: Supervisor escalate (1 event(s)): pyr.status: needs-decision merge PR 58 
+catch-up lifecycle: held set unreadable: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-afk-return-tests.TBo13a/ordering/home/data/backlog.md; catch-up stays gated
+fm-afk-return: handle each blocker now, or close it with resolved [key=...] and append a durable reclassification reason, then run bin/fm-afk-return.sh check
