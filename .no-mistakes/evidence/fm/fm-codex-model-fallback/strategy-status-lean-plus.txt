@@ -1,0 +1,18 @@
+strategy: lean (providers: codex)
+  Manual starts and retries with unchanged validation; Sol on Codex, Opus on Claude, one coordinator by default, quiet while present.
+plans: codex=plus
+second mates: off by default; create one only when the captain asks
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+  automatic fresh starts: false
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+drift:
+  none
+recorded autonomy: lean
+fresh-start check: disabled by selected policy
+not applied by this tool:
+  primary coordinator launch flags and no-mistakes agent_config: set by hand, see bin/fm-strategy.sh show lean
+  /quiet is requested; the coordinator applies it through strategy-autonomy

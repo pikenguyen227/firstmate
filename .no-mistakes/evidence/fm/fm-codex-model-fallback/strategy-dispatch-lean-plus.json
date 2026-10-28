@@ -1,0 +1,87 @@
+{
+  "rules": [
+    {
+      "when": "The instructions name the exact Codex model this worker must run on, for example 'run this on gpt-6-astra'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
+      "use": {
+        "harness": "codex",
+        "model": "gpt-6-sol",
+        "effort": "high"
+      },
+      "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this gpt-6-sol pin.",
+      "strategy": "codex-model-requested"
+    },
+    {
+      "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
+      "use": {
+        "harness": "codex",
+        "model": "gpt-6-sol",
+        "effort": "medium"
+      },
+      "why": "Honor the requested worker. A requested worker skips tier routing, so it gets this plan's pin: gpt-6-sol at medium effort on codex.",
+      "strategy": "codex-requested"
+    },
+    {
+      "when": "Light: a small, fully specified job where the instructions already say exactly what to produce and nothing is left to investigate or design, such as a smoke test or toy example, a typo or documentation-only edit, a config value or version bump, starting or running something locally, or one small fix whose exact change is given. Not for changes that span several source files or need a design decision.",
+      "use": [
+        {
+          "harness": "codex",
+          "model": "gpt-6-luna",
+          "effort": "medium",
+          "floor": {
+            "scope": "all_models",
+            "min_percent": 30
+          }
+        }
+      ],
+      "why": "Tier 1. Mechanical work; the cheapest capable model. It routes to gpt-6-luna at medium effort on codex while at least 30% of its all_models quota remains.",
+      "select": "ladder",
+      "strategy": "light"
+    },
+    {
+      "when": "Standard: everyday implementation whose cause or design the instructions already settle, such as a bug fix with a stated cause, a small feature with a described approach, added tests, or replaying existing commits unchanged onto a new base, touching a few files, where the worker mainly writes, tests, and ships code. Not for work that asks the worker to find or confirm an unknown cause, measure, compare options, reconcile conflicting changes, or choose a design, and not for changes that delete data, migrate existing state, or touch concurrency or security.",
+      "use": [
+        {
+          "harness": "codex",
+          "model": "gpt-6.1-terra",
+          "effort": "low",
+          "floor": {
+            "scope": "all_models",
+            "min_percent": 60
+          }
+        },
+        {
+          "harness": "codex",
+          "model": "gpt-6-luna",
+          "effort": "high",
+          "floor": {
+            "scope": "all_models",
+            "min_percent": 20
+          }
+        }
+      ],
+      "why": "Tier 2. Most everyday work. It routes to gpt-6.1-terra at low effort on codex while at least 60% of its all_models quota remains, then gpt-6-luna at high effort on codex while at least 20% of its all_models quota remains. Within one provider the first route whose floor still holds is used, so a falling quota steps down to the cheaper route before the week runs out.",
+      "select": "ladder",
+      "strategy": "standard"
+    },
+    {
+      "when": "Hard: an open-ended or high-stakes job where the worker must diagnose an unexplained or unconfirmed bug or measure to find a cause, investigate and write a report or recommendation, choose between designs the instructions leave open, reconcile conflicting changes, or build a feature with several separate parts or new components across many files or subsystems; also any change that deletes data, migrates existing state, or touches concurrency or security.",
+      "use": [
+        {
+          "harness": "codex",
+          "model": "gpt-6-sol",
+          "effort": "medium"
+        }
+      ],
+      "why": "Tier 3. Keep the provider's strongest model where mistakes are expensive; a step down only lowers its effort and the last route is never floored, so hard work never drops to a weaker model. It routes to gpt-6-sol at medium effort on codex.",
+      "select": "ladder",
+      "strategy": "hard"
+    }
+  ],
+  "default": [
+    {
+      "harness": "codex",
+      "model": "gpt-6.1-terra",
+      "effort": "low"
+    }
+  ]
+}

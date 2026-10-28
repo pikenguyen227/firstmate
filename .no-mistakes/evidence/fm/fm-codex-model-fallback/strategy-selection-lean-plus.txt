@@ -1,0 +1,5 @@
+# Token strategy for this home, written by bin/fm-strategy.sh; see docs/configuration.md "Token strategies".
+mode=lean
+providers=codex
+autonomy=lean
+plans=codex=plus

@@ -1,0 +1,26 @@
+strategy: full (providers: codex, declared)
+  Fully autonomous starts and fixes within existing safeguards; Opus coordinator, Astra for hard Codex work, second mates allowed.
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6-sol effort high
+    start with: codex -m gpt-6-sol -c model_reasoning_effort="high" -c project_doc_max_bytes=131072
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+  automatic fresh starts: true
+  automatic fleet reviews: true
+  one-tier model step-up after a worker failure: automatic
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: allowed; new ones launch as codex gpt-6-sol medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6-sol high
+  codex-requested: codex gpt-6-sol high
+  light: codex gpt-6-luna high
+  standard: codex gpt-6-sol medium
+  hard: codex gpt-6-astra medium
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6-sol
+      effort: high
+while the captain is present: normal supervision
+unchanged by every mode and plan: delivery mode, yolo and merge authority, ask-user authority, escalation, which captain-relevant events reach the coordinator, post-handling acknowledgement, permissions, hook trust, AGENTS.md boundaries, native context compaction, and claude-mem
