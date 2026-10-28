@@ -11,9 +11,9 @@
 #      single-profile requested-model rule per declared provider and none for a
 #      missing one, and pins new second mates on an available provider.
 #   2. Mode contents: full routes hard Codex work to Astra at medium, balanced
-#      and lean move it to 6.1 Sol high, light Codex work runs Luna high, lean
+#      and lean move it to Sol high, light Codex work runs Luna high, lean
 #      turns second mates off and requests /quiet, and every Codex coordinator
-#      runs 6.1 Sol at high effort.
+#      runs Sol at high effort.
 #   3. set on an older unmarked file pins the requested-worker rules, adds the
 #      requested-model rules, keeps custom rules, custom top-level keys, and
 #      extra keys on managed rules, and is idempotent.
@@ -113,8 +113,8 @@ test_every_mode_and_shape_is_explicit() {
       case "$shape" in
         codex)
           assert_not_contains "$(profiles "$home")" "claude-requested" "$mode: a Codex-only home keeps no Claude-requested rule"
-          expected_mate="codex gpt-6.1-sol medium"
-          expected_named="codex-model-requested codex gpt-6.1-sol high"
+          expected_mate="codex gpt-6-sol medium"
+          expected_named="codex-model-requested codex gpt-6-sol high"
           ;;
         claude)
           assert_not_contains "$(profiles "$home")" "codex-requested" "$mode: a Claude-only home keeps no Codex-requested rule"
@@ -123,7 +123,7 @@ test_every_mode_and_shape_is_explicit() {
           ;;
         *)
           expected_mate="claude claude-opus-5-5 medium"
-          expected_named="claude-model-requested claude claude-opus-5-5 high"$'\n'"codex-model-requested codex gpt-6.1-sol high"
+          expected_named="claude-model-requested claude claude-opus-5-5 high"$'\n'"codex-model-requested codex gpt-6-sol high"
           ;;
       esac
       assert_equals "$expected_named" "$(profiles "$home" | grep -E '^(claude|codex)-model-requested ')" \
@@ -141,25 +141,25 @@ test_mode_contents() {
   out=$(strat "$home" show full --providers claude,codex)
   assert_contains "$out" "hard: codex gpt-6-astra medium" "full routes hard Codex work to Astra at medium effort"
   assert_contains "$out" "light: claude claude-sonnet-5-5 low" "full keeps today's light Claude tier"
-  assert_contains "$out" "codex-requested: codex gpt-6.1-sol high" "a requested Codex worker is pinned to 6.1 Sol high"
+  assert_contains "$out" "codex-requested: codex gpt-6-sol high" "a requested Codex worker is pinned to Sol high"
   assert_contains "$out" "light: codex gpt-6-luna high" "light Codex work runs Luna at high effort"
   assert_contains "$out" "claude: claude-opus-5-5 effort high" "the Claude coordinator stays on Opus"
-  assert_contains "$out" "codex -m gpt-6.1-sol -c model_reasoning_effort=\"high\" -c project_doc_max_bytes=" \
-    "a Codex coordinator runs 6.1 Sol at high effort with the full contract loaded"
+  assert_contains "$out" "codex -m gpt-6-sol -c model_reasoning_effort=\"high\" -c project_doc_max_bytes=" \
+    "a Codex coordinator runs Sol at high effort with the full contract loaded"
   assert_contains "$out" "second mates: allowed; new ones launch as claude claude-opus-5-5 medium" "full allows second mates"
   assert_contains "$out" "normal supervision" "full keeps normal supervision"
   for mode in balanced lean; do
     out=$(strat "$home" show "$mode" --providers claude,codex)
-    assert_contains "$out" "hard: codex gpt-6.1-sol high" "$mode moves the hard Codex tier to 6.1 Sol high"
+    assert_contains "$out" "hard: codex gpt-6-sol high" "$mode moves the hard Codex tier to Sol high"
     assert_not_contains "$out" "gpt-6-astra" "$mode never routes to Astra"
     assert_contains "$out" "hard: claude claude-opus-5-5 high" "$mode keeps the hard Claude tier on Opus high"
     assert_contains "$out" "claude: claude-opus-5-5 effort high" "$mode keeps an Opus coordinator"
-    assert_contains "$out" "codex: gpt-6.1-sol effort high" "$mode runs a Codex coordinator on 6.1 Sol high"
+    assert_contains "$out" "codex: gpt-6-sol effort high" "$mode runs a Codex coordinator on Sol high"
     assert_not_contains "$out" "claude-sonnet-5-5 effort" "$mode never runs a Sonnet coordinator"
   done
   out=$(strat "$home" show lean --providers codex)
   assert_contains "$out" "light: codex gpt-6-luna high" "lean's light Codex tier is Luna high"
-  assert_contains "$out" "standard: codex gpt-6.1-sol medium" "lean's standard Codex tier is 6.1 Sol medium"
+  assert_contains "$out" "standard: codex gpt-6-sol medium" "lean's standard Codex tier is Sol medium"
   assert_not_contains "$out" "gpt-6.1-terra" "without a plan nothing routes to Terra"
   assert_contains "$out" "second mates: off by default" "lean turns second mates off"
   assert_contains "$out" "/quiet requested" "lean requests /quiet while present"
@@ -180,14 +180,14 @@ test_set_merges_legacy_file() {
   home=$(new_home legacy)
   write_legacy_dispatch "$home"
   out=$(strat "$home" set full --providers claude,codex --yes) || fail "set full failed: $out"
-  assert_contains "$out" '+        "model": "gpt-6.1-sol",' "the diff shows the new Codex pin"
+  assert_contains "$out" '+        "model": "gpt-6-sol",' "the diff shows the new Codex pin"
   assert_equals "kept by the captain" "$(jq -r '."$comment"' "$home/config/crew-dispatch.json")" "custom top-level key kept"
   assert_equals "captain" "$(jq -r '.rules[] | select(.strategy == "hard") | .approval' "$home/config/crew-dispatch.json")" \
     "an extra key on a managed rule is kept"
   assert_equals "Anything about the design system." "$(jq -r '.rules[-1].when' "$home/config/crew-dispatch.json")" \
     "the custom rule is kept after the managed rules"
   assert_equals 8 "$(jq '.rules | length' "$home/config/crew-dispatch.json")" "legacy rules are replaced, not duplicated"
-  assert_equals "codex gpt-6.1-sol high" \
+  assert_equals "codex gpt-6-sol high" \
     "$(jq -r '.rules[] | select(.strategy == "codex-requested") | .use | "\(.harness) \(.model) \(.effort)"' "$home/config/crew-dispatch.json")" \
     "the requested Codex rule is pinned"
   out=$(strat "$home" set full --yes)
@@ -328,7 +328,7 @@ SH
   assert_not_contains "$(cat "$home/request.json")" "exact Claude model" \
     "a Codex-only home offers the resolver no Claude-model rule to match"
   assert_contains "$out" "status: clear" "the brief resolves through a tier rule"
-  assert_contains "$out" "profile: --harness 'codex' --model 'gpt-6.1-sol' --effort 'high'" \
+  assert_contains "$out" "profile: --harness 'codex' --model 'gpt-6-sol' --effort 'high'" \
     "a Claude model named in a Codex-only home resolves to the hard Codex tier, not a requested-model rule"
   pass "a model from a missing provider matches no requested-model rule and falls to the tier rules"
 }
@@ -504,16 +504,16 @@ test_plan_profiles() {
   assert_equals "claude-opus-5-5 medium -" "$(plan_profile "$home" claude-requested claude)" "a requested Claude worker on Pro lean runs Opus medium"
   assert_equals "gpt-6-luna medium 30" "$(plan_profile "$home" light codex)" "Plus lean light work runs Luna medium above a 30% floor"
   assert_equals "gpt-6.1-terra low 60, gpt-6-luna high 20" "$(plan_profile "$home" standard codex)" "Plus lean standard work steps from Terra low to Luna high"
-  assert_equals "gpt-6.1-sol medium -" "$(plan_profile "$home" hard codex)" "Plus lean hard work runs 6.1 Sol medium"
-  assert_equals "gpt-6.1-sol medium -" "$(plan_profile "$home" codex-requested codex)" "a requested Codex worker on Plus lean runs 6.1 Sol medium"
+  assert_equals "gpt-6-sol medium -" "$(plan_profile "$home" hard codex)" "Plus lean hard work runs Sol medium"
+  assert_equals "gpt-6-sol medium -" "$(plan_profile "$home" codex-requested codex)" "a requested Codex worker on Plus lean runs Sol medium"
   assert_equals "claude claude-sonnet-5-5 medium" "$(grep -v '^#' "$home/config/secondmate-harness")" "Pro pins a created second mate to Sonnet medium"
   out=$(strat "$home" show)
   assert_contains "$out" "claude: claude-opus-5-5 effort medium" "the Pro coordinator runs Opus at medium"
-  assert_contains "$out" "codex: gpt-6.1-sol effort medium" "the Plus coordinator runs 6.1 Sol at medium"
+  assert_contains "$out" "codex: gpt-6-sol effort medium" "the Plus coordinator runs Sol at medium"
   assert_contains "$out" $'    claude:\n      model: claude-opus-5-5\n      effort: high' "Pro validation stays Opus high"
-  assert_contains "$out" $'    codex:\n      model: gpt-6.1-sol\n      effort: high' "Plus validation stays 6.1 Sol high"
+  assert_contains "$out" $'    codex:\n      model: gpt-6-sol\n      effort: high' "Plus validation stays Sol high"
   assert_contains "$out" "second mates: off by default" "Pro lean turns second mates off"
-  assert_contains "$out" "gpt-6.1-terra needs Codex CLI 0.159.0 or later; where it is unavailable, gpt-6.1-sol at low effort is the fallback" "a Terra route names its Codex CLI minimum and fallback"
+  assert_contains "$out" "gpt-6.1-terra needs Codex CLI 0.159.0 or later; choose an available model explicitly if an interactive session refuses it" "a Terra route names its Codex CLI minimum and manual recovery"
   assert_contains "$out" "the first whose floor holds is used" "show explains a ladder"
   assert_contains "$(jq -r '.rules[] | select(.strategy == "claude-model-requested") | .why' "$home/config/crew-dispatch.json")" \
     "bills usage credits" "the requested-model rule on Pro says a Fable request bills usage credits"
@@ -525,7 +525,7 @@ test_plan_profiles() {
   assert_equals "gpt-6.1-terra medium 50, gpt-6.1-terra low 20" "$(plan_profile "$home" standard codex)" "Plus balanced standard work steps from Terra medium to Terra low"
   assert_contains "$(strat "$home" show)" "second mates: off by default" "Pro balanced turns second mates off"
   out=$(strat "$home" show full)
-  assert_contains "$out" "standard: codex gpt-6.1-sol medium, floor 20%" "Plus full standard work stays on 6.1 Sol above the Plus floor"
+  assert_contains "$out" "standard: codex gpt-6-sol medium, floor 20%" "Plus full standard work stays on Sol above the Plus floor"
   assert_not_contains "$out" "gpt-6.1-terra" "Plus full never routes to Terra"
   assert_contains "$out" "light: claude claude-sonnet-5-5 low, floor 30%" "Pro full light work runs Sonnet low above the Pro floor"
   assert_not_contains "$out" "the first whose floor holds is used" "full lists no ladder"
@@ -564,17 +564,17 @@ test_plan_profiles() {
   strat "$home" set balanced --providers codex --plans codex=pro --yes >/dev/null || fail "Codex Pro balanced failed"
   assert_equals "gpt-6-luna high 35, gpt-6-luna medium 20" "$(plan_profile "$home" light codex)" "Codex Pro balanced light work steps from Luna high to Luna medium"
   assert_equals "gpt-6.1-terra medium 35, gpt-6.1-terra low 10" "$(plan_profile "$home" standard codex)" "Codex Pro balanced standard work steps from Terra medium to Terra low"
-  assert_equals "gpt-6.1-sol high 35, gpt-6.1-sol medium -" "$(plan_profile "$home" hard codex)" "Codex Pro balanced hard work keeps 6.1 Sol"
+  assert_equals "gpt-6-sol high 35, gpt-6-sol medium -" "$(plan_profile "$home" hard codex)" "Codex Pro balanced hard work keeps Sol"
   out=$(strat "$home" show)
-  assert_contains "$out" "codex: gpt-6.1-sol effort high" "Codex Pro balanced keeps the 6.1 Sol high coordinator"
-  assert_contains "$out" "second mates: allowed when the benefit justifies the standing cost; new ones launch as codex gpt-6.1-sol medium" "Codex Pro balanced second mates run 6.1 Sol medium"
+  assert_contains "$out" "codex: gpt-6-sol effort high" "Codex Pro balanced keeps the Sol high coordinator"
+  assert_contains "$out" "second mates: allowed when the benefit justifies the standing cost; new ones launch as codex gpt-6-sol medium" "Codex Pro balanced second mates run Sol medium"
   strat "$home" set lean --yes >/dev/null || fail "Codex Pro lean failed"
   assert_equals "gpt-6-luna medium 20" "$(plan_profile "$home" light codex)" "Codex Pro lean light work runs Luna medium"
   assert_equals "gpt-6.1-terra low 50, gpt-6-luna high 10" "$(plan_profile "$home" standard codex)" "Codex Pro lean standard work steps from Terra low to Luna high"
-  assert_equals "gpt-6.1-sol medium -" "$(plan_profile "$home" hard codex)" "Codex Pro lean hard work runs 6.1 Sol medium"
+  assert_equals "gpt-6-sol medium -" "$(plan_profile "$home" hard codex)" "Codex Pro lean hard work runs Sol medium"
   out=$(strat "$home" show)
-  assert_contains "$out" "codex: gpt-6.1-sol effort medium" "Codex Pro lean runs the coordinator on 6.1 Sol medium"
-  assert_contains "$out" $'    codex:\n      model: gpt-6.1-sol\n      effort: high' "Codex Pro lean reviews stay 6.1 Sol high"
+  assert_contains "$out" "codex: gpt-6-sol effort medium" "Codex Pro lean runs the coordinator on Sol medium"
+  assert_contains "$out" $'    codex:\n      model: gpt-6-sol\n      effort: high' "Codex Pro lean reviews stay Sol high"
   assert_contains "$out" "second mates: off by default" "Codex Pro lean turns second mates off"
   out=$(strat "$home" show full)
   assert_contains "$out" "hard: codex gpt-6-astra medium" "Codex Pro full runs hard work on Astra medium"

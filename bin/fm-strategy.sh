@@ -515,10 +515,7 @@ print_resolved() {
     echo "  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used"
   fi
   if grep -q '"gpt-6.1-terra"' <<<"$dispatch"; then
-    echo "  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; where it is unavailable, gpt-6.1-sol at low effort is the fallback"
-  fi
-  if grep -q '"gpt-6.1-sol"' <<<"$dispatch"; then
-    echo "  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback"
+    echo "  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; choose an available model explicitly if an interactive session refuses it"
   fi
   echo "validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):"
   echo "  agent_config:"

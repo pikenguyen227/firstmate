@@ -7,7 +7,7 @@
       "effort": "high"
     },
     "codex": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-6-sol",
       "effort": "high"
     }
   },
@@ -18,7 +18,7 @@
       "effort": "medium"
     },
     "codex": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-6-sol",
       "effort": "medium"
     }
   },
@@ -28,7 +28,7 @@
       "effort": "high"
     },
     "codex": {
-      "model": "gpt-6.1-sol",
+      "model": "gpt-6-sol",
       "effort": "high"
     }
   },
@@ -49,20 +49,20 @@
         "when": "The instructions name the exact Codex model this worker must run on, for example 'run this on gpt-6-astra'. Not for instructions that mention model names only as a subject of the work, such as research about models.",
         "use": {
           "harness": "codex",
-          "model": "gpt-6.1-sol",
+          "model": "gpt-6-sol",
           "effort": "high"
         },
-        "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin. Where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback.",
+        "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this gpt-6-sol pin.",
         "strategy": "codex-model-requested"
       },
       {
         "when": "The instructions require Codex as this worker: they ask for a Codex worker or a Codex-only run, or say this worker is the Codex worker. Not for instructions that mention Codex only as a subject of the work.",
         "use": {
           "harness": "codex",
-          "model": "gpt-6.1-sol",
+          "model": "gpt-6-sol",
           "effort": "high"
         },
-        "why": "Honor the requested worker. A requested worker skips tier routing, so it gets 6.1 Sol at high effort rather than the local Codex default model.",
+        "why": "Honor the requested worker. A requested worker skips tier routing, so it gets Sol at high effort rather than the local Codex default model.",
         "strategy": "codex-requested"
       },
       {
@@ -111,7 +111,7 @@
           },
           {
             "harness": "codex",
-            "model": "gpt-6.1-sol",
+            "model": "gpt-6-sol",
             "effort": "medium"
           }
         ],
@@ -129,7 +129,7 @@
           },
           {
             "harness": "codex",
-            "model": "gpt-6.1-sol",
+            "model": "gpt-6-sol",
             "effort": "high"
           }
         ],
@@ -146,7 +146,7 @@
       },
       {
         "harness": "codex",
-        "model": "gpt-6.1-sol",
+        "model": "gpt-6-sol",
         "effort": "medium"
       }
     ]
