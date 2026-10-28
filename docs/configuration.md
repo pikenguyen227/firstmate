@@ -1290,7 +1290,8 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
 | While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events batched for up to 90 seconds | `/quiet`, captain-relevant events batched for up to 180 seconds |
 
-Codex Sol routes name `gpt-6-sol` in every mode and plan. A named model that an interactive account refuses requires an explicit profile change and relaunch.
+Codex Sol routes name `gpt-6-sol` in every mode and plan.
+If an interactive account refuses a selected model, choose an available model explicitly before relaunching the affected session.
 Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
 The template table above is what renders when no plan is named.
 
