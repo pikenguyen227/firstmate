@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """Propose a ship branch from a repository's documented or observed convention.
 
-Usage: fm-branch-convention.py <repo> [--task-id ID --title TITLE]
-       [--rulesets-json FILE]  # deterministic fixture input for tests
+Usage: fm-branch-convention.py <repo> [--task-id ID --title TITLE] [--template RULE]
 
-Output is key=value lines: kind (prefix|typed), value, source, and branch when
-a task id is supplied. An empty result means no sufficiently clear convention.
+Output is key=value lines: kind (prefix|rule), value, source, and branch when
+a task id is supplied. An unresolved rule reports status=needs-decision instead
+of a branch. An empty result means no sufficiently clear convention.
 This never writes a repository or its registry; project add and task intake own
 the decision to record or use a proposal.
 """
 
 import argparse
+import base64
 from collections import Counter
 import json
 from pathlib import Path
 import re
 import subprocess
 import sys
-from urllib.parse import urlparse
 
 
 TYPES = ("feature", "feat", "bugfix", "hotfix", "fix", "chore")
@@ -44,9 +44,7 @@ def axi_read(path):
     return result.stdout if result.returncode == 0 else ""
 
 
-def rulesets(repo, fixture):
-    if fixture:
-        return json.loads(fixture.read_text())
+def rulesets(repo):
     name = github_repo(repo)
     if not name:
         return []
@@ -87,13 +85,14 @@ def from_docs(repo):
             match = re.search(r"branch(?:es| naming| name)?\s*(?:prefix|must (?:start|begin) with|should (?:start|begin) with)\s*[:=]?\s*[`\"']?([A-Za-z][A-Za-z0-9_-]*/)", line, re.I)
             if match:
                 return "prefix", match.group(1), str(path.relative_to(repo))
-            if re.search(r"(?:type|feature|bugfix|fix).{0,35}(?:ticket|issue).{0,35}(?:description|slug)|(?:ticket|issue).{0,35}(?:description|slug).{0,35}branch", line, re.I):
-                return "typed", "type/ticket-description", str(path.relative_to(repo))
+            for template in ("type/ticket-description", "ticket-description"):
+                if template in re.sub(r"[<>]", "", line.lower()):
+                    return "rule", template, str(path.relative_to(repo))
     return None
 
 
-def from_rulesets(repo, fixture):
-    for ruleset in rulesets(repo, fixture):
+def from_rulesets(repo):
+    for ruleset in rulesets(repo):
         for rule in ruleset.get("rules", []):
             if rule.get("type") != "branch_name_pattern":
                 continue
@@ -105,12 +104,11 @@ def from_rulesets(repo, fixture):
                 continue
             # A constrained type/slug regex is a naming rule. A protection
             # pattern for main or release branches alone is not one.
-            types = [kind for kind in TYPES if re.search(r"\b" + kind + r"\b", pattern)]
-            if types and ("/" in pattern or r"\/" in pattern):
+            head = re.match(r"^\^(?:\((?P<choices>[a-z|]+)\)|(?P<single>[a-z]+))(?:/|\\/)(?:.+)\$$", pattern)
+            if head and all(kind in TYPES for kind in (head.group("choices") or head.group("single")).split("|")):
                 source = f"GitHub ruleset {ruleset.get('id', ruleset.get('name', 'unknown'))}"
-                if len(types) == 1:
-                    return "prefix", types[0] + "/", source
-                return "typed", "type/ticket-description", source
+                encoded = base64.urlsafe_b64encode(pattern.encode()).decode().rstrip("=")
+                return "rule", "regex64:" + encoded, source
     return None
 
 
@@ -118,19 +116,27 @@ def from_history(repo):
     names = git(repo, "for-each-ref", "--count=120", "--sort=-committerdate",
                 "--format=%(refname:short)", "refs/remotes/origin").splitlines()
     prefixes = []
+    multi_segment = False
     for name in names:
         name = name.removeprefix("origin/")
         if "/" not in name or name in DEFAULTS:
+            continue
+        if name.count("/") != 1:
+            multi_segment = True
             continue
         prefix = name.split("/", 1)[0]
         if prefix in ("fm", "dependabot", "renovate", "release"):
             continue
         prefixes.append(prefix)
     if len(prefixes) < 4:
+        if multi_segment:
+            print("note: multi-segment branch history has no complete prefix proposal", file=sys.stderr)
         return None
     counts = Counter(prefixes)
     prefix, count = counts.most_common(1)[0]
     if count * 10 < len(prefixes) * 7:
+        if multi_segment:
+            print("note: multi-segment branch history has no complete prefix proposal", file=sys.stderr)
         return None
     return "prefix", prefix + "/", f"origin history ({count}/{len(prefixes)} recent topic branches)"
 
@@ -139,11 +145,36 @@ def branch_for(kind, value, task_id, title):
     if kind == "prefix":
         return value + task_id
     lower = title.lower()
-    branch_type = "bugfix" if re.search(r"\b(bug|fix|broken|regression)\b", lower) else "feature"
+    is_fix = bool(re.search(r"\b(bug|fix|broken|regression)\b", lower))
     ticket = re.search(r"\b[A-Z][A-Z0-9]+-\d+\b", title + " " + task_id)
     description = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60].strip("-") or "change"
-    tail = f"{ticket.group()}-{description}" if ticket else f"{description}-{task_id}"
-    return f"{branch_type}/{tail}"
+    if value in ("type/ticket-description", "ticket-description"):
+        branch_type = "bugfix" if is_fix else "feature"
+        proposed = f"{branch_type}/{description}-{task_id}" if value.startswith("type/") else f"{description}-{task_id}"
+        if not ticket:
+            return None, proposed, value
+        tail = f"{ticket.group()}-{description}"
+        branch = f"{branch_type}/{tail}" if value.startswith("type/") else tail
+        return branch, branch, value
+    if not value.startswith("regex64:"):
+        return None, f"feature/{description}-{task_id}", value
+    try:
+        encoded = value.removeprefix("regex64:")
+        pattern = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode()
+        head = re.match(r"^\^(?:\((?P<choices>[a-z|]+)\)|(?P<single>[a-z]+))(?:/|\\/)(?:.+)\$$", pattern)
+        choices = (head.group("choices") or head.group("single")).split("|") if head else []
+        if not choices or any(choice not in TYPES for choice in choices):
+            raise ValueError("unsupported rule")
+        preferred = ("fix", "bugfix", "hotfix", "feat", "feature", "chore") if is_fix else ("feat", "feature", "chore", "fix", "bugfix", "hotfix")
+        branch_type = next(choice for choice in preferred if choice in choices)
+        tails = ([f"{ticket.group()}-{description}", f"{ticket.group().lower()}-{description}"] if ticket else []) + [f"{description}-{task_id}"]
+        for tail in tails:
+            branch = f"{branch_type}/{tail}"
+            if re.fullmatch(pattern, branch):
+                return branch, branch, pattern
+        return None, f"{branch_type}/{tails[0]}", pattern
+    except (ValueError, UnicodeError, re.error, StopIteration):
+        return None, f"feature/{description}-{task_id}", value
 
 
 def main():
@@ -151,23 +182,27 @@ def main():
     parser.add_argument("repo", type=Path)
     parser.add_argument("--task-id")
     parser.add_argument("--title", default="")
-    parser.add_argument("--rulesets-json", type=Path)
-    parser.add_argument("--template", choices=["type/ticket-description"])
+    parser.add_argument("--template")
     args = parser.parse_args()
     repo = args.repo.resolve()
     if not (repo / ".git").exists():
         parser.error("repository has no .git")
-    result = (("typed", args.template, "registered branch rule") if args.template else
-              from_docs(repo) or from_rulesets(repo, args.rulesets_json) or from_history(repo))
+    result = (("rule", args.template, "registered branch rule") if args.template else
+              from_docs(repo) or from_rulesets(repo) or from_history(repo))
     if not result:
         return
     kind, value, source = result
     print(f"kind={kind}\nvalue={value}\nsource={source}")
     if args.task_id:
-        branch = branch_for(kind, value, args.task_id, args.title)
-        if subprocess.run(["git", "check-ref-format", "--branch", branch], capture_output=True).returncode:
-            parser.error(f"detected convention produced an invalid branch: {branch}")
-        print(f"branch={branch}")
+        if kind == "prefix":
+            branch = branch_for(kind, value, args.task_id, args.title)
+            proposed, rule = branch, value
+        else:
+            branch, proposed, rule = branch_for(kind, value, args.task_id, args.title)
+        if branch and subprocess.run(["git", "check-ref-format", "--branch", branch], capture_output=True).returncode == 0:
+            print(f"branch={branch}")
+        else:
+            print(f"status=needs-decision\nrule={rule}\nproposed-branch={proposed}")
 
 
 if __name__ == "__main__":

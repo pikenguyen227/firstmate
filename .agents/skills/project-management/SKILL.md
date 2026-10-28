@@ -66,7 +66,7 @@ A forge composes with `no-mistakes`, `direct-PR`, and `no-mistakes-prod-only`, a
 Confirm the source URL, local project name, delivery posture, and autonomy posture, stating the resolved default for each rather than asking the captain to invent one.
 Clone into `projects/<name>` and add the registry entry only after the destination is known to be unused.
 After cloning, run `bin/fm-branch-convention.sh projects/<name>` and report any proposed convention and its source.
-Record a prefix proposal as `branch=<prefix>` or a typed proposal as `branch-rule=type/ticket-description` in the new registry entry; when the detector finds no clear rule, leave both absent for the `fm/` fallback.
+Record a prefix proposal as `branch=<prefix>` or a rule proposal as `branch-rule=<value>` using the detector's exact `value`; when the detector finds no clear rule, leave both absent for the `fm/` fallback.
 An explicit branch declaration supplied by the captain takes precedence over the proposal.
 A `no-mistakes` or `no-mistakes-prod-only` project must have an `origin` remote and must complete the initialization procedure below, because a conditional policy's product-facing work runs the pipeline while its internal-only work still takes the direct PR.
 A `direct-PR` project needs an `origin` remote but skips no-mistakes initialization.

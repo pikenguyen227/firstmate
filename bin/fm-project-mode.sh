@@ -7,7 +7,7 @@
 # is absent, so every existing installation keeps its current "fm/<task-id>"
 # branch names unchanged.
 # --branch-setting distinguishes an explicit prefix (including an empty one),
-# a typed branch rule, and no declaration, so intake can detect only when needed.
+# a branch rule, and no declaration, so intake can detect only when needed.
 # With --forge it prints one word instead: the project's registered forge,
 # none|gerrit. The forge is asked for explicitly, so the default output stays
 # the same two words for every project, bound or not.
@@ -29,11 +29,11 @@
 #   - <name> [<mode>] - <desc> (added <date>)                        -> <mode> off fm/
 #   - <name> [<mode> +yolo] - <desc> (added <date>)                  -> <mode> on fm/
 #   - <name> [<mode> +yolo branch=<prefix>] - <desc> (added <date>)  -> <mode> <yolo> <prefix>
-#   - <name> [<mode> branch-rule=type/ticket-description] - <desc> (added <date>)
+#   - <name> [<mode> branch-rule=<rule>] - <desc> (added <date>)
 #   - <name> [<mode> forge=gerrit] - <desc> (added <date>)           -> <mode> off, --forge gerrit
 #   <name> may contain spaces; it ends at the literal " [" or " - " that follows it.
 #   Bracket tokens are order-independent: +yolo, branch=<prefix>,
-#   branch-rule=type/ticket-description, and forge=<value>.
+#   branch-rule=<rule>, and forge=<value>.
 #   An explicit branch=<prefix> wins over a branch-rule token.
 #   are recognized by their own shape wherever they appear, and whichever token is
 #   left over is the mode. <prefix> must not contain a space; an empty override

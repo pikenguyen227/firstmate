@@ -38,9 +38,10 @@ Before commissioning an investigation, consult existing reports and established 
 On a `no-mistakes-prod-only` project, classify the task's surface: internal-only tooling, automation, contributor or operator process, and release or submission work ships `direct-PR`, while product-facing, mixed, and uncertain work ships `no-mistakes`; never infer internal-only from file location or project name.
 Resolve `bin/fm-project-mode.sh --branch-setting <project>` before naming a ship branch.
 For `prefix:<value>`, pass that value to the brief, ship spawn, and scout promotion as `--branch-prefix` (an explicit empty value makes a bare task id).
-For `typed:type/ticket-description`, run `bin/fm-branch-convention.sh projects/<project> --template type/ticket-description --task-id <id> --title <task title>` and pass its `branch=` value as `--branch-name` to all three consumers.
+For `typed:<rule>`, run `bin/fm-branch-convention.sh projects/<project> --template <rule> --task-id <id> --title <task title>` and pass its `branch=` value as `--branch-name` to all three consumers.
 For `none`, run the same detector without `--template`; use its prefix or full branch proposal and report the source, or keep the default `fm/` when it returns no proposal.
-If the detector warns that it is unavailable, use the registered prefix when one exists or `fm/`; the task can still launch.
+When the detector returns `status=needs-decision`, report the rule and proposed branch to the coordinator and wait for a selected valid branch before writing a brief, spawning, or promoting.
+If Python is unavailable, the shell wrapper resolves a registered declaration; only a project with no registered rule falls back to `fm/` with a warning.
 The project's own explicit `branch=` declaration and a task's explicit `--branch-prefix` override win over detection; pass the selected branch value identically to the brief, spawn, and promotion.
 Record the resulting mode, `yolo` merge posture, and the one-line reason for any deviation in the backlog item note.
 
