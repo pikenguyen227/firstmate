@@ -29,11 +29,11 @@
 #   - <name> [<mode>] - <desc> (added <date>)                        -> <mode> off fm/
 #   - <name> [<mode> +yolo] - <desc> (added <date>)                  -> <mode> on fm/
 #   - <name> [<mode> +yolo branch=<prefix>] - <desc> (added <date>)  -> <mode> <yolo> <prefix>
-#   - <name> [<mode> branch-rule=<rule>] - <desc> (added <date>)
+#   - <name> [<mode> branch-rule="<rule>"] - <desc> (added <date>)
 #   - <name> [<mode> forge=gerrit] - <desc> (added <date>)           -> <mode> off, --forge gerrit
 #   <name> may contain spaces; it ends at the literal " [" or " - " that follows it.
 #   Bracket tokens are order-independent: +yolo, branch=<prefix>,
-#   branch-rule=<rule>, and forge=<value>.
+#   branch-rule="<rule>", and forge=<value>.
 #   An explicit branch=<prefix> wins over a branch-rule token.
 #   are recognized by their own shape wherever they appear, and whichever token is
 #   left over is the mode. <prefix> must not contain a space; an empty override
@@ -159,10 +159,14 @@ parsed=$(awk -v n="$NAME" '
     if (after != "" && substr(after, 1, 2) != " [" && substr(after, 1, 3) != " - ") next
     mode="no-mistakes"; yolo="off"; branch="fm/"; forge="none"; setting="none";
     if (substr(after, 1, 2) == " [") {
-      s="";
-      nk = split(after, rest, " ");
-      for (i=1; i<=nk; i++) { s = s (s==""?"":" ") rest[i]; if (rest[i] ~ /\]$/) break }
-      gsub(/^\[|\]$/, "", s);           # strip the surrounding brackets
+      s = substr(after, 3);
+      sub(/\] - .*/, "", s);
+      sub(/\]$/, "", s);
+      quoted_rule="";
+      if (match(s, /branch-rule="[^"]*"/)) {
+        quoted_rule = substr(s, RSTART + 13, RLENGTH - 14);
+        s = substr(s, 1, RSTART - 1) substr(s, RSTART + RLENGTH);
+      }
       k = split(s, a, " ");
       # Tokens are order-independent: +yolo, branch=<prefix>, and forge=<value>
       # are recognized by their own shape wherever they appear, keyed tokens
@@ -183,6 +187,7 @@ parsed=$(awk -v n="$NAME" '
         }
         if (a[j] != "" && mode_set == 0) { mode = a[j]; mode_set = 1 }
       }
+      if (quoted_rule != "" && setting == "none") { setting = "typed:"; print "rule", quoted_rule }
     }
     # branch is printed LAST: an empty branch= override must survive as an
     # empty final field, which only holds when nothing follows it.
@@ -200,9 +205,11 @@ if [ -z "$parsed" ]; then
 fi
 
 posture=
+registered_rule=
 while IFS=' ' read -r kind rest; do
   case "$kind" in
     near) echo "warn: ignoring \"$rest\" registered for $NAME in $REG; it is not a forge binding, and the forge binding is spelled forge=gerrit" >&2 ;;
+    rule) registered_rule=$rest ;;
     posture) posture=$rest ;;
   esac
 done <<EOF
@@ -213,6 +220,7 @@ while IFS=' ' read -r m y f s b; do
 done <<EOF
 $posture
 EOF
+if [ "$setting" = typed: ]; then setting="typed:$registered_rule"; fi
 forge=${rest_forge:-none}
 case "$mode" in
   no-mistakes|direct-PR|local-only|no-mistakes-prod-only) ;;

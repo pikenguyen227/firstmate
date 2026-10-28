@@ -27,9 +27,11 @@ cat > "$repo/CONTRIBUTING.md" <<'MD'
 ## Branch naming
 Branch names must start with design/.
 git checkout -b design/example
+design/<desc> is used for design work.
+Follow the repository's branch instructions.
 MD
 out=$(finder)
-[[ "$out" == *'source=CONTRIBUTING.md:2'* && "$out" == *'quote=Branch names must start with design/.'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* && "$out" == *'source=CONTRIBUTING.md:3'* ]] \
+[[ "$out" == *'source=CONTRIBUTING.md:2'* && "$out" == *'quote=Branch names must start with design/.'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* && "$out" == *'source=CONTRIBUTING.md:4'* && "$out" == *'source=CONTRIBUTING.md:5'* && "$out" != *'source=CONTRIBUTING.md:3'* ]] \
   || fail "documented rule passages were missed: $out"
 for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ -x "$shell" ] || continue
@@ -39,6 +41,11 @@ for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ "$observed" = "$out" ] || fail "finder changed result through $shell"
 done
 rm "$repo/CONTRIBUTING.md"
+printf 'Branch name: design/sample\n' > "$repo/BRANCHING.md"
+out=$(finder)
+[[ "$out" == *'source=BRANCHING.md:1'* && "$out" == *'quote=Branch name: design/sample'* ]] \
+  || fail "standalone branch name pattern was missed: $out"
+rm "$repo/BRANCHING.md"
 pass 'repository docs are quoted with line provenance across shells'
 
 mkdir -p "$repo/_vaults/workspace/wiki" "$repo/_vaults/workspace/raw"
@@ -63,10 +70,16 @@ case "$3" in
   */rulesets\?*) [ -f "$FM_TEST_RULESET_DETAIL" ] && printf '[{"id":71,"enforcement":"active","target":"branch"}]\n' || printf '[]\n' ;;
   */rulesets/71) cat "$FM_TEST_RULESET_DETAIL" ;;
 esac
+if [ "$2" = graphql ]; then cat "$FM_TEST_CLASSIC_DETAIL"; fi
 AXI
 chmod +x "$tmp/fakebin/gh-axi"
 export FM_TEST_RULESET_DETAIL="$tmp/ruleset-detail"
+export FM_TEST_CLASSIC_DETAIL="$tmp/classic-detail"
+printf '%s\n' '{"data":{"repository":{"branchProtectionRules":{"nodes":[],"pageInfo":{"hasNextPage":false}}}}}' > "$FM_TEST_CLASSIC_DETAIL"
 git -C "$repo" remote add origin https://github.com/example/project.git
+git -C "$repo" remote set-url origin ssh://git@github.com/example/project.git
+[ "$(finder)" = status=no-rule ] || fail 'declined ssh origin form was accepted'
+git -C "$repo" remote set-url origin https://github.com/example/project.git
 printf '%s\n' '{"conditions":{"ref_name":{"include":[],"exclude":[]}},"rules":[{"type":"branch_name_pattern","parameters":{"operator":"regex","pattern":"^feature/[a-z0-9-]+$","negate":false}}]}' > "$FM_TEST_RULESET_DETAIL"
 out=$(finder)
 [[ "$out" == *'source=GitHub ruleset 71'* && "$out" == *'operator=regex'* && "$out" == *'pattern=^feature/[a-z0-9-]+$'* ]] \
@@ -79,7 +92,7 @@ pass 'GitHub pattern is quoted and validator enforces its constraints'
 
 printf '%s\n' '{"conditions":{"ref_name":{"include":["refs/heads/design/*"],"exclude":[]}},"rules":[]}' > "$FM_TEST_RULESET_DETAIL"
 out=$(finder)
-[[ "$out" == *'operator=fnmatch'* && "$out" == *'pattern=design/*'* ]] || fail "GitHub ref pattern was missed: $out"
+[[ "$out" == *'ref_name include='* && "$out" == *'status=no-rule'* && "$out" != *'operator=fnmatch'* ]] || fail "GitHub target was mistaken for a naming rule: $out"
 [ "$(validate design/task-2 --operator fnmatch --pattern 'design/*')" = $'status=valid\ncheck=git+fnmatch' ] \
   || fail 'valid fnmatch name was rejected'
 if validate bad..name > "$tmp/out"; then fail 'invalid Git ref was accepted'; fi
@@ -88,9 +101,20 @@ if validate bad..name > "$tmp/out"; then fail 'invalid Git ref was accepted'; fi
 if validate feature/task-2 --operator starts_with --pattern design/ > "$tmp/out"; then fail 'wrong prefix was accepted'; fi
 pass 'Git syntax, prefix and GitHub protection patterns are validated'
 
-export FM_TEST_FAIL=1
+printf '%s\n' '{"data":{"repository":{"branchProtectionRules":{"nodes":[{"pattern":"release/*","blocksCreations":true},{"pattern":"main","blocksCreations":false}],"pageInfo":{"hasNextPage":false}}}}}' > "$FM_TEST_CLASSIC_DETAIL"
 out=$(finder)
+[[ "$out" == *'source=GitHub classic branch protection'* && "$out" == *'pattern=release/* blocksCreations=true'* && "$out" != *'status=no-rule'* && "$out" != *'operator=fnmatch'* ]] \
+  || fail "classic branch creation restriction was missed: $out"
+printf '%s\n' '{"data":{"repository":{"branchProtectionRules":{"nodes":[{"pattern":"main","blocksCreations":false}],"pageInfo":{"hasNextPage":false}}}}}' > "$FM_TEST_CLASSIC_DETAIL"
+out=$(finder)
+[[ "$out" == *'pattern=main blocksCreations=false'* && "$out" == *'status=no-rule'* ]] \
+  || fail "classic review-only protection was mistaken for a naming rule: $out"
+pass 'classic protection is read and creation restrictions are distinguished'
+
+export FM_TEST_FAIL=1
+out=$(finder 2>"$tmp/finder-error")
 [[ "$out" == *'status=unavailable'* && "$out" != *'status=no-rule'* ]] || fail "unreadable GitHub settings looked like no rule: $out"
+if grep -q Traceback "$tmp/finder-error"; then fail 'unreadable settings crashed the finder'; fi
 unset FM_TEST_FAIL
 pass 'unreadable GitHub settings require a decision'
 
@@ -108,6 +132,11 @@ out=$(FM_HOME="$home" PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-conve
   || fail 'recorded rule required Python'
 [[ "$out" == *'source=registered branch rule'* && "$out" == *'pattern=^feature/[a-z0-9-]+$'* ]] \
   || fail "Python-free registered rule was lost: $out"
+printf '%s\n' '# Projects' '- repo [no-mistakes branch-rule="feature/workspace for root work; feature/[a-z] for packages"] - fixture' > "$home/data/projects.md"
+out=$(FM_HOME="$home" PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-convention.sh" "$repo") \
+  || fail 'quoted registered rule required Python'
+[[ "$out" == *'quote=feature/workspace for root work; feature/[a-z] for packages'* ]] \
+  || fail "quoted registered rule was truncated: $out"
 pass 'registered prefixes and rules survive without Python'
 
 echo '# all fm-branch-convention tests passed'
