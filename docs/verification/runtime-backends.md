@@ -617,6 +617,20 @@ skip-runner: pi-signed is not installed, so its pin check was not exercised
 
 The guard submits no prompt and spends no tokens, so it runs by default wherever a runner is installed; rerun it after every Claude or Pi upgrade.
 
+## Interactive 6.1 model availability
+
+Verified on 2026-10-28 on macOS with a ChatGPT-login Codex account in a scratch directory.
+The same command was run once with codex-cli 0.155.1 and once with codex-cli 0.163.0 selected from the installed binaries:
+
+```sh
+codex -m gpt-6.1-terra --disable hooks --dangerously-bypass-approvals-and-sandbox 'Reply only with PROBE_OK'
+```
+
+The 0.155.1 interactive session returned `model_not_found` with `The 'gpt-6.1-terra' model is not supported when using Codex with a ChatGPT account.`
+The 0.163.0 interactive session returned `PROBE_OK` with no model error.
+This version-dependent result keeps Terra in the plan routes and makes an interactive refusal, rather than `codex exec` success, the trigger for the worker launch fallback.
+The portable regression is `bash tests/fm-spawn-dispatch-profile.test.sh`.
+
 ## Codex hook trust
 
 Verified 2026-09-16 on codex-cli 0.151.0, macOS arm64, in a fresh linked worktree of this repository.

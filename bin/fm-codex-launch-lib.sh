@@ -15,6 +15,18 @@
 FM_CODEX_FALLBACK_MODEL=gpt-6-sol
 # shellcheck disable=SC2034 # Read by the sourcing caller.
 FM_CODEX_FALLBACK_EFFORT=high
+
+# A requested 6.1 model can be accepted by `codex exec` yet refused by the
+# interactive worker on a ChatGPT login. Match the response code and the
+# requested model together so an unrelated pane error cannot change a route.
+fm_codex_model_refused() {  # <requested-model> <pane-text>
+  local requested=$1 pane=$2
+  case "$requested" in gpt-6.1-*) ;; *) return 1 ;; esac
+  [[ "$pane" == *"$requested"* ]] &&
+    [[ "$pane" == *"ChatGPT"* ]] &&
+    [[ "$pane" == *"account"* ]] &&
+    [[ "$pane" == *model_not_found* ]]
+}
 #
 # Project-doc budget: Codex loads only the first 32 KiB of a repository's
 # AGENTS.md chain by default (project_doc_max_bytes = 32768), and Firstmate's own

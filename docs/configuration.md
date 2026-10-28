@@ -1290,7 +1290,9 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
 | While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events batched for up to 90 seconds | `/quiet`, captain-relevant events batched for up to 180 seconds |
 
-Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate; where an Enterprise or Edu workspace has not enabled it, `gpt-6-sol` is the fallback to route by hand.
+Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate.
+When an interactive worker launch or relaunch refuses a named 6.1 model with `model_not_found` for a ChatGPT account, Firstmate retries once on `gpt-6-sol` at the same effort and records the substitution.
+The launch checks its pane for that refusal for up to 60 seconds after submitting the first prompt.
 Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
 The template table above is what renders when no plan is named.
 
@@ -1358,7 +1360,8 @@ Below its last floor a light or standard tier leaves the provider for the other 
 Balanced steps down to the plan's lean route for that tier, and lean starts there.
 Validation always stays at high effort, and hard work stays on the provider's strongest routed model, stepping down only in effort with its last route never floored, so no quota drop moves hard work to a weaker model; Fable and Astra stay off every tier where they bill credits or have a small allowance.
 Floors use the `all_models` scope, which quota-axi reports for both Claude and Codex (a captured Codex snapshot in [`tests/fm-dispatch-resolve.test.sh`](../tests/fm-dispatch-resolve.test.sh) pins the Codex row); API plans write none because an unmeasured provider makes a floor escalate.
-6.1 Terra routes in the Plus and Pro Codex profiles' lean and balanced tiers and in Codex API lean, and needs Codex CLI 0.159.0 or later; `show` notes that minimum and that 6.1 Sol at low effort is the fallback where Terra is unavailable.
+6.1 Terra routes in the Plus and Pro Codex profiles' lean and balanced tiers and in Codex API lean, and need Codex CLI 0.159.0 or later.
+`show` notes that minimum; an interactive refusal uses the same automatic Sol fallback as other named 6.1 models.
 A plan that turns second mates off does so when its provider is the one new second mates launch on, Claude whenever the home has it.
 In a home with both providers each tier lists its Claude routes and then its Codex routes, so the floors pick a route within each provider and [`quota-array-dispatch`](../.agents/skills/quota-array-dispatch/SKILL.md) picks between the providers by remaining quota, and `show` suggests which provider should host the primary coordinator and the no-mistakes validation.
 Full is not recommended on `pro`, `team-standard`, `plus`, or `business-standard`, whose five-hour and weekly limits automatic starts reach first: `show` and `set` warn without refusing, and `list` marks it.

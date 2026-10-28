@@ -52,7 +52,7 @@
           "model": "gpt-6.1-sol",
           "effort": "high"
         },
-        "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin. Where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback.",
+        "why": "Honor the requested model. Firstmate passes the named Codex model on codex in place of this pin. An interactive model_not_found refusal for a named Codex 6.1 model retries once on gpt-6-sol at the same effort.",
         "strategy": "codex-model-requested"
       },
       {

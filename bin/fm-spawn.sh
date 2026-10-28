@@ -221,6 +221,10 @@
 #   empty (or "default") after every source above gets the Firstmate-owned
 #   fallback from bin/fm-codex-launch-lib.sh, never the operator's ~/.codex
 #   default, and task meta records the value actually launched.
+#   A named 6.1 model refused by the interactive Codex account is retried
+#   once on gpt-6-sol at the same effort in this same launch path. The pane
+#   is checked for FM_CODEX_MODEL_REFUSAL_POLLS (default 60) seconds after its
+#   first prompt; the task record and status report the effective model.
 #   A --secondmate spawn also propagates the primary's declared inherited local
 #   material, so the secondmate's OWN crewmates inherit primary config and the
 #   secondmate receives the primary's read-only shared captain-preference file
@@ -5515,6 +5519,65 @@ if [ "${HERDR_PROJECTED:-0}" -eq 1 ]; then
   spawn_herdr_presentation_order_lock_release
 fi
 spawn_send_key "$T" Enter
+SPAWN_MODEL_FALLBACK=
+if [ "$HARNESS" = codex ] && [ "$RAW_LAUNCH" = 0 ]; then
+  case "$MODEL" in
+    gpt-6.1-*)
+      # The launch brief is the first interactive prompt. Codex can accept a
+      # model in exec but reject that same model here after the TUI starts.
+      # Watch this launch's pane, then replace it once in the same endpoint.
+      codex_poll=0
+      codex_limit=${FM_CODEX_MODEL_REFUSAL_POLLS:-60}
+      while [ "$codex_poll" -lt "$codex_limit" ]; do
+        if fm_backend_visible_capture_supported "$BACKEND"; then
+          codex_pane=$(fm_backend_visible_capture "$BACKEND" "$T" "$W" 2>/dev/null) || codex_pane=
+        else
+          codex_pane=$(fm_backend_capture "$BACKEND" "$T" 100 "$W" 2>/dev/null) || codex_pane=
+        fi
+        if fm_codex_model_refused "$MODEL" "$codex_pane"; then
+          codex_original_model=$MODEL
+          codex_fallback_file="$LAUNCH_DIR/launch.$SPAWN_GEN.fallback.sh"
+          codex_fallback_stage="$LAUNCH_DIR/.launch.$SPAWN_GEN.fallback.tmp"
+          codex_fallback_launch=${LAUNCH//$codex_original_model/gpt-6-sol}
+          if [ -e "$codex_fallback_file" ] || [ -L "$codex_fallback_file" ] ||
+            ! (umask 077 && printf '%s\n' "$codex_fallback_launch" >"$codex_fallback_stage" &&
+              chmod 0600 "$codex_fallback_stage" && mv "$codex_fallback_stage" "$codex_fallback_file"); then
+            echo "error: could not stage the Codex model fallback for $ID" >&2
+            exit 1
+          fi
+          # Codex's verified exit command is /quit. Ctrl-C only cancels
+          # the turn and would type the replacement launch into its TUI.
+          codex_quit=$(fm_backend_send_text_submit "$BACKEND" "$T" /quit 2 0.2 1.2 "$W") || {
+            echo "error: could not exit refused Codex worker $ID before fallback" >&2
+            exit 1
+          }
+          [ "$codex_quit" != send-failed ] || {
+            echo "error: could not exit refused Codex worker $ID before fallback" >&2
+            exit 1
+          }
+          sleep 0.5
+          spawn_send_literal "$T" ". $(shell_quote "$codex_fallback_file")" || exit 1
+          spawn_send_key "$T" Enter || exit 1
+          MODEL=gpt-6-sol
+          SPAWN_MODEL_FALLBACK="$codex_original_model -> $MODEL"
+          # This task's meta lock is still held. Update the profile that a
+          # later relaunch will inherit after the replacement was delivered.
+          codex_meta="$STATE/$ID.meta"
+          codex_meta_stage="$STATE/.$ID.meta.codex-fallback.${BASHPID:-$$}"
+          if ! awk -v model="$MODEL" '$1 ~ /^model=/ {print "model=" model; next} {print}' "$codex_meta" >"$codex_meta_stage" ||
+            ! fm_backlog_atomic_transition publish "$codex_meta_stage" "$codex_meta" "task record" "$STATE"; then
+            echo "error: Codex fallback launched for $ID but its task record could not be updated" >&2
+            exit 1
+          fi
+          printf '%s\n' "$(status_stamp_line "working: Codex model $SPAWN_MODEL_FALLBACK after interactive model_not_found")" >>"$STATE/$ID.status"
+          break
+        fi
+        codex_poll=$((codex_poll + 1))
+        sleep 1
+      done
+      ;;
+  esac
+fi
 if [ "$HARNESS" = kimi ]; then
   if ! kimi_wait_for_ready; then
     kimi_spawn_fail "$KIMI_READY_FAILURE_DETAIL"
@@ -5653,6 +5716,9 @@ fm_lock_release "$SPAWN_META_LOCK"
 SPAWN_META_LOCK_HELD=0
 # Best-effort lifecycle record of the committed spawn (bin/fm-lifecycle-lib.sh).
 fm_lifecycle_task_spawned "$STATE" "$ID" "$RELAUNCH"
+if [ -n "$SPAWN_MODEL_FALLBACK" ]; then
+  echo "Codex model fallback for $ID: $SPAWN_MODEL_FALLBACK after interactive model_not_found" >&2
+fi
 
 SPAWN_DELIVERY=
 [ -z "$MODE" ] || SPAWN_DELIVERY=" mode=$MODE yolo=$YOLO"
