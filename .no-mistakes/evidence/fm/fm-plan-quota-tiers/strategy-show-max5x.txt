@@ -1,0 +1,76 @@
+===== show full claude=max5x
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+autonomy: full
+  dispatch: automatic
+  automatic fix rounds: within existing pipeline limits
+  automatic fresh starts: true
+  automatic fleet reviews: true
+  one-tier model step-up after a worker failure: automatic
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: allowed; new ones launch as claude claude-opus-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-sonnet-5-5 low, floor 20%
+  standard: claude claude-opus-5-5 medium, floor 10%
+  hard: claude claude-opus-5-5 high
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+while the captain is present: normal supervision
+===== show balanced claude=max5x
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort high
+    start with: claude --model claude-opus-5-5 --effort high
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: allowed when the benefit justifies the standing cost; new ones launch as claude claude-sonnet-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-haiku-5-5 medium, floor 35%
+  light: claude claude-haiku-5-5 low, floor 20%
+  standard: claude claude-sonnet-5-5 medium, floor 35%
+  standard: claude claude-sonnet-5-5 low, floor 10%
+  hard: claude claude-opus-5-5 high, floor 35%
+  hard: claude claude-opus-5-5 medium
+  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+===== show lean claude=max5x
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  claude: claude-opus-5-5 effort medium
+    start with: claude --model claude-opus-5-5 --effort medium
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+  automatic fresh starts: false
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as claude claude-sonnet-5-5 medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  claude-model-requested: claude claude-opus-5-5 high
+  claude-requested: claude claude-opus-5-5 high
+  light: claude claude-haiku-5-5 low, floor 20%
+  standard: claude claude-sonnet-5-5 low, floor 10%
+  hard: claude claude-opus-5-5 medium
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    claude:
+      model: claude-opus-5-5
+      effort: high
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)

@@ -1,0 +1,58 @@
+===== show balanced codex=plus / codex-only
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6.1-sol effort medium
+    start with: codex -m gpt-6.1-sol -c model_reasoning_effort="medium" -c project_doc_max_bytes=131072
+autonomy: balanced
+  dispatch: light-standard
+  automatic fix rounds: 1
+  automatic fresh starts: true
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6.1-sol medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol medium
+  light: codex gpt-6-luna high, floor 50%
+  light: codex gpt-6-luna medium, floor 30%
+  standard: codex gpt-6.1-terra medium, floor 50%
+  standard: codex gpt-6.1-terra low, floor 20%
+  hard: codex gpt-6.1-sol high, floor 50%
+  hard: codex gpt-6.1-sol medium
+  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used
+  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; where it is unavailable, gpt-6.1-sol at low effort is the fallback
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6.1-sol
+      effort: high
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
+===== show lean codex=plus / codex-only
+primary coordinator (set where you start the primary; this tool never edits launchers or global settings):
+  codex: gpt-6.1-sol effort medium
+    start with: codex -m gpt-6.1-sol -c model_reasoning_effort="medium" -c project_doc_max_bytes=131072
+autonomy: lean
+  dispatch: confirm
+  automatic fix rounds: 0
+  automatic fresh starts: false
+  automatic fleet reviews: false
+  one-tier model step-up after a worker failure: ask
+  coordinator: load strategy-autonomy to apply the session policy
+second mates: off by default; create one only when the captain asks, and running ones are not retired; one that is created launches as codex gpt-6.1-sol medium (config/secondmate-harness)
+worker tiers (config/crew-dispatch.json, one line per candidate):
+  codex-model-requested: codex gpt-6.1-sol high
+  codex-requested: codex gpt-6.1-sol medium
+  light: codex gpt-6-luna medium, floor 30%
+  standard: codex gpt-6.1-terra low, floor 60%
+  standard: codex gpt-6-luna high, floor 20%
+  hard: codex gpt-6.1-sol medium
+  note: a tier lists a provider's routes from stronger to cheaper; the first whose floor holds is used
+  note: gpt-6.1-terra needs Codex CLI 0.159.0 or later; where it is unavailable, gpt-6.1-sol at low effort is the fallback
+  note: where a workspace has not enabled gpt-6.1-sol, gpt-6-sol is the fallback
+validation (no-mistakes agent_config in ~/.no-mistakes/config.yaml; apply by hand):
+  agent_config:
+    codex:
+      model: gpt-6.1-sol
+      effort: high
+while the captain is present: /quiet requested by this selection (apply through strategy-autonomy; captain-relevant events still arrive)
