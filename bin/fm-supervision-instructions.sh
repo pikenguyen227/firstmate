@@ -187,7 +187,7 @@ repair_line() {
       printf '%s%s\n' "$prefix" 'watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.'
       ;;
     codex)
-      printf '%s%s%s%s\n' "$prefix" 'repair missing watcher supervision with a foreground checkpoint: bin/fm-watch-checkpoint.sh --seconds ' "$checkpoint_seconds" '.'
+      printf '%s%s%s%s\n' "$prefix" 'monitoring is OFF; start the foreground checkpoint now: bin/fm-watch-checkpoint.sh --seconds ' "$checkpoint_seconds" '. Re-arm when it returns while supervision is needed. A drain or completed checkpoint is not live proof; do not claim monitoring is active. If the checkpoint cannot start, report the failure.'
       ;;
     pi|pi-signed)
       printf '%s%s%s%s%s%s\n' "$prefix" 'repair a missing or failed watcher cycle with the Pi tool fm_watch_arm_pi, or restart Pi with -e ' "$pi_turnend_ext" ' -e ' "$pi_ext" ' if the extensions are not loaded.'
