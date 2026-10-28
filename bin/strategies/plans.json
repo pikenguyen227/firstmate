@@ -1,10 +1,11 @@
 {
-  "$comment": "Subscription-plan variants for bin/fm-strategy.sh --plans. why holds the rule text a plan render opens each requested-worker and tier why with; the rendered routes complete it. Each mode lists a role as \"<model> <effort>\"; a plan with same_as takes its profile from that plan and keeps its own label and full_warning. floors are min_percent on the all_models scope for the light and standard tiers; a plan without floors writes none. docs/configuration.md \"Token strategies\" owns the contract.",
+  "$comment": "Subscription-plan variants for bin/fm-strategy.sh --plans. why holds the rule text a plan render opens each requested-worker and tier why with; the rendered routes complete it. Each mode lists a role as \"<model> <effort>\"; the light, standard, and hard tiers may instead list an ordered ladder of routes from stronger to cheaper, each \"<model> <effort> <floor>\" except the last, where <floor> is the all_models percent below which the resolver steps down to the next route. The last light and standard route takes the plan's floors value, below which the tier leaves the provider, and the last hard route is never floored. A plan with same_as takes its profile from that plan and keeps its own label and full_warning; a plan without floors writes none on its last routes. docs/configuration.md \"Token strategies\" owns the contract.",
   "why": {
     "requested": "Honor the requested worker. A requested worker skips tier routing, so it gets this plan's pin:",
     "light": "Tier 1. Mechanical work; the cheapest capable model.",
     "standard": "Tier 2. Most everyday work.",
-    "hard": "Tier 3. Keep the strongest reasoning where mistakes are expensive; never floored, so hard work is not silently downgraded."
+    "hard": "Tier 3. Keep the provider's strongest model where mistakes are expensive; a step down only lowers its effort and the last route is never floored, so hard work never drops to a weaker model.",
+    "ladder": "Within one provider the first route whose floor still holds is used, so a falling quota steps down to the cheaper route before the week runs out."
   },
   "claude": {
     "pro": {
@@ -16,9 +17,9 @@
       "modes": {
         "lean": {
           "coordinator": "claude-opus-5-5 medium",
-          "light": "claude-haiku-5-5 medium",
-          "standard": "claude-sonnet-5-5 medium",
-          "hard": "claude-opus-5-5 high",
+          "light": "claude-haiku-5-5 low",
+          "standard": "claude-sonnet-5-5 low",
+          "hard": "claude-opus-5-5 medium",
           "requested": "claude-opus-5-5 medium",
           "validation": "claude-opus-5-5 high",
           "secondmates": "claude-sonnet-5-5 medium",
@@ -26,9 +27,9 @@
         },
         "balanced": {
           "coordinator": "claude-opus-5-5 medium",
-          "light": "claude-haiku-5-5 medium",
-          "standard": "claude-sonnet-5-5 medium",
-          "hard": "claude-opus-5-5 high",
+          "light": ["claude-haiku-5-5 medium 50", "claude-haiku-5-5 low"],
+          "standard": ["claude-sonnet-5-5 medium 50", "claude-sonnet-5-5 low"],
+          "hard": ["claude-opus-5-5 high 50", "claude-opus-5-5 medium"],
           "requested": "claude-opus-5-5 medium",
           "validation": "claude-opus-5-5 high",
           "secondmates": "claude-sonnet-5-5 medium",
@@ -54,23 +55,23 @@
       "model_requested_why": "Honor the requested model. Firstmate passes the named Claude model on claude in place of this pin. On this home's Claude plan a Fable model draws on the plan's separate weekly Fable limit, at most half of the weekly usage limit.",
       "modes": {
         "lean": {
-          "coordinator": "claude-opus-5-5 high",
-          "light": "claude-sonnet-5-5 low",
-          "standard": "claude-opus-5-5 medium",
-          "hard": "claude-opus-5-5 high",
-          "requested": "claude-opus-5-5 high",
+          "coordinator": "claude-opus-5-5 medium",
+          "light": "claude-haiku-5-5 low",
+          "standard": "claude-sonnet-5-5 low",
+          "hard": "claude-opus-5-5 medium",
+          "requested": "claude-opus-5-5 medium",
           "validation": "claude-opus-5-5 high",
-          "secondmates": "claude-opus-5-5 medium",
+          "secondmates": "claude-sonnet-5-5 medium",
           "secondmates_allowed": false
         },
         "balanced": {
           "coordinator": "claude-opus-5-5 high",
-          "light": "claude-sonnet-5-5 low",
-          "standard": "claude-opus-5-5 medium",
-          "hard": "claude-opus-5-5 high",
+          "light": ["claude-haiku-5-5 medium 35", "claude-haiku-5-5 low"],
+          "standard": ["claude-sonnet-5-5 medium 35", "claude-sonnet-5-5 low"],
+          "hard": ["claude-opus-5-5 high 35", "claude-opus-5-5 medium"],
           "requested": "claude-opus-5-5 high",
           "validation": "claude-opus-5-5 high",
-          "secondmates": "claude-opus-5-5 medium"
+          "secondmates": "claude-sonnet-5-5 medium"
         },
         "full": {
           "coordinator": "claude-opus-5-5 high",
@@ -92,23 +93,23 @@
       "model_requested_why": "Honor the requested model. Firstmate passes the named Claude model on claude in place of this pin. On this home's Claude plan a Fable model draws on the plan's separate weekly Fable limit, at most half of the weekly usage limit.",
       "modes": {
         "lean": {
-          "coordinator": "claude-opus-5-5 high",
-          "light": "claude-sonnet-5-5 low",
-          "standard": "claude-opus-5-5 medium",
-          "hard": "claude-opus-5-5 high",
-          "requested": "claude-opus-5-5 high",
+          "coordinator": "claude-opus-5-5 medium",
+          "light": "claude-haiku-5-5 low",
+          "standard": "claude-sonnet-5-5 low",
+          "hard": "claude-opus-5-5 medium",
+          "requested": "claude-opus-5-5 medium",
           "validation": "claude-opus-5-5 high",
-          "secondmates": "claude-opus-5-5 medium",
+          "secondmates": "claude-sonnet-5-5 medium",
           "secondmates_allowed": false
         },
         "balanced": {
           "coordinator": "claude-opus-5-5 high",
-          "light": "claude-sonnet-5-5 low",
-          "standard": "claude-opus-5-5 medium",
-          "hard": "claude-opus-5-5 high",
+          "light": ["claude-haiku-5-5 medium 35", "claude-haiku-5-5 low"],
+          "standard": ["claude-sonnet-5-5 medium 35", "claude-sonnet-5-5 low"],
+          "hard": ["claude-opus-5-5 high 35", "claude-opus-5-5 medium"],
           "requested": "claude-opus-5-5 high",
           "validation": "claude-opus-5-5 high",
-          "secondmates": "claude-opus-5-5 medium"
+          "secondmates": "claude-sonnet-5-5 medium"
         },
         "full": {
           "coordinator": "claude-opus-5-5 high",
@@ -162,12 +163,13 @@
       "label": "Plus",
       "pool": "small",
       "full_warning": true,
+      "floors": { "light": 30, "standard": 20 },
       "modes": {
         "lean": {
           "coordinator": "gpt-6.1-sol medium",
-          "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-terra medium",
-          "hard": "gpt-6.1-sol high",
+          "light": "gpt-6-luna medium",
+          "standard": ["gpt-6.1-terra low 60", "gpt-6-luna high"],
+          "hard": "gpt-6.1-sol medium",
           "requested": "gpt-6.1-sol medium",
           "validation": "gpt-6.1-sol high",
           "secondmates": "gpt-6.1-sol medium",
@@ -175,9 +177,9 @@
         },
         "balanced": {
           "coordinator": "gpt-6.1-sol medium",
-          "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-terra medium",
-          "hard": "gpt-6.1-sol high",
+          "light": ["gpt-6-luna high 50", "gpt-6-luna medium"],
+          "standard": ["gpt-6.1-terra medium 50", "gpt-6.1-terra low"],
+          "hard": ["gpt-6.1-sol high 50", "gpt-6.1-sol medium"],
           "requested": "gpt-6.1-sol medium",
           "validation": "gpt-6.1-sol high",
           "secondmates": "gpt-6.1-sol medium",
@@ -198,22 +200,23 @@
     "pro": {
       "label": "Pro",
       "pool": "large",
+      "floors": { "light": 20, "standard": 10 },
       "modes": {
         "lean": {
-          "coordinator": "gpt-6.1-sol high",
-          "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-sol medium",
-          "hard": "gpt-6.1-sol high",
-          "requested": "gpt-6.1-sol high",
+          "coordinator": "gpt-6.1-sol medium",
+          "light": "gpt-6-luna medium",
+          "standard": ["gpt-6.1-terra low 50", "gpt-6-luna high"],
+          "hard": "gpt-6.1-sol medium",
+          "requested": "gpt-6.1-sol medium",
           "validation": "gpt-6.1-sol high",
           "secondmates": "gpt-6.1-sol medium",
           "secondmates_allowed": false
         },
         "balanced": {
           "coordinator": "gpt-6.1-sol high",
-          "light": "gpt-6-luna high",
-          "standard": "gpt-6.1-sol medium",
-          "hard": "gpt-6.1-sol high",
+          "light": ["gpt-6-luna high 35", "gpt-6-luna medium"],
+          "standard": ["gpt-6.1-terra medium 35", "gpt-6.1-terra low"],
+          "hard": ["gpt-6.1-sol high 35", "gpt-6.1-sol medium"],
           "requested": "gpt-6.1-sol high",
           "validation": "gpt-6.1-sol high",
           "secondmates": "gpt-6.1-sol medium"

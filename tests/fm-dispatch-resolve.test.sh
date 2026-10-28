@@ -969,6 +969,77 @@ assert_contains "$out" '  reason: quota-axi --json returned an invalid snapshot'
 cp "$BASE_RULES" "$RULES"
 pass "schema 6: each candidate binds to its account row; schema 5 is unchanged"
 
+# --- a declared ladder steps each quota pool down by its floors ------------------
+# A rule with select "ladder" lists each provider's routes from stronger to
+# cheaper. The first eligible candidate on a quota row holds that pool and the
+# rest are held back, so a falling all_models percentage moves the pool to its
+# cheaper route; spendPriority still ranks only across pools. The Codex
+# all_models row carries the floors, as quota-axi reports it.
+LADDER_RULES="$TMP_ROOT/ladder-rules.json"
+cat > "$LADDER_RULES" <<'JSON'
+{
+  "rules": [
+    {
+      "when": "Light work.",
+      "select": "ladder",
+      "use": [
+        { "harness": "claude", "model": "claude-haiku-5-5", "effort": "medium", "floor": { "scope": "all_models", "min_percent": 35 } },
+        { "harness": "claude", "model": "claude-haiku-5-5", "effort": "low", "floor": { "scope": "all_models", "min_percent": 15 } },
+        { "harness": "codex", "model": "gpt-6-luna", "effort": "high", "floor": { "scope": "all_models", "min_percent": 35 } },
+        { "harness": "codex", "model": "gpt-6-luna", "effort": "medium", "floor": { "scope": "all_models", "min_percent": 20 } }
+      ]
+    }
+  ]
+}
+JSON
+cat > "$RESPONSE" <<'JSON'
+{ "model": "jev-1.13.0",
+  "answers": { "rule": { "type": "choice", "choice": "rule_1", "confidence": 0.9,
+    "probabilities": { "rule_1": 0.97, "default": 0.03 } } },
+  "usage": { "input_tokens": 812, "output_tokens": 60 } }
+JSON
+cp "$LADDER_RULES" "$RULES"
+reset_log
+TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
+expect_code 0 "$code" "a ladder rule exits 0"
+assert_contains "$out" '  status: clear' "a ladder with one holder per pool resolves without a same-pool tie"
+assert_contains "$out" 'candidate: claude:claude-haiku-5-5  provider=claude  scope=all_models  remaining=79%' "the stronger Claude route holds its pool above its floor"
+assert_contains "$out" '-> held back: ladder: claude:claude-haiku-5-5 medium holds this quota pool' "the cheaper Claude route is held back while the stronger one is eligible"
+assert_contains "$out" 'candidate: codex:gpt-6-luna  provider=codex  scope=all_models  remaining=31%  spendPriority=-  runway=projected_exhaustion  -> not eligible: profile floor all_models below 35%' "the Codex all_models row floors the stronger Codex route"
+assert_contains "$out" "  profile: --harness 'codex' --model 'gpt-6-luna' --effort 'medium'" "the Codex pool steps down to its cheaper route and wins on spendPriority"
+
+LADDER_LOW="$TMP_ROOT/ladder-low.json"
+jq '.providers |= map(if .provider == "claude" then .quotaSemantics.effectiveAvailability[0].effectivePercentRemaining = 20
+  elif .provider == "codex" then .quotaSemantics.effectiveAvailability[0].effectivePercentRemaining = 12 else . end)' "$QUOTA" > "$LADDER_LOW"
+reset_log
+TYPESAFE_API_KEY=$KEY QUOTA_AXI_FIXTURE="$LADDER_LOW" run code out err "$BRIEF"
+assert_contains "$out" '  status: clear' "a lower quota still resolves"
+assert_contains "$out" '-> not eligible: profile floor all_models below 35%' "the stronger routes drop out below their floor"
+assert_contains "$out" '-> not eligible: profile floor all_models below 20%' "a pool below its last floor leaves the provider"
+assert_contains "$out" "  profile: --harness 'claude' --model 'claude-haiku-5-5' --effort 'low'" "the Claude pool steps down to its cheaper route"
+
+LADDER_CLAUDE="$TMP_ROOT/ladder-claude.json"
+jq '.providers |= map(if .provider == "codex" then .quotaSemantics.effectiveAvailability[0].effectivePercentRemaining = 12 else . end)' "$QUOTA" > "$LADDER_CLAUDE"
+reset_log
+TYPESAFE_API_KEY=$KEY QUOTA_AXI_FIXTURE="$LADDER_CLAUDE" run code out err "$BRIEF"
+assert_contains "$out" "  profile: --harness 'claude' --model 'claude-haiku-5-5' --effort 'medium'" "with only the Claude pool eligible the ladder takes its stronger route"
+jq 'del(.rules[0].select)' "$LADDER_RULES" > "$RULES"
+reset_log
+TYPESAFE_API_KEY=$KEY QUOTA_AXI_FIXTURE="$LADDER_CLAUDE" run code out err "$BRIEF"
+assert_contains "$out" '  status: escalate' "without a declared ladder the same-pool candidates still tie"
+assert_contains "$out" '  reason: genuine spendPriority tie' "an undeclared order never breaks a same-pool tie"
+
+jq '.rules[0].select = "ladder"' "$LANE_RULES" > "$RULES"
+reset_log
+TYPESAFE_API_KEY=$KEY QUOTA_AXI_FIXTURE="$SCHEMA5_PAIR" run code out err "$BRIEF"
+assert_contains "$out" '  status: clear' "a ladder holds a schema 5 row shared by several lanes once"
+assert_contains "$out" "  profile: --harness 'pi' --model 'openai-codex-work/gpt-5.6-terra'" "the first candidate on the shared row holds it"
+reset_log
+TYPESAFE_API_KEY=$KEY QUOTA_AXI_FIXTURE="$SCHEMA6_NATIVE" run code out err "$BRIEF"
+assert_contains "$out" "  profile: --harness 'codex' --model 'gpt-5.6-sol'" "schema 6 account rows stay separate pools under a ladder"
+cp "$BASE_RULES" "$RULES"
+pass "ladder: each quota pool takes its first route whose floor holds, and spendPriority ranks across pools"
+
 # --- quota-axi is read exactly once --------------------------------------------
 reset_log
 write_response "$RESPONSE" rule_4 0.9
