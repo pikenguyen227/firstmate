@@ -1,0 +1,28 @@
+bin/fm-supervise-daemon.sh
+  s_2f5319bc520287::t_fb9cc11e4cc6c1 1278-1280,1302-1304
+docs/architecture.md
+  s_2f5319bc520287::t_248c7ff65e752e 202-203
+docs/configuration.md
+  s_2f5319bc520287::t_248c7ff65e752e 1291,1302
+.agents/skills/afk/SKILL.md
+  s_2f5319bc520287::t_fb9cc11e4cc6c1 203
+  s_2f5319bc520287::t_248c7ff65e752e 202
+bin/fm-afk-return.sh
+  s_2f5319bc520287::t_248c7ff65e752e 24-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7244fb8ac865e747ade95feee9fee22e66a97529",
+  "prompts": {},
+  "sessions": {
+    "s_2f5319bc520287": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a181f9-8902-78a1-9875-3bf2975cf752",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
