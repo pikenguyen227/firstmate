@@ -555,7 +555,6 @@ EOF
   done
   while IFS="$(printf '\t')" read -r tag key summary; do
     [ "$tag" = evidence ] && [ "$key" = escalation ] || continue
-    case "$summary" in undelivered:*) ;; *) continue ;; esac
     count=$((count + 1))
     printf '  - %s\n' "$summary"
   done < "$evidence"
