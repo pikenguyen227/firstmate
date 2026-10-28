@@ -1336,7 +1336,7 @@ With any plan named, the requested-worker and light, standard, and hard rules ta
 | Claude Pro, lean | Opus 5.5 medium | Haiku 5.5 low / Sonnet 5.5 low / Opus 5.5 medium | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | 30% / 20% |
 | Claude Pro, full | Opus 5.5 medium | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none | 30% / 20% |
 | Claude Max 5x and Max 20x, balanced | Opus 5.5 high | Haiku 5.5 medium then low / Sonnet 5.5 medium then low / Opus 5.5 high then medium | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | 35% | Max 5x 20% / 10%, Max 20x 15% / 5% |
-| Claude Max 5x and Max 20x, lean | Opus 5.5 medium | Haiku 5.5 low / Sonnet 5.5 low / Opus 5.5 medium | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | Max 5x 20% / 10%, Max 20x 15% / 5% |
+| Claude Max 5x and Max 20x, lean | Opus 5.5 medium | Haiku 5.5 low / Sonnet 5.5 low / Opus 5.5 medium | Opus 5.5 high | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | Max 5x 20% / 10%, Max 20x 15% / 5% |
 | Claude Max 5x and Max 20x, full | the template | the template | the template | the template | the template | none | Max 5x 20% / 10%, Max 20x 15% / 5% |
 | Claude API, lean | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | none |
 | Claude API, balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none | none |
@@ -1355,7 +1355,7 @@ A tier written as "A then B" lists that provider's routes from stronger to cheap
 Below its last floor a light or standard tier leaves the provider for the other one, or escalates in a home with only that provider.
 Balanced steps down to the plan's lean route for that tier, and lean starts there.
 Validation always stays at high effort, and hard work stays on the provider's strongest routed model, stepping down only in effort with its last route never floored, so no quota drop moves hard work to a weaker model; Fable and Astra stay off every tier where they bill credits or have a small allowance.
-Floors use the `all_models` scope, which quota-axi reports for both Claude and Codex; API plans write none because an unmeasured provider makes a floor escalate.
+Floors use the `all_models` scope, which quota-axi reports for both Claude and Codex (a captured Codex snapshot in [`tests/fm-dispatch-resolve.test.sh`](../tests/fm-dispatch-resolve.test.sh) pins the Codex row); API plans write none because an unmeasured provider makes a floor escalate.
 6.1 Terra routes in the Plus and Pro Codex profiles' lean and balanced tiers and in Codex API lean, and needs Codex CLI 0.159.0 or later; `show` notes that minimum and that 6.1 Sol at low effort is the fallback where Terra is unavailable.
 A plan that turns second mates off does so when its provider is the one new second mates launch on, Claude whenever the home has it.
 In a home with both providers each tier lists its Claude routes and then its Codex routes, so the floors pick a route within each provider and [`quota-array-dispatch`](../.agents/skills/quota-array-dispatch/SKILL.md) picks between the providers by remaining quota, and `show` suggests which provider should host the primary coordinator and the no-mistakes validation.

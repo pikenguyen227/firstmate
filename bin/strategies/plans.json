@@ -59,7 +59,7 @@
           "light": "claude-haiku-5-5 low",
           "standard": "claude-sonnet-5-5 low",
           "hard": "claude-opus-5-5 medium",
-          "requested": "claude-opus-5-5 medium",
+          "requested": "claude-opus-5-5 high",
           "validation": "claude-opus-5-5 high",
           "secondmates": "claude-sonnet-5-5 medium",
           "secondmates_allowed": false
@@ -97,7 +97,7 @@
           "light": "claude-haiku-5-5 low",
           "standard": "claude-sonnet-5-5 low",
           "hard": "claude-opus-5-5 medium",
-          "requested": "claude-opus-5-5 medium",
+          "requested": "claude-opus-5-5 high",
           "validation": "claude-opus-5-5 high",
           "secondmates": "claude-sonnet-5-5 medium",
           "secondmates_allowed": false

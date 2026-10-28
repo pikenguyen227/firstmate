@@ -548,6 +548,7 @@ test_plan_profiles() {
     assert_equals "claude-haiku-5-5 low $([ "$plan" = max5x ] && echo 20 || echo 15)" "$(plan_profile "$home" light claude)" "$plan lean light work runs Haiku low"
     assert_equals "claude-sonnet-5-5 low $([ "$plan" = max5x ] && echo 10 || echo 5)" "$(plan_profile "$home" standard claude)" "$plan lean standard work runs Sonnet low"
     assert_equals "claude-opus-5-5 medium -" "$(plan_profile "$home" hard claude)" "$plan lean hard work runs Opus medium"
+    assert_equals "claude-opus-5-5 high -" "$(plan_profile "$home" claude-requested claude)" "$plan lean keeps a requested Claude worker on Opus high"
     out=$(strat "$home" show)
     assert_contains "$out" "claude: claude-opus-5-5 effort medium" "$plan lean runs the coordinator on Opus medium"
     assert_contains "$out" $'    claude:\n      model: claude-opus-5-5\n      effort: high' "$plan lean reviews stay Opus high"
