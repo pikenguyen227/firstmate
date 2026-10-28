@@ -42,7 +42,8 @@
 #          when a relaunch is actually authorized.
 #
 # Concurrency: fm_secondmate_liveness_lock serializes probe+kill+relaunch per
-# task across the bootstrap sweep and the watcher tick, so a concurrent
+# task across the bootstrap sweep, the watcher tick, and every deliberate
+# lifecycle transaction (fm_secondmate_liveness_lock_wait), so a concurrent
 # relaunch can never be observed mid-flight as a dead endpoint and killed.
 # The attempt ledger (.secondmate-relaunch-<id>, one line per attempt plus one
 # per outcome) is both the durable relaunch record and the input to the
@@ -79,6 +80,21 @@ fm_secondmate_liveness_lock() {  # <id>
 fm_secondmate_liveness_unlock() {  # <id>
   fm_sm_live_require_locks || return 0
   fm_lock_release "$STATE/.secondmate-liveness-$1.lock" 2>/dev/null || true
+}
+
+# A deliberate lifecycle transaction on a mate - bin/fm-control.sh's relaunch,
+# bin/fm-remote-secondmate-relaunch.sh, or the restart pass's retry of a mate
+# it left down (bin/fm-secondmate-restart.sh) - stops or replaces the agent on
+# purpose, and the endpoint then reads exactly like the `dead` or `missing`
+# verdict this library recovers from. Holding the same per-task lock for the
+# whole transaction is what keeps the watcher tick and the session-start sweep
+# from closing that endpoint and racing their own spawn against the
+# transaction's replacement launch. Unlike a supervisor's probe, a transaction
+# waits out an episode already in flight, bounded by <seconds>, and fails
+# (124 with FM_LOCK_HELD_PID naming the holder) rather than proceeding unlocked.
+fm_secondmate_liveness_lock_wait() {  # <id> <seconds>
+  fm_sm_live_require_locks || return 1
+  fm_lock_acquire_wait_bounded "$STATE/.secondmate-liveness-$1.lock" "$2"
 }
 
 fm_sm_live_first_line() {

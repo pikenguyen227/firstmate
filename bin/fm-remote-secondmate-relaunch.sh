@@ -18,6 +18,13 @@
 # already uses when it first records a remote route - and republishes this
 # home's own metadata to match. A failed or refused relaunch leaves this
 # parent's record untouched.
+#
+# The whole transaction holds this parent's endpoint-liveness lock for the
+# mate (bin/fm-secondmate-liveness-lib.sh), exactly as a local
+# bin/fm-control.sh relaunch does: this parent's watcher probes the remote
+# route too, and must not read the deliberately stopped agent as dead and race
+# its own relaunch against this one. FM_CONTROL_LIVENESS_WAIT bounds the wait
+# for an episode already in flight (180 seconds).
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +40,8 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 . "$SCRIPT_DIR/fm-config-inherit-lib.sh"
 # shellcheck source=bin/fm-secondmate-nudge-lib.sh
 . "$SCRIPT_DIR/fm-secondmate-nudge-lib.sh"
+# shellcheck source=bin/fm-secondmate-liveness-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-liveness-lib.sh"
 
 die() { printf 'error: %s\n' "$1" >&2; exit 1; }
 usage() { sed -n '2,4p' "$0" | sed 's/^# \{0,1\}//'; exit 2; }
@@ -53,6 +62,14 @@ REMOTE_HOST=$(fm_meta_get "$META" remote_host)
 # The host-local relaunch has no access to the primary .env. Converge the
 # fork-local key before asking the host to restart; a failed transfer only warns.
 fm_jev_key_push_remote "$SCRIPT_DIR" "$STATE" "$ID" >/dev/null || true
+
+LIVENESS_WAIT=${FM_CONTROL_LIVENESS_WAIT:-180}
+case "$LIVENESS_WAIT" in ''|*[!0-9]*|0) die "FM_CONTROL_LIVENESS_WAIT must be a positive integer: $LIVENESS_WAIT" ;; esac
+liveness_rc=0
+fm_secondmate_liveness_lock_wait "$ID" "$LIVENESS_WAIT" || liveness_rc=$?
+[ "$liveness_rc" -eq 0 ] \
+  || die "secondmate $ID's route is still held by another liveness recovery or lifecycle action${FM_LOCK_HELD_PID:+ (pid $FM_LOCK_HELD_PID)} after ${LIVENESS_WAIT}s; nothing was touched, retry the relaunch once it finishes"
+trap 'fm_secondmate_liveness_unlock "$ID"' EXIT
 
 RELAUNCH_OUT=$("$SCRIPT_DIR/fm-on.sh" "$ID" fm-remote-secondmate-control.sh \
   relaunch "$ID" "$HARNESS" "$MODEL" "$EFFORT" </dev/null 2>&1) || {
