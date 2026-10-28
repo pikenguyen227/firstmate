@@ -36,13 +36,9 @@ Before commissioning an investigation, consult existing reports and established 
 ## Delivery details
 
 On a `no-mistakes-prod-only` project, classify the task's surface: internal-only tooling, automation, contributor or operator process, and release or submission work ships `direct-PR`, while product-facing, mixed, and uncertain work ships `no-mistakes`; never infer internal-only from file location or project name.
-Resolve `bin/fm-project-mode.sh --branch-setting <project>` before naming a ship branch.
-For `prefix:<value>`, pass that value to the brief, ship spawn, and scout promotion as `--branch-prefix` (an explicit empty value makes a bare task id).
-For any other setting, run `bin/fm-branch-convention.sh projects/<project> --task-id <id> --title <task title>`; its registry-first lookup preserves every recorded declaration, and its detector proposes only a simple repo prefix.
-When it returns `status=needs-decision`, report the evidence and proposed branch to the coordinator and wait for a valid branch declaration to record for the project before writing a brief, spawning, or promoting.
-When it returns no proposal, use `fm/`; when Python is unavailable and no declaration exists, the wrapper warns and returns the same fallback.
-Never clear or replace a recorded project branch declaration during detection.
-The project's own explicit `branch=` declaration and a task's explicit `--branch-prefix` override win over detection; pass the selected branch value identically to the brief, spawn, and promotion.
+Run `bin/fm-branch-convention.sh projects/<project>` before naming a ship branch. It quotes committed repository docs and vault wiki passages with file:line, GitHub branch settings, and any machine-checkable pattern, alongside a recorded project declaration. Read those passages with the task and compose one full branch name. A recorded declaration and an explicit task `--branch-prefix` override take precedence; never clear or replace a recorded declaration during detection.
+Validate the chosen name with `bin/fm-branch-name-validate.sh projects/<project> <name>`, then run it once more with `--operator <operator> --pattern <pattern>` for each applicable machine pattern quoted by the finder. If a check fails, the evidence conflicts, or the rule cannot be applied confidently, report the evidence and proposed name to the coordinator, ask for one project decision, and record its confirmed rule in `data/projects.md` before writing a brief, spawning, or promoting. A saved `branch-rule=` is the coordinator's resolved instruction: compose from it on later tasks rather than asking the same question again; ask only when this task introduces a new ambiguity. If the finder reports `status=unavailable` with no recorded rule, ask rather than treating an unreadable source as no rule.
+When the finder returns `status=no-rule` and no declaration exists, use `fm/<id>`. Pass the final name identically as `--branch-name` to the brief, spawn, and promotion; their branch agreement check keeps every harness on that name.
 Record the resulting mode, `yolo` merge posture, and the one-line reason for any deviation in the backlog item note.
 
 ## Concurrency

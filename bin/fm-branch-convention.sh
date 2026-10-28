@@ -1,50 +1,31 @@
 #!/usr/bin/env bash
-# Propose a repository branch prefix without overriding a registered rule.
-# Usage: fm-branch-convention.sh <repo> [--task-id ID --title TITLE]
+# Quote repository branch rules, preserving any registered project declaration.
+# Usage: fm-branch-convention.sh <repo>
 set -eu
-
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo=${1:?repository required}
 project=${repo%/}
 project=${project##*/}
-task_id=
-want=
-for arg in "$@"; do
-  if [ "$want" = task-id ]; then task_id=$arg; want=; continue; fi
-  case "$arg" in
-    --task-id) want=task-id ;;
-    --task-id=*) task_id=${arg#--task-id=} ;;
-  esac
-done
-
-# A recorded project decision is authoritative even when the Python detector
-# is installed and later repository evidence changes.
 setting=$("$BASH" "$SCRIPT_DIR/fm-project-mode.sh" --branch-setting "$project" 2>/dev/null) || setting=none
 case "$setting" in
   prefix:*)
     prefix=${setting#prefix:}
-    printf 'kind=prefix\nvalue=%s\nsource=registered branch prefix\n' "$prefix"
-    if [ -n "$task_id" ]; then
-      branch=$prefix$task_id
-      if git check-ref-format --branch "$branch" >/dev/null 2>&1; then
-        printf 'branch=%s\n' "$branch"
-      else
-        printf 'status=needs-decision\nrule=%s\nproposed-branch=%s\n' "$prefix" "$branch"
-      fi
-    fi
-    exit 0 ;;
+    printf 'source=registered branch prefix\nquote=%s\n' "$prefix"
+    [ -z "$prefix" ] || printf 'operator=starts_with\npattern=%s\n' "$prefix"
+    printf '\n' ;;
   typed:*)
-    printf 'status=needs-decision\nrule=%s\nsource=registered branch rule\nproposed-branch=fm/%s\n' "${setting#typed:}" "${task_id:-task-id}"
-    exit 0 ;;
+    rule=${setting#typed:}
+    printf 'source=registered branch rule\nquote=%s\n' "$rule"
+    case "$rule" in
+      regex:*) printf 'operator=regex\npattern=%s\n' "${rule#regex:}" ;;
+      starts_with:*) printf 'operator=starts_with\npattern=%s\n' "${rule#starts_with:}" ;;
+      fnmatch:*) printf 'operator=fnmatch\npattern=%s\n' "${rule#fnmatch:}" ;;
+    esac
+    printf '\n' ;;
 esac
-
 if command -v python3 >/dev/null 2>&1; then
-  if result=$(python3 "$SCRIPT_DIR/fm-branch-convention.py" "$@" 2>/dev/null); then
-    [ -z "$result" ] || printf '%s\n' "$result"
-    exit 0
-  fi
+  if python3 "$SCRIPT_DIR/fm-branch-convention.py" "$repo"; then exit 0; fi
 fi
-echo 'warn: branch convention detection unavailable; no registered rule, using fm/' >&2
-if [ -n "$task_id" ]; then
-  printf 'kind=prefix\nvalue=fm/\nsource=fallback\nbranch=fm/%s\n' "$task_id"
-fi
+case "$setting" in prefix:*|typed:*) exit 0 ;; esac
+echo 'warn: branch rule finder unavailable and no registered rule exists' >&2
+printf 'status=unavailable\nsource=branch rule finder\nquote=repository rules could not be read\n'

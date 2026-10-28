@@ -76,7 +76,8 @@ The shared no-mistakes gate lifecycle boundary is summarized in [architecture.md
 | `fm-strategy.sh`         | List, show, select, and check the full, balanced, or lean token and autonomy strategy for this home ([contract](configuration.md#token-strategies-binfm-strategysh-configstrategy)) |
 | `fm-step-up.sh`          | Decide, record, and apply the one-tier model step-up after a real worker failure ([contract](configuration.md#automatic-one-tier-step-up-binfm-step-upsh)) |
 | `fm-project-mode.sh`     | Resolve a project's registered delivery posture, forge binding, or ship-branch prefix from `data/projects.md` for fleet sync, home seeding, and the forge agreement a ship spawn or scout promotion applies |
-| `fm-branch-convention.sh` | Propose a simple ship-branch prefix from committed repository instructions (including tracked project-vault wiki) or active GitHub branch rules; send complex, conflicting, or history-only evidence for a project decision, and retain `fm/` when no rule is found |
+| `fm-branch-convention.sh` | Quote branch-rule passages from repository docs and tracked vault wiki plus GitHub ruleset patterns for project add and task intake; preserve registered rules and report unreadable settings |
+| `fm-branch-name-validate.sh` | Check a chosen ship branch with Git ref syntax and any quoted machine pattern before brief, spawn, or promotion |
 | `fm-forge-detect.sh`     | Propose a clone's forge binding from its origin remote for project-add intake, never recording it |
 | `fm-merge-local.sh`      | Fast-forward a `local-only` project's local default branch after approval            |
 | `fm-review-diff.sh`      | Review a crewmate branch or resolved PR head against the authoritative base          |

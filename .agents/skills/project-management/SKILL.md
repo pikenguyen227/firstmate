@@ -65,12 +65,7 @@ A forge composes with `no-mistakes`, `direct-PR`, and `no-mistakes-prod-only`, a
 
 Confirm the source URL, local project name, delivery posture, and autonomy posture, stating the resolved default for each rather than asking the captain to invent one.
 Clone into `projects/<name>` and add the registry entry only after the destination is known to be unused.
-After cloning, run `bin/fm-branch-convention.sh projects/<name>` and report any proposed convention and its source.
-Record only a clear prefix proposal as `branch=<prefix>`.
-When the detector reports `status=needs-decision` for a complex, conflicting, or history-only convention, report the evidence once and record the captain's chosen branch declaration instead of guessing or recording the partial pattern.
-When it finds no rule, leave the branch declaration absent for the `fm/` fallback.
-Never clear or overwrite an existing branch declaration while adding or reviewing a project.
-An explicit branch declaration supplied by the captain takes precedence over the proposal.
+After cloning, run `bin/fm-branch-convention.sh projects/<name>` and read its quoted branch-rule passages and machine patterns. Report the rule and its file:line or GitHub source. Record a clear documented prefix as `branch=<prefix>`, or a confirmed complex rule as `branch-rule=<rule>`; a compact machine pattern can use `branch-rule=regex:<pattern>`, `starts_with:<prefix>`, or `fnmatch:<pattern>` so the later validator can check it without Python. If passages conflict, the rule needs ticket or owner fields, or the finder cannot read GitHub settings, ask for one project decision and record the confirmed rule. When the finder reports `status=no-rule`, leave the declaration absent for the `fm/` fallback. Never clear or overwrite an existing branch declaration while adding or reviewing a project; an explicit declaration supplied by the captain wins.
 A `no-mistakes` or `no-mistakes-prod-only` project must have an `origin` remote and must complete the initialization procedure below, because a conditional policy's product-facing work runs the pipeline while its internal-only work still takes the direct PR.
 A `direct-PR` project needs an `origin` remote but skips no-mistakes initialization.
 A `local-only` project may have no remote and skips no-mistakes initialization.

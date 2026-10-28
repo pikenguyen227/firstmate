@@ -1,24 +1,17 @@
 #!/usr/bin/env python3
-"""Propose only a simple, validated repository ship-branch prefix.
+"""Quote repository branch-rule evidence; never choose a branch name.
 
-Usage: fm-branch-convention.py <repo> [--task-id ID --title TITLE]
+Usage: fm-branch-convention.py <repo>
 
-Print kind=prefix, value, source, and branch for one unambiguous prefix. Print
-status=needs-decision with the observed rule when evidence is complex or
-conflicting. Print nothing when there is no evidence of a repository rule.
+Each observed passage prints source=<file:line>, quote=<text>, and optional
+operator=/pattern= lines. GitHub ruleset reads use gh-axi and remain read-only.
 """
 
 import argparse
-import fnmatch
 import json
 from pathlib import Path
 import re
 import subprocess
-
-
-DOCS = ("AGENTS.md", "CONTRIBUTING.md", "README.md", "BRANCHING.md", ".github/CONTRIBUTING.md")
-SKIP_BRANCHES = {"main", "master", "develop", "development", "dev", "release", "beta", "staging"}
-SKIP_PREFIXES = {"fm", "dependabot", "renovate"}
 
 
 def git(repo, *args):
@@ -41,183 +34,143 @@ def axi_read(path):
         result = subprocess.run(["gh-axi", "api", "GET", path, "--full"],
                                 text=True, capture_output=True, check=False, timeout=20)
     except (OSError, subprocess.TimeoutExpired):
-        return ""
-    return result.stdout if result.returncode == 0 else ""
+        return None
+    return result.stdout if result.returncode == 0 else None
 
 
-def doc_evidence(repo):
-    paths = [repo / name for name in DOCS]
-    if (repo / "docs").is_dir():
-        paths.extend(sorted((repo / "docs").glob("*branch*.md")))
-    vault_paths = []
+def markdown_paths(repo):
+    names = {"AGENTS.md", "README.md", "BRANCHING.md", ".github/CONTRIBUTING.md"}
+    names.update(str(p.relative_to(repo)) for p in repo.glob("CONTRIBUTING*")
+                 if p.is_file() and p.suffix in {"", ".md"})
+    names.update(str(p.relative_to(repo)) for p in (repo / "docs").rglob("*.md") if p.is_file())
+    # Only tracked wiki material is part of a vault's committed knowledge.
+    # The path shape excludes every raw/ subtree even if a local file exists.
     for name in git(repo, "ls-files", "--", "_vaults").splitlines():
         parts = Path(name).parts
         if len(parts) >= 4 and parts[0] == "_vaults" and parts[2] == "wiki" and name.endswith(".md"):
-            vault_paths.append(repo / name)
-    # A workspace context note is the natural entry point for a workspace-wide
-    # Git rule. Search it before app-specific wiki notes when reporting evidence.
-    paths = sorted(vault_paths, key=lambda path: ("/workspace/wiki/" not in str(path), str(path))) + paths
+            names.add(name)
+    return [repo / name for name in sorted(names, key=lambda name: ("_vaults/workspace/wiki/" not in name, name))]
+
+
+def doc_evidence(repo):
     found = []
-    for path in paths:
+    for path in markdown_paths(repo):
         if not path.is_file():
             continue
-        is_vault = "_vaults" in path.parts
-        for line in path.read_text(errors="replace").splitlines():
-            branch_context = "branch" in line.lower()
-            # A vault may show concrete branch templates in a fenced Git
-            # workflow example. Require a branch-family name at line start so
-            # unrelated HTML components and type parameters are ignored.
-            vault_template = is_vault and re.match(
-                r"^\s*(?:[-*]\s*)?(?:`)?(?:feature|feat|fix|bugfix|hotfix)/[^\s`]*<[^>]+>",
-                line, re.I,
-            )
-            if not branch_context and not vault_template:
+        in_workflow = False
+        for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
+            if line.strip() == "---":
+                in_workflow = False
                 continue
-            source = str(path.relative_to(repo))
-            prefix = re.search(
-                r"branch(?:es| naming| name)?\s*(?:prefix|must (?:start|begin) with|should (?:start|begin) with)\s*[:=]?\s*[`\"']?([A-Za-z][A-Za-z0-9_-]*/)",
+            heading = re.match(r"^\s{0,3}#{1,6}\s+(.+)", line)
+            if heading:
+                in_workflow = bool(re.search(r"\bbranch(?:es|ing)?\b|\bgit workflow\b", heading.group(1), re.I))
+                continue
+            stripped = line.strip()
+            branch_words = re.search(r"\bbranch(?:es|ing| naming| names)?\b", line, re.I)
+            checkout = re.search(r"\bgit\s+checkout\s+-b\s+", line)
+            template = in_workflow and re.match(
+                r"^\s*(?:[-*]\s*)?`?(?:feature|feat|fix|bugfix|hotfix|release)/[^\s`|]*<[^>]+>",
                 line, re.I,
             )
-            if prefix:
-                found.append(("prefix", prefix.group(1), source))
-            elif vault_template or (branch_context and re.search(
-                r"<ticket>|<type>|ticket-description|type/ticket-description|\b(?:feature|feat|fix|bugfix|hotfix)/[^\s`]*<[^>]+>",
+            explicit_rule = re.match(r"^\s*(?:[-*]\s*)?(?:\*\*)?(?:ship\s+)?branch(?:es|ing| names| naming)?\b", line, re.I)
+            if not (checkout or template or explicit_rule or (in_workflow and branch_words)):
+                continue
+            # General advice to follow a convention is not a rule passage.
+            concrete = checkout or template or re.search(
+                r"(?:\bprefix\b|must\s+(?:start|begin)|should\s+(?:start|begin)|\bbranch\s+(?:name\s+)?pattern\b|(?:feature|feat|fix|bugfix|hotfix|release)/)",
                 line, re.I,
-            )):
-                found.append(("complex", line.strip(), source))
+            )
+            if not concrete:
+                continue
+            item = {"source": f"{path.relative_to(repo)}:{number}", "quote": stripped}
+            prefix = re.search(
+                r"\bbranch(?:es| names| naming)?\s*(?:prefix\s*[:=]?|(?:must|should)\s+(?:start|begin)\s+with\s+)[`\"']?([A-Za-z][A-Za-z0-9_-]*/)",
+                line, re.I,
+            )
+            if prefix and not re.search(r"<[^>]+>", line):
+                item.update(operator="starts_with", pattern=prefix.group(1))
+            found.append(item)
     return found
 
 
 def ruleset_evidence(repo):
     name = github_repo(repo)
     if not name:
-        return []
+        return [], False
+    body = axi_read(f"/repos/{name}/rulesets?includes_parents=true")
+    if body is None:
+        return [], True
     try:
-        summaries = json.loads(axi_read(f"/repos/{name}/rulesets?includes_parents=true"))
+        summaries = json.loads(body)
     except ValueError:
-        return []
+        return [], True
     if not isinstance(summaries, list):
-        return []
+        return [], True
     found = []
+    unavailable = False
     for entry in summaries:
-        if not isinstance(entry, dict) or entry.get("enforcement") != "active":
+        if not isinstance(entry, dict) or entry.get("enforcement") != "active" or entry.get("target") != "branch":
             continue
-        if entry.get("target") != "branch" or not isinstance(entry.get("id"), int):
+        rule_id = entry.get("id")
+        if not isinstance(rule_id, int):
+            unavailable = True
             continue
-        source = f"GitHub ruleset {entry['id']}"
+        body = axi_read(f"/repos/{name}/rulesets/{rule_id}")
         try:
-            detail = json.loads(axi_read(f"/repos/{name}/rulesets/{entry['id']}"))
+            detail = json.loads(body) if body is not None else None
         except ValueError:
-            found.append(("complex", "unreadable ruleset", source))
-            continue
+            detail = None
         if not isinstance(detail, dict):
-            found.append(("complex", "unreadable ruleset", source))
+            unavailable = True
             continue
-        conditions = detail.get("conditions") or {}
+        source = f"GitHub ruleset {rule_id}"
+        conditions = detail.get("conditions")
+        if not isinstance(conditions, dict):
+            conditions = {}
         ref_name = conditions.get("ref_name") or {}
-        includes = ref_name.get("include", [])
-        excludes = ref_name.get("exclude", [])
-        if excludes:
-            found.append(("complex", f"ref exclusions: {excludes}", source))
-        if len(includes) == 1:
-            protected = re.fullmatch(r"(?:refs/heads/)?([A-Za-z][A-Za-z0-9_-]*)/\*", includes[0])
-            if protected:
-                found.append(("prefix", protected.group(1) + "/", source))
-        elif len(includes) > 1:
-            found.append(("complex", f"ref includes: {includes}", source))
+        if not isinstance(ref_name, dict):
+            ref_name = {}
+        includes = ref_name.get("include") or []
+        excludes = ref_name.get("exclude") or []
+        if includes or excludes:
+            item = {"source": source, "quote": f"ref_name include={includes} exclude={excludes}"}
+            if len(includes) == 1 and not excludes:
+                match = re.fullmatch(r"(?:refs/heads/)?([A-Za-z][A-Za-z0-9_-]*)/\*", includes[0])
+                if match:
+                    item.update(operator="fnmatch", pattern=match.group(1) + "/*")
+            found.append(item)
         for rule in detail.get("rules") or []:
-            if rule.get("type") != "branch_name_pattern":
+            if not isinstance(rule, dict) or rule.get("type") != "branch_name_pattern":
                 continue
-            params = rule.get("parameters", {})
-            pattern = params.get("pattern", "")
-            operator = params.get("operator")
-            if params.get("negate") or not isinstance(pattern, str):
-                found.append(("complex", f"branch name pattern: {params}", source))
-                continue
-            if operator == "starts_with" and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*/", pattern):
-                found.append(("prefix", pattern, source, (operator, pattern)))
-                continue
-            if operator == "fnmatch" and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*/\*", pattern):
-                found.append(("prefix", pattern[:-1], source, (operator, pattern)))
-                continue
-            if operator != "regex":
-                found.append(("complex", f"branch name pattern: {params}", source))
-                continue
-            try:
-                re.compile(pattern)
-            except re.error:
-                found.append(("complex", "invalid branch name pattern", source))
-                continue
-            # Only a literal prefix followed by a conventional slug class is
-            # inferred. Alternations, ticket groups, and unknown regex syntax
-            # stay decisions for the coordinator.
-            simple = re.fullmatch(r"\^([A-Za-z][A-Za-z0-9_-]*/|[A-Za-z][A-Za-z0-9_-]*\\/)(?:\[a-z0-9-\]\+|\[A-Za-z0-9-\]\+|\.\+)\$", pattern)
-            if simple:
-                found.append(("prefix", simple.group(1).replace("\\/", "/"), source, (operator, pattern)))
-            else:
-                found.append(("complex", pattern, source))
-    return found
-
-
-def history_evidence(repo):
-    remote = git(repo, "for-each-ref", "--count=120", "--sort=-committerdate",
-                 "--format=%(refname:short)", "refs/remotes/origin").splitlines()
-    local = git(repo, "for-each-ref", "--count=120", "--sort=-committerdate",
-                "--format=%(refname:short)", "refs/heads").splitlines()
-    topics = []
-    for name in remote + local:
-        name = name.removeprefix("origin/")
-        if name in SKIP_BRANCHES or "/" not in name:
-            continue
-        if name.split("/", 1)[0] in SKIP_PREFIXES:
-            continue
-        topics.append(name)
-    return sorted(set(topics))
+            params = rule.get("parameters") or {}
+            if not isinstance(params, dict):
+                params = {}
+            item = {"source": source, "quote": f"branch_name_pattern {json.dumps(params, sort_keys=True)}"}
+            if isinstance(params.get("pattern"), str) and params.get("operator") in {"regex", "starts_with", "fnmatch"} and not params.get("negate"):
+                item.update(operator=params["operator"], pattern=params["pattern"])
+            found.append(item)
+    return found, unavailable
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("repo", type=Path)
-    parser.add_argument("--task-id")
-    parser.add_argument("--title", default="")
     args = parser.parse_args()
     repo = args.repo.resolve()
     if not (repo / ".git").exists():
         parser.error("repository has no .git")
-    documents = doc_evidence(repo)
-    rulesets = ruleset_evidence(repo)
-    evidence = documents + rulesets
-    complex_rules = [item for item in evidence if item[0] == "complex"]
-    prefixes = {item[1] for item in evidence if item[0] == "prefix"}
-    topics = history_evidence(repo)
-    if complex_rules or len(prefixes) > 1:
-        observed = "; ".join(f"{item[2]}: {item[1]}" for item in evidence[:5])
-        if len(evidence) > 5:
-            observed += f"; ... ({len(evidence) - 5} more observations)"
-        print(f"status=needs-decision\nrule={observed}\nproposed-branch=fm/{args.task_id or 'task-id'}")
-        return
-    if len(prefixes) == 1:
-        prefix = next(iter(prefixes))
-        branch = prefix + (args.task_id or "task-id")
-        if args.task_id and subprocess.run(["git", "check-ref-format", "--branch", branch], capture_output=True).returncode:
-            print(f"status=needs-decision\nrule={prefix}\nproposed-branch={branch}")
-            return
-        for item in rulesets:
-            if item[0] == "prefix" and len(item) > 3:
-                operator, pattern = item[3]
-                valid = (re.fullmatch(pattern, branch) is not None if operator == "regex" else
-                         branch.startswith(pattern) if operator == "starts_with" else
-                         fnmatch.fnmatchcase(branch, pattern))
-                if not valid:
-                    print(f"status=needs-decision\nrule={pattern}\nproposed-branch={branch}")
-                    return
-        source = ", ".join(item[2] for item in evidence if item[0] == "prefix")
-        print(f"kind=prefix\nvalue={prefix}\nsource={source}")
-        if args.task_id:
-            print(f"branch={branch}")
-        return
-    if topics:
-        print(f"status=needs-decision\nrule=branch history: {', '.join(topics[:5])}\nproposed-branch=fm/{args.task_id or 'task-id'}")
+    docs = doc_evidence(repo)
+    rulesets, unavailable = ruleset_evidence(repo)
+    if unavailable:
+        print("status=unavailable\nsource=GitHub rulesets\nquote=branch settings could not be read")
+    for item in docs + rulesets:
+        print(f"source={item['source']}\nquote={item['quote']}")
+        if "pattern" in item:
+            print(f"operator={item['operator']}\npattern={item['pattern']}")
+        print()
+    if not docs and not rulesets and not unavailable:
+        print("status=no-rule")
 
 
 if __name__ == "__main__":
