@@ -553,6 +553,12 @@ EOF
     count=$((count + 1))
     printf '  - %s: %s\n' "$task" "$(printf '%s' "$last" | clean_field)"
   done
+  while IFS="$(printf '\t')" read -r tag key summary; do
+    [ "$tag" = evidence ] && [ "$key" = escalation ] || continue
+    case "$summary" in undelivered:*) ;; *) continue ;; esac
+    count=$((count + 1))
+    printf '  - %s\n' "$summary"
+  done < "$evidence"
   [ "$count" -gt 0 ] || printf '  (nothing)\n'
 
   # 5. landed, cleanup due: finished work whose task record is still live.

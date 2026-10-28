@@ -664,6 +664,33 @@ mark_status_seen() {  # <state> <task> <captured-end-offset> <captured-identity>
     "$1/$2.status" "$3" "$4"
 }
 
+# Adopt positions already classified by ordinary supervision at entry.
+# Without either marker, only skip an existing log when its whole span has no
+# actionable event; an unpresented event must remain available to the scan.
+seed_status_seen_at_entry() {  # <state>
+  local state=$1 f task signal heartbeat daemon offset ident record rc
+  for f in "$state"/*.status; do
+    [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] || continue
+    task=$(basename "$f"); task=${task%.status}
+    daemon=$(status_seen_offset "$state" "$task")
+    signal=$(status_presentation_marker_offset "$(status_signal_seen_marker_path "$state" "$task")" "$f")
+    heartbeat=$(status_presentation_marker_offset "$(status_heartbeat_seen_marker_path "$state" "$task")" "$f")
+    offset=$daemon
+    [ "$signal" -le "$offset" ] || offset=$signal
+    [ "$heartbeat" -le "$offset" ] || offset=$heartbeat
+    if [ "$offset" -eq 0 ]; then
+      record=$(status_span_first_actionable_record "$f" 0)
+      rc=$?
+      [ "$rc" -eq 1 ] || continue
+      [ -n "$record" ] || continue
+      offset=${record%%$'\t'*}
+    fi
+    [ "$offset" -gt "$daemon" ] || continue
+    ident=$(_fm_open_decisions_file_ident "$f") || continue
+    mark_status_seen "$state" "$task" "$offset" "$ident" || true
+  done
+}
+
 # Advance the offset for every task a per-wake classification escalated, so the
 # catch-all scan does not re-escalate the same events within HEARTBEAT_SCAN_SECS.
 # An ERROR row names a task whose log could not be classified and carries the
@@ -1257,8 +1284,8 @@ _oldest_line_age() {  # <buf> -> seconds since the oldest buffered item first ar
 
 # --- housekeeping (runs every tick while the watcher is mid-cycle) ----------
 # Four cheap jobs, each guarded so an empty/quiet fleet costs near zero:
-#  1) batch flush: if the escalation buffer's oldest content is older than
-#     ESCALATE_BATCH_SECS (or batching is disabled), inject one digest.
+#  1) batch flush: publish before the escalation buffer's oldest content
+#     reaches ESCALATE_BATCH_SECS (or immediately when batching is disabled).
 #  1b) max-defer escape: if the buffer is STILL undelivered past MAX_DEFER_SECS,
 #     attempt one normal delivery; if it cannot confirm, raise the wedge alarm.
 #     Never silently defer forever.
@@ -1280,7 +1307,10 @@ housekeeping() {  # <state>
     escalate_flush "$state" || true
   else
     due=$(_oldest_line_age "$state/.subsuper-escalations")
-    if [ "$due" -ge "$(escalate_batch_secs)" ]; then
+    # Housekeeping runs on a tick, and the loop itself sleeps one second.
+    # Start the flush before the stated deadline so tick scheduling cannot
+    # publish the digest one or two seconds beyond it.
+    if [ "$((due + ${FM_HOUSEKEEPING_TICK:-$HOUSEKEEPING_TICK_DEFAULT} + 2))" -ge "$(escalate_batch_secs)" ]; then
       escalate_flush "$state" || true
     fi
   fi
@@ -1976,6 +2006,7 @@ fm_super_main() {
   afk_active "$STATE" && afk_status="on"
   escalate_transport >/dev/null
   log "daemon starting (pid $$); target=$TARGET; target_source=$target_source; backend=$BACKEND; backend_source=$backend_source; afk=$afk_status; inject_skip='${FM_INJECT_SKIP:-$INJECT_SKIP_DEFAULT}'; stale_escalate=${FM_STALE_ESCALATE_SECS:-$STALE_ESCALATE_SECS_DEFAULT}s; delivery=$FM_DAEMON_TRANSPORT; batch=$(escalate_batch_secs)s"
+  seed_status_seen_at_entry "$STATE"
   migrate_watcher_pause_markers "$STATE"
 
   # --- shutdown: flush buffered escalations, reap child, release lock -------

@@ -1636,6 +1636,63 @@ test_escalate_batch_age_uses_first_append() {
   pass "batch flush measures max-delay from the first append, not the last"
 }
 
+test_entry_adopts_presented_status_without_losing_unclassified_events() {
+  local dir state old fresh routine partial ident
+  dir=$(make_supercase entry-presented-status)
+  state="$dir/state"
+  old="$state/old.status"
+  fresh="$state/fresh.status"
+  routine="$state/routine.status"
+  partial="$state/partial.status"
+  printf 'failed: already presented\n' > "$old"
+  printf 'failed: still unpresented\n' > "$fresh"
+  printf 'working: pre-entry routine\n' > "$routine"
+  printf 'working: presented prefix\n' > "$partial"
+  ident=$(_fm_open_decisions_file_ident "$old")
+  status_presentation_marker_commit "$(status_signal_seen_marker_path "$state" old)" "$old" "$(log_size "$old")" "$ident"
+  ident=$(_fm_open_decisions_file_ident "$partial")
+  status_presentation_marker_commit "$(status_heartbeat_seen_marker_path "$state" partial)" "$partial" "$(log_size "$partial")" "$ident"
+  printf 'failed: new after presentation\n' >> "$partial"
+
+  seed_status_seen_at_entry "$state"
+  [ "$(status_seen_offset "$state" old)" = "$(log_size "$old")" ] || fail "entry did not adopt a presented signal"
+  [ "$(status_seen_offset "$state" routine)" = "$(log_size "$routine")" ] || fail "entry did not skip a routine-only existing file"
+  [ "$(status_seen_offset "$state" fresh)" = 0 ] || fail "entry skipped an unpresented failure"
+  FM_HEARTBEAT_SCAN_SECS=0 FM_ESCALATE_BATCH_SECS=90 housekeeping "$state"
+  grep -F 'fresh.status: failed: still unpresented (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
+    || fail "entry lost an unpresented failure"
+  grep -F 'partial.status: failed: new after presentation (catch-all scan)' "$state/.subsuper-escalations" >/dev/null \
+    || fail "entry lost an event after a presented prefix"
+  grep -F 'old.status:' "$state/.subsuper-escalations" >/dev/null && fail "entry replayed a presented failure"
+  pass "entry adopts ordinary presentation and preserves unclassified status events"
+}
+
+test_batch_flushes_before_inclusive_deadline() {
+  local dir state fakebin sent capture
+  dir=$(make_supercase batch-inclusive-deadline)
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  sent="$dir/sent.log"; : > "$sent"
+  capture="$dir/pane.txt"; printf '\342\235\257 \n' > "$capture"
+  escalate_add "$state" "event: failed"
+  echo $(( $(date +%s) - 73 )) > "$state/.subsuper-escalations.since"
+  afk_enter "$state"
+  PATH="$fakebin:$PATH" FM_FAKE_TMUX_PANE_ALIVE=1 FM_FAKE_TMUX_SENT="$sent" \
+    FM_FAKE_TMUX_CAPTURE="$capture" FM_ESCALATE_BATCH_SECS=90 FM_HOUSEKEEPING_TICK=15 \
+    housekeeping "$state"
+  delivered_digest "$sent" | grep -F 'event: failed' >/dev/null \
+    || fail "balanced batch did not flush ahead of its 90-second deadline"
+  : > "$sent"
+  escalate_add "$state" "event: needs-decision"
+  echo $(( $(date +%s) - 163 )) > "$state/.subsuper-escalations.since"
+  PATH="$fakebin:$PATH" FM_FAKE_TMUX_PANE_ALIVE=1 FM_FAKE_TMUX_SENT="$sent" \
+    FM_FAKE_TMUX_CAPTURE="$capture" FM_ESCALATE_BATCH_SECS=180 FM_HOUSEKEEPING_TICK=15 \
+    housekeeping "$state"
+  delivered_digest "$sent" | grep -F 'event: needs-decision' >/dev/null \
+    || fail "lean batch did not flush ahead of its 180-second deadline"
+  pass "balanced and lean batches flush before their inclusive deadlines"
+}
+
 test_heartbeat_scan_dedup() {
   local dir state
   dir=$(make_supercase scan-dedup)
@@ -3354,6 +3411,8 @@ test_housekeeping_herdr_resumed_stale_cleared
 test_housekeeping_orca_persistent_stale_resolves_terminal
 test_escalate_batches_into_one_digest
 test_escalate_batch_age_uses_first_append
+test_entry_adopts_presented_status_without_losing_unclassified_events
+test_batch_flushes_before_inclusive_deadline
 test_heartbeat_scan_dedup
 test_handle_wake_routes_self_and_escalate
 test_needs_decision_queued_row_escalates_once_as_the_decision
