@@ -1,0 +1,13 @@
+Live Codex primary in named Herdr lab:
+{"id":"cli:agent:get","result":{"agent":{"agent":"codex","agent_status":"idle","completion_seq":5,"cwd":"/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60VY560ADY7AH2TE0GPJXA5","focused":true,"foreground_cwd":"/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60VY560ADY7AH2TE0GPJXA5","pane_id":"w1:p1","revision":1,"state_change_seq":5,"tab_id":"w1:t1","terminal_id":"term_65ee39e971d831","terminal_title":"01M60VY560ADY7AH2TE0G...","terminal_title_stripped":"01M60VY560ADY7AH2TE0G...","workspace_id":"w1"},"type":"agent_info"}}
+
+Daemon:
+[2026-10-28T17:01:16+0700] daemon starting (pid 66750); target=fm-lab-quietentry-82697-8919:w1:p1; target_source=FM_SUPERVISOR_TARGET; backend=herdr; backend_source=FM_SUPERVISOR_BACKEND; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=checkpoint; batch=4s
+[2026-10-28T17:01:18+0700] outbox: 1 event(s) handed to the checkpoint wake path
+
+Published digest:
+Supervisor escalate (1 event(s)): pending.status: failed: newly pending (catch-all scan) (pre-read; re-arm not needed — watcher daemon-managed)
+
+Source status streams:
+failed: already handled
+failed: newly pending

@@ -1,0 +1,8 @@
+Lean batch: configured 180s, buffer age at publication 178s (1793181796 - 1793181618).
+[2026-10-28T17:03:01+0700] daemon starting (pid 33498); target=fm-lab-quietentry-82697-8919:w1:p1; target_source=FM_SUPERVISOR_TARGET; backend=herdr; backend_source=FM_SUPERVISOR_BACKEND; afk=on; inject_skip='heartbeat'; stale_escalate=240s; delivery=checkpoint; batch=180s
+[2026-10-28T17:03:02+0700] wake: check: rearm-resurface
+[2026-10-28T17:03:03+0700] escalate: check: rearm-resurface -> check: rearm-resurface
+[2026-10-28T17:03:16+0700] outbox: 2 event(s) handed to the checkpoint wake path
+
+Published digest:
+Supervisor escalate (2 event(s)): lean: pending decision | check: rearm-resurface (pre-read; re-arm not needed — watcher daemon-managed)

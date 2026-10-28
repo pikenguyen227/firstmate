@@ -1,0 +1,26 @@
+=== Return brief ===
+Supervisor health:
+  - GAP: watcher downtime was detected during the away window (recovery marker present)
+Your instructions:
+  (no away-posture record for this window; legacy away flag only)
+Waiting on you:
+  held listing unavailable: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.aSke93/data/backlog.md: /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M60VY560ADY7AH2TE0GPJXA5/bin/fm-backlog-transition-lib.sh: line 338: exec: tasks-axi: not found; catch-up stays gated
+Tried and failed, or could not be fixed:
+  - pending.status: failed: pane delivery deferred
+  - undelivered: Supervisor escalate (1 event(s)): pending.status: failed: newly pending (catch-all scan) (pre-read; re-arm not needed — watcher daemon-managed) 
+  - undelivered: Supervisor escalate (2 event(s)): balanced: pending decision | check: rearm-resurface (pre-read; re-arm not needed — watcher daemon-managed) 
+  - undelivered: Supervisor escalate (2 event(s)): lean: pending decision | check: rearm-resurface (pre-read; re-arm not needed — watcher daemon-managed) 
+Landed, cleanup due:
+  (nothing)
+Handled while away:
+  0 outcome(s) handled by the away session (0 routine, 0 escalated above)
+  (no routine outcomes recorded in the store for this window)
+Cost: 0 supervision outcome(s) recorded (0 routine, 0 captain); 0 task(s) live at return.
+fm-afk-return: catch-up must finish before the captain request
+catch-up health: GAP: watcher downtime was detected during the away window (recovery marker present)
+catch-up escalation: pending.status: failed: pane delivery deferred
+catch-up escalation: undelivered: Supervisor escalate (1 event(s)): pending.status: failed: newly pending (catch-all scan) (pre-read; re-arm not needed — watcher daemon-managed) 
+catch-up escalation: undelivered: Supervisor escalate (2 event(s)): balanced: pending decision | check: rearm-resurface (pre-read; re-arm not needed — watcher daemon-managed) 
+catch-up escalation: undelivered: Supervisor escalate (2 event(s)): lean: pending decision | check: rearm-resurface (pre-read; re-arm not needed — watcher daemon-managed) 
+catch-up lifecycle: held set unreadable: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.aSke93/data/backlog.md; catch-up stays gated
+fm-afk-return: handle each blocker now, or close it with resolved [key=...] and append a durable reclassification reason, then run bin/fm-afk-return.sh check
