@@ -21,7 +21,8 @@
 # from the window whose summary opens with the "per your away instructions:"
 # marker the branch prompt in bin/fm-branch-prompt.sh requires), then what is
 # waiting on the captain,
-# then what was tried and failed or could not be fixed, then landed work whose
+# then what was tried and failed or could not be fixed (including buffered pane
+# escalations and undelivered outbox items), then landed work whose
 # task record is still live (the recorded PR carries the
 # merge-notification marker bin/fm-pr-lib.sh owns, read from durable records
 # only, never the forge - finished work that owes an ordinary teardown, which
@@ -553,6 +554,11 @@ EOF
     count=$((count + 1))
     printf '  - %s: %s\n' "$task" "$(printf '%s' "$last" | clean_field)"
   done
+  while IFS="$(printf '\t')" read -r tag key summary; do
+    [ "$tag" = evidence ] && [ "$key" = escalation ] || continue
+    count=$((count + 1))
+    printf '  - %s\n' "$summary"
+  done < "$evidence"
   [ "$count" -gt 0 ] || printf '  (nothing)\n'
 
   # 5. landed, cleanup due: finished work whose task record is still live.

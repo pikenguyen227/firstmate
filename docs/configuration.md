@@ -1288,7 +1288,7 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Automatic fresh starts | enabled | enabled | disabled |
 | Extra discretionary fleet reviews | enabled | disabled | disabled |
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
-| While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events batched for up to 90 seconds | `/quiet`, captain-relevant events batched for up to 180 seconds |
+| While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events use a 90-second target batch window | `/quiet`, captain-relevant events use a 180-second target batch window |
 
 Codex Sol routes name `gpt-6-sol` in every mode and plan.
 If an interactive account refuses a selected model, choose an available model explicitly before relaunching the affected session.
@@ -1300,7 +1300,7 @@ The template table above is what renders when no plan is named.
 The templates' `autonomy` object owns the rendered level, dispatch policy, automatic fix-round allowance (`null` means existing pipeline limits), fresh-start enablement, discretionary fleet-review choice, and step-up posture.
 [`strategy-autonomy`](../.agents/skills/strategy-autonomy/SKILL.md) owns coordinator application, approval reuse, round accounting, and session transitions, using the existing quiet lifecycle instead of new notification filtering.
 A confirmed selection requests that posture; the command records it but does not itself launch or stop quiet supervision, and later explicit session choices win.
-Quiet batches only within its bound (`FM_ESCALATE_BATCH_SECS`, 90 seconds, or 180 under lean) and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
+Quiet follows the [daemon's batch timing](../.agents/skills/afk/SKILL.md#classification-policy) and never drops captain-relevant events; required heartbeat reconciliation and safety scans remain enabled even when discretionary reviews are off.
 On Claude and Codex primaries quiet delivers through the harness's own wake path instead of typing into the captain's pane: routine wakes are handled in bash without a model turn, and each batched decision, failure, credential need, or review-ready result reaches the coordinator at the next turn end through Claude's Stop-hook rewake or Codex's foreground checkpoint, so a busy session delays it to that turn end but never loses it.
 A digest still unclaimed after the daemon's max-defer bound once the turn has ended gets one pane attempt and the wedge alarm, one held behind a turn that stays busy past `FM_OUTBOX_HUNG_TURN_SECS` raises the alarm, and anything left when quiet ends appears in the return brief; the [afk skill](../.agents/skills/afk/SKILL.md) owns that mechanism.
 Fix-round limits pause for approval rather than bypassing validation, and indivisible tool-internal retry boundaries must be disclosed rather than represented as enforceable caps.

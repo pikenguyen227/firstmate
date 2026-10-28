@@ -132,6 +132,12 @@ test_return_gate_owns_remediation_and_reports_catchup_to_bearings() {
   rc=$?
   set -e
   [ "$rc" -eq 3 ] || fail "return begin should gate on a live blocker (rc=$rc): $out"
+  printf '%s\n' "$out" | awk '/^Tried and failed, or could not be fixed:/{show=1; next} /^Landed, cleanup due:/{show=0} show' \
+    | grep -F 'undelivered: Supervisor escalate (1 event(s)): pyr.status: needs-decision merge PR 58' >/dev/null \
+    || fail "the main failed section omitted an undelivered outbox item"
+  printf '%s\n' "$out" | awk '/^Tried and failed, or could not be fixed:/{show=1; next} /^Landed, cleanup due:/{show=0} show' \
+    | grep -F '  - repair-task.status: blocked synthetic dependency' >/dev/null \
+    || fail "the main failed section omitted a buffered pane escalation"
   gate="$dir/home/state/.afk-return-catchup"
   [ -s "$gate" ] || fail "return begin did not persist its fail-closed catch-up gate"
   assert_contains "$out" 'firstmate-actionable blocker: repair-task [key=synthetic-dependency]' "return output did not assign blocker remediation to Firstmate"
