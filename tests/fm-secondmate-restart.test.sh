@@ -302,6 +302,7 @@ run_restart() {  # <case-dir> <args...>
   env -u HERDR_ENV -u HERDR_SESSION -u HERDR_PANE_ID -u HERDR_TAB_ID \
     -u HERDR_WORKSPACE_ID -u HERDR_SOCKET_PATH -u TMUX -u TMUX_PANE \
     PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
+    CLAUDE_CONFIG_DIR="$dir/claude-config" \
     FM_BACKEND=tmux FM_SPAWN_NO_GUARD=1 FM_SECONDMATE_PERSIST_POLL=1 \
     FM_SECONDMATE_PERSIST_WAIT="${FM_TEST_PERSIST_WAIT:-30}" \
     FM_CONTROL_POLL=0.01 FM_CONTROL_EXIT_WAIT=0.05 FM_CONTROL_LAUNCH_WAIT=0.05 \
@@ -831,6 +832,70 @@ test_launch_refusal_is_caught_before_the_stop() {
   pass "T11c a predictable launch refusal is caught before the old agent is stopped"
 }
 
+test_unsafe_task_temp_root_is_refused_before_stop() (
+  local dir out rc id task_tmp
+  id="pf$RANDOM$RANDOM"
+  dir=$(new_case temp-root-refusal)
+  add_local_mate "$dir" "$id"
+  arm_answer "$dir" "$id"
+  task_tmp="/tmp/fm-$id"
+  [ ! -e "$task_tmp" ] && [ ! -L "$task_tmp" ] || fail "test task temp root already exists"
+  ln -s "$dir" "$task_tmp"
+  trap 'rm -f -- "$task_tmp"' EXIT
+
+  out=$(run_restart "$dir" "$id"); rc=$?
+
+  expect_code 3 "$rc" "an unsafe task temp root must refuse before the agent stops"$'\n'"$out"
+  assert_contains "$out" "nudged: $id: its restart was refused before its agent was touched" \
+    "the unsafe temp root must leave the old agent running"
+  assert_contains "$out" "task temp root $task_tmp already exists" \
+    "the refusal must identify the unsafe task temp root"
+  assert_no_grep '^/exit$' "$dir/fake/literal" "the old agent stopped despite the unsafe temp root"
+  [ "$(cat "$dir/fake/command")" = claude ] || fail "the old agent is no longer running"
+  pass "T11c1 an unsafe task temp root refuses before the old agent stops"
+)
+
+test_wrong_endpoint_worktree_is_refused_before_stop() {
+  local dir out rc
+  dir=$(new_case endpoint-worktree-refusal)
+  add_local_mate "$dir" sm1
+  arm_answer "$dir" sm1
+  printf '%s' "$dir/home" > "$dir/fake/cwd.fmses:fm-sm1"
+
+  out=$(run_restart "$dir" sm1); rc=$?
+
+  expect_code 3 "$rc" "an endpoint outside the mate home must refuse before the agent stops"$'\n'"$out"
+  assert_contains "$out" "nudged: sm1: its restart was refused before its agent was touched" \
+    "the wrong endpoint worktree must leave the old agent running"
+  assert_contains "$out" "not its recorded worktree" "the refusal must identify the endpoint location"
+  assert_no_grep '^/exit$' "$dir/fake/literal" "the old agent stopped despite the wrong endpoint worktree"
+  [ "$(cat "$dir/fake/command")" = claude ] || fail "the old agent is no longer running"
+  pass "T11c2 an endpoint outside the mate home refuses before the old agent stops"
+}
+
+test_preflight_rejects_other_task_kinds() {
+  local dir kind out rc
+  dir=$(new_case preflight-kind)
+  add_local_mate "$dir" sm1
+  for kind in ship scout; do
+    sed "s/^kind=.*/kind=$kind/" "$dir/home/state/sm1.meta" > "$dir/home/state/sm1.meta.next"
+    mv "$dir/home/state/sm1.meta.next" "$dir/home/state/sm1.meta"
+    rc=0
+    out=$(env -u HERDR_ENV -u HERDR_SESSION -u HERDR_PANE_ID -u HERDR_TAB_ID \
+      -u HERDR_WORKSPACE_ID -u HERDR_SOCKET_PATH -u TMUX -u TMUX_PANE \
+      PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
+      CLAUDE_CONFIG_DIR="$dir/claude-config" \
+      FM_BACKEND=tmux FM_SPAWN_NO_GUARD=1 \
+      "$ROOT/bin/fm-spawn.sh" sm1 --relaunch --preflight 2>&1) || rc=$?
+    expect_code 1 "$rc" "a $kind task must not enter the secondmate preflight"$'\n'"$out"
+    assert_contains "$out" "--preflight applies to secondmate relaunches only" \
+      "the $kind preflight must be rejected at the public command"
+    assert_no_grep '^/exit$' "$dir/fake/literal" "a $kind preflight stopped the agent"
+  done
+  [ ! -s "$dir/fake/herdr-calls" ] || fail "the kind checks reached a real herdr client"
+  pass "T11c3 the launch preflight is limited to secondmate relaunches"
+}
+
 # --- T11d: a nudge is reported only to an agent proven running --------------
 test_dead_mate_is_never_reported_nudged() {
   local dir out rc
@@ -1173,6 +1238,9 @@ test_persist_waits_are_polled_together
 test_post_stop_failure_is_reported_unreached
 test_post_stop_launch_failure_is_retried
 test_launch_refusal_is_caught_before_the_stop
+test_unsafe_task_temp_root_is_refused_before_stop
+test_wrong_endpoint_worktree_is_refused_before_stop
+test_preflight_rejects_other_task_kinds
 test_dead_mate_is_never_reported_nudged
 test_remote_stop_then_failed_launch_is_retried
 test_batch_stops_after_a_down_mate

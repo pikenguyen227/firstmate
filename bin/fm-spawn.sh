@@ -70,8 +70,8 @@
 #   rebind is a recovery, never a teardown. Only a crewmate or scout rebinds: a
 #   secondmate whose endpoint is gone is respawned by its own owner
 #   (`--secondmate`, driven by the session-start liveness sweep).
-#   --preflight, valid only with --relaunch, runs every validation a relaunch
-#   would and stops before any endpoint, record, or brief is touched, also
+#   --preflight, valid only with a secondmate --relaunch, validates the launch
+#   and stops before any endpoint, record, or brief is touched, also
 #   accepting an endpoint whose agent is still alive; bin/fm-control.sh runs it
 #   before stopping the agent it replaces, and it prints "preflight-ok".
 #   Every fresh ship/scout launch and replacement explicitly enters the recorded
@@ -1794,6 +1794,10 @@ if [ "$RELAUNCH" -eq 1 ]; then
   RELAUNCH_PRIOR_HARNESS=$(fm_meta_get "$RELAUNCH_META" harness)
   KIND=$(fm_meta_get "$RELAUNCH_META" kind)
   [ -n "$KIND" ] || KIND=ship
+  if [ "$PREFLIGHT" -eq 1 ] && [ "$KIND" != secondmate ]; then
+    echo "error: --preflight applies to secondmate relaunches only" >&2
+    exit 1
+  fi
   # A secondmate whose endpoint is gone already has ONE owner for that
   # recovery: the session-start liveness sweep respawns it with
   # `fm-spawn.sh <id> --secondmate`, which stands its home's own workspace back
@@ -3649,19 +3653,33 @@ if [ -e "$STATE/$ID.backlog-close" ] || [ -L "$STATE/$ID.backlog-close" ]; then
   exit 1
 fi
 
-# --preflight ends here, before any endpoint, record, or brief is touched. The
-# one launch prerequisite that sits later in the launch - Claude's workspace
-# trust pre-registration - is idempotent and needed by the replacement anyway,
-# so it is proven now too.
+task_tmp_private() {
+  [ ! -L "$TASK_TMP" ] && [ -d "$TASK_TMP" ] && [ -O "$TASK_TMP" ] &&
+    [ -z "$(find "$TASK_TMP" -prune \( -perm -g=w -o -perm -o=w \) -print 2>/dev/null)" ]
+}
+TASK_TMP="/tmp/fm-$ID"
 if [ "$PREFLIGHT" -eq 1 ]; then
+  expected=$(real_path_or_raw "$PROJ_ABS")
+  seen=
+  for _ in $(seq 1 10); do
+    case "$BACKEND" in
+      tmux) seen=$(fm_backend_tmux_current_path "$RELAUNCH_TARGET" || true) ;;
+      herdr) seen=$(fm_backend_herdr_current_path "$RELAUNCH_TARGET" || true) ;;
+    esac
+    [ -z "$seen" ] || [ "$(real_path_or_raw "$seen")" != "$expected" ] || break
+    sleep 0.5
+  done
+  if [ -z "$seen" ] || [ "$(real_path_or_raw "$seen")" != "$expected" ]; then
+    echo "error: task $ID's endpoint is in '${seen:-unknown}', not its recorded worktree '$PROJ_ABS'; refusing to relaunch an agent outside the copy holding its work" >&2
+    exit 1
+  fi
+  if { [ -e "$TASK_TMP" ] || [ -L "$TASK_TMP" ]; } && ! task_tmp_private; then
+    echo "error: task temp root $TASK_TMP already exists and is not a private directory owned by this user; refusing to stage the launch command there; inspect and remove it, then retry" >&2
+    exit 1
+  fi
   case "$HARNESS" in
   claude*)
-    if [ "$KIND" = secondmate ]; then
-      preflight_trust_args=(--secondmate-home "$PROJ_ABS" "$ID")
-    else
-      preflight_trust_args=("$RELAUNCH_WT" "$PROJ_ABS")
-    fi
-    if ! "$FM_ROOT/bin/fm-claude-trust.sh" "${preflight_trust_args[@]}" >/dev/null; then
+    if ! "$FM_ROOT/bin/fm-claude-trust.sh" --secondmate-home "$PROJ_ABS" "$ID" >/dev/null; then
       echo "error: could not pre-register Claude workspace trust for $ID; a claude replacement would wedge on the trust dialog" >&2
       exit 1
     fi
@@ -4600,11 +4618,8 @@ esac
 # this user and writable by nobody else, then tightened, so no other local user
 # can plant or swap a file in it. The staged launch command lives in a sibling
 # directory namespaced by home identity, not in this shared per-id root.
-TASK_TMP="/tmp/fm-$ID"
 if ! (umask 077 && mkdir "$TASK_TMP") 2>/dev/null; then
-  if [ -L "$TASK_TMP" ] || [ ! -d "$TASK_TMP" ] || [ ! -O "$TASK_TMP" ] ||
-    [ -n "$(find "$TASK_TMP" -prune \( -perm -g=w -o -perm -o=w \) -print 2>/dev/null)" ] ||
-    ! chmod 700 "$TASK_TMP"; then
+  if ! task_tmp_private || ! chmod 700 "$TASK_TMP"; then
     echo "error: task temp root $TASK_TMP already exists and is not a private directory owned by this user; refusing to stage the launch command there; inspect and remove it, then retry" >&2
     exit 1
   fi

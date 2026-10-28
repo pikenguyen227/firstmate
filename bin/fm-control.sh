@@ -126,7 +126,7 @@
 #     the deliberately stopped agent as dead, close its endpoint, or race their
 #     own launch against this one. An episode already in flight is waited out,
 #     and one that outlasts the bound refuses before the agent is touched.
-#   - `relaunch` runs the launch owner's own validation
+#   - `relaunch` of a secondmate runs the launch owner's own validation
 #     (bin/fm-spawn.sh --relaunch --preflight) before the old agent is stopped,
 #     so a replacement the launch owner would predictably refuse - an invalid
 #     home, an unresolvable profile, a trust pre-registration that fails -
@@ -1020,24 +1020,22 @@ do_relaunch() {
     note_line="note=none"
   fi
   safe_checkpoint
-  # Everything the launch owner would refuse is proven now, while the old agent
-  # is still running: a refusal here leaves it exactly as it was.
-  # Run directly, not in a command substitution: the launch owner recognizes
-  # this transaction's control lock by its parent pid.
-  local -a preflight_args
-  preflight_args=("$ID" --relaunch --preflight --harness "$TARGET_HARNESS")
-  [ "$TARGET_MODEL" = default ] || preflight_args+=(--model "$TARGET_MODEL")
-  [ "$TARGET_EFFORT" = default ] || preflight_args+=(--effort "$TARGET_EFFORT")
-  local preflight_err preflight_reason
-  preflight_err=$(mktemp "${TMPDIR:-/tmp}/fm-control-preflight.XXXXXX") \
-    || die "relaunch of $ID could not stage its launch preflight; nothing changed"
-  if ! "$SCRIPT_DIR/fm-spawn.sh" "${preflight_args[@]}" >/dev/null 2>"$preflight_err"; then
-    cat "$preflight_err" >&2
-    preflight_reason=$(sed -n 's/^error: //p' "$preflight_err" | head -n 1)
+  if [ "$KIND" = secondmate ]; then
+    local -a preflight_args
+    preflight_args=("$ID" --relaunch --preflight --harness "$TARGET_HARNESS")
+    [ "$TARGET_MODEL" = default ] || preflight_args+=(--model "$TARGET_MODEL")
+    [ "$TARGET_EFFORT" = default ] || preflight_args+=(--effort "$TARGET_EFFORT")
+    local preflight_err preflight_reason
+    preflight_err=$(mktemp "${TMPDIR:-/tmp}/fm-control-preflight.XXXXXX") \
+      || die "relaunch of $ID could not stage its launch preflight; nothing changed"
+    if ! "$SCRIPT_DIR/fm-spawn.sh" "${preflight_args[@]}" >/dev/null 2>"$preflight_err"; then
+      cat "$preflight_err" >&2
+      preflight_reason=$(sed -n 's/^error: //p' "$preflight_err" | head -n 1)
+      rm -f "$preflight_err"
+      die "relaunch of $ID was refused before its agent was touched: the replacement launch would be refused: ${preflight_reason:-see the output above}; nothing changed"
+    fi
     rm -f "$preflight_err"
-    die "relaunch of $ID was refused before its agent was touched: the replacement launch would be refused: ${preflight_reason:-see the output above}; nothing changed"
   fi
-  rm -f "$preflight_err"
   cp -p "$META" "$META_PRIOR" || die "could not preserve task $ID's durable record before relaunching"
   RELAUNCH_ACTIVE=1
   journal_write checkpoint "${CHECKPOINT_LINES[@]}" "$note_line"
