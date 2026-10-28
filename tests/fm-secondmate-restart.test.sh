@@ -76,8 +76,20 @@ case "${1:-}" in
             : > "$D/local-relaunch-during-remote"
           fi
           printf 'zsh' > "$D/command.$target"
+          if [ -x "$D/on-exit" ]; then
+            "$D/on-exit" "$target"
+          fi
           ;;
-        *'encode launch-brief'* | *'Firstmate operational input waiting: read'*) cat "$D/becomes" > "$D/command.$target" ;;
+        *'encode launch-brief'* | *'Firstmate operational input waiting: read'*)
+          # A pending launch failure leaves the pane on its bare shell, as a
+          # replacement that never came up does.
+          failures=$(cat "$D/launch-failures.$target" 2>/dev/null || printf '0')
+          if [ "$failures" -gt 0 ]; then
+            printf '%s' "$((failures - 1))" > "$D/launch-failures.$target"
+          else
+            cat "$D/becomes" > "$D/command.$target"
+          fi
+          ;;
         ': Firstmate instruction waiting: list '*)
           printf 'doorbell\n' >> "$D/rings"
           if [ -x "$D/on-doorbell" ]; then
@@ -111,7 +123,9 @@ case "${1:-}" in
         *pane_current_command*)
           if [ -f "$D/command.$target" ]; then cat "$D/command.$target"; else cat "$D/command"; fi
           printf '\n'; exit 0 ;;
-        *pane_current_path*) cat "$D/cwd"; printf '\n'; exit 0 ;;
+        *pane_current_path*)
+          if [ -f "$D/cwd.$target" ]; then cat "$D/cwd.$target"; else cat "$D/cwd"; fi
+          printf '\n'; exit 0 ;;
       esac
       prev=$a
     done
@@ -174,6 +188,7 @@ add_local_mate() {
   } > "$home/state/$id.meta"
   printf '%s\n' "fm-$id" >> "$dir/fake/windows"
   printf '%s' "$smhome" > "$dir/fake/cwd"
+  printf '%s' "$smhome" > "$dir/fake/cwd.fmses:fm-$id"
 }
 
 # add_repo_backed_mate <case-dir> <id> [harness] [backend-line]
@@ -430,6 +445,9 @@ test_unknown_mate_is_accounted_for() {
 }
 
 # --- T5: a refused restart leaves the mate running and says so ---------------
+# The control plane refused before touching the agent, so the mate is still on
+# its previous agent: that is exactly the re-read-message outcome, and saying
+# "unknown" would understate what is known.
 test_refused_restart_falls_back_without_claiming_a_reload() {
   local dir out rc before
   dir=$(new_case refused)
@@ -443,14 +461,17 @@ test_refused_restart_falls_back_without_claiming_a_reload() {
   out=$(run_restart "$dir" sm1); rc=$?
 
   expect_code 3 "$rc" "a refused restart must not be reported as a reload"$'\n'"$out"
-  assert_contains "$out" "unreached: sm1:" "a failed restart must be reported as unknown"
-  assert_contains "$out" "restart outcome is unknown" "the report must not attribute an ambiguous failure"
-  assert_not_contains "$out" "nudged: sm1" "a failed restart must not claim the old agent was nudged"
+  assert_contains "$out" "nudged: sm1:" "a refusal before the stop leaves the old agent running, which is a nudge"
+  assert_contains "$out" "still running its previous agent" "the report must say the old agent is still running"
+  assert_contains "$out" "not verified to run a secondmate task" "the report must carry the control plane's refusal"
   assert_not_contains "$out" "restarted: sm1" "a refused restart must not be reported as restarted"
+  assert_contains "$out" "summary: 0 of 1 restarted, 1 nudged, 0 unreached" "the summary must count the kept agent as nudged"
   [ "$(cat "$dir/fake/command")" = "$before" ] \
     || fail "a refusal before the stop should leave the running agent exactly as it was"
   assert_no_grep '^/exit$' "$dir/fake/literal" "a pre-stop refusal must not have stopped the agent"
-  pass "T5 a refused restart leaves the mate running and reports an unknown outcome"
+  [ "$(grep -c '^: Firstmate instruction waiting: ' "$dir/fake/literal")" -ge 2 ] \
+    || fail "the kept agent was not sent the re-read message"
+  pass "T5 a refused restart leaves the mate running and reports it as a nudge"
 }
 
 # --- T6: a remote mate restarts over the fm-on hop, on the parent's pin -------
@@ -674,7 +695,7 @@ test_persist_waits_are_polled_together() {
   pass "T10 pending persist answers are polled as one fleet"
 }
 
-# --- T11: a failed post-stop relaunch is not described as a nudge ------------
+# --- T11: a stopped mate whose replacement never comes up is reported down --
 test_post_stop_failure_is_reported_unreached() {
   local dir out rc
   dir=$(new_case post-stop)
@@ -685,15 +706,40 @@ test_post_stop_failure_is_reported_unreached() {
   out=$(run_restart "$dir" sm1); rc=$?
 
   expect_code 3 "$rc" "a post-stop relaunch failure must remain accounted for"$'\n'"$out"
-  assert_contains "$out" "unreached: sm1:" "a stopped mate must be reported as unreached"
-  assert_contains "$out" "restart outcome is unknown" "the report must not attribute the failed lifecycle operation"
+  assert_contains "$out" "unreached: sm1: no agent is running" "a stopped mate left down must be reported as down"
+  assert_contains "$out" "even on a retry" "the report must say the replacement was retried"
+  [ "$(grep -c '^/exit$' "$dir/fake/literal")" -eq 1 ] \
+    || fail "the retry must not stop anything again"
   assert_not_contains "$out" "nudged: sm1" "a durable enqueue must not masquerade as a running mate's nudge"
   assert_contains "$out" "summary: 0 of 1 restarted, 0 nudged, 1 unreached" \
     "the summary must not claim that a stopped mate remains on older instructions with a message"
-  pass "T11 post-stop restart failure is never misreported as a nudge"
+  pass "T11 a stopped mate whose replacement never comes up is reported down, never as a nudge"
 }
 
-# --- T12: relaunch work does not stop polling other persist answers ----------
+# --- T11b: a replacement that fails once is retried and proven running ------
+test_post_stop_launch_failure_is_retried() {
+  local dir out rc
+  dir=$(new_case post-stop-retry)
+  add_local_mate "$dir" sm1
+  arm_answer "$dir" sm1
+  printf '1' > "$dir/fake/launch-failures.fmses:fm-sm1"
+
+  out=$(run_restart "$dir" sm1); rc=$?
+
+  expect_code 0 "$rc" "a replacement that comes up on the retry is a restart"$'\n'"$out"
+  assert_contains "$out" "restarted: sm1 (claude)" "the retried replacement must be reported restarted"
+  assert_contains "$out" "summary: 1 of 1 restarted, 0 nudged, 0 unreached" "the summary must count the restart"
+  [ "$(grep -c '^/exit$' "$dir/fake/literal")" -eq 1 ] \
+    || fail "the retry must launch the replacement without stopping anything again"
+  [ "$(cat "$dir/fake/command.fmses:fm-sm1")" = claude ] \
+    || fail "the mate is not running after the retried launch"
+  pass "T11b a replacement that fails once is retried and proven running"
+}
+
+# --- T12: restarts run one at a time while answers keep arriving -----------
+# A batch must never have two mates down at once: the second mate's relaunch
+# waits for the first, slow one to finish, while its persist answer is still
+# collected in the meantime.
 test_relaunches_do_not_block_persist_polling() {
   local dir out rc
   dir=$(new_case relaunch-polling)
@@ -707,14 +753,89 @@ test_relaunches_do_not_block_persist_polling() {
   out=$(FM_TEST_PERSIST_WAIT=5 run_restart "$dir" sm1 sm2); rc=$?
   unset FM_FAKE_ANSWER_STATUS
 
-  expect_code 0 "$rc" "both confirmed mates should restart independently"$'\n'"$out"
-  assert_present "$dir/fake/local-relaunch-during-remote" \
-    "the slow first relaunch blocked lifecycle progress for the second mate"
+  expect_code 0 "$rc" "both confirmed mates should restart"$'\n'"$out"
+  assert_absent "$dir/fake/local-relaunch-during-remote" \
+    "the second mate was stopped while the first mate's relaunch was still running"
   assert_contains "$out" "summary: 2 of 2 restarted, 0 nudged, 0 unreached" \
-    "parallel relaunches were not both accounted for"
+    "serial relaunches were not both accounted for"
   assert_grep 'fm-remote-secondmate-control.sh relaunch sm1 claude default default' "$dir/ssh.log" \
     "an absent remote model and effort pin were not expressed as explicit defaults"
-  pass "T12 relaunch waits do not block fleet persistence polling"
+  pass "T12 restarts run one at a time and every confirmed mate still restarts"
+}
+
+# --- T12b: a batch restart cannot be raced by dead-secondmate recovery ------
+# The 2026-10-28 batch: every mate answered, then the watcher's liveness tick
+# found the deliberately stopped agents, read them as dead, closed their
+# endpoints, and raced its own launch against each restart, leaving mates with
+# no agent. Here four mates restart in one call, and at the exact moment each
+# agent is stopped the watcher's recovery runs the shared liveness library the
+# same way its tick does: take the per-mate lock, probe, and act only on a
+# relaunchable verdict. It must find every mate held, and the batch must never
+# have more than one mate down at once.
+make_batch_hooks() {  # <case-dir>
+  local dir=$1
+  cat > "$dir/fake/on-doorbell" <<'SH'
+#!/usr/bin/env bash
+# Each modelled mate answers its own persist request on the parent channel.
+set -u
+inbox=${1#*list \'}
+inbox=${inbox%%\'*}
+corr=$(cat "$inbox"/*.msg 2>/dev/null | grep -oE 'corr=[0-9a-f]{16}' | head -1)
+[ -z "$corr" ] || printf 'done [%s]: open records written down\n' "$corr" >> "${inbox%.inbox}.status"
+SH
+  cat > "$dir/fake/on-exit" <<'SH'
+#!/usr/bin/env bash
+set -u
+target=$1
+id=${target##*:fm-}
+D=$FM_FAKE_DIR
+down=0
+for f in "$D"/command.*; do
+  [ "$(cat "$f")" != zsh ] || down=$((down + 1))
+done
+printf '%s\n' "$down" >> "$D/down-counts"
+(
+  STATE=$FM_HOME/state
+  FM_ROOT=$FM_TEST_ROOT
+  # shellcheck source=/dev/null
+  . "$FM_TEST_ROOT/bin/fm-secondmate-liveness-lib.sh"
+  if fm_secondmate_liveness_lock "$id"; then
+    fm_secondmate_liveness_probe "$STATE/$id.meta" "$id" poll
+    printf '%s %s\n' "$id" "$FM_SM_LIVE_STATUS" >> "$D/watcher"
+    fm_secondmate_liveness_unlock "$id"
+  else
+    printf '%s held\n' "$id" >> "$D/watcher"
+  fi
+)
+SH
+  chmod +x "$dir/fake/on-doorbell" "$dir/fake/on-exit"
+}
+
+test_batch_restart_is_not_raced_by_liveness_recovery() {
+  local dir out rc id
+  dir=$(new_case batch)
+  for id in sm1 sm2 sm3 sm4; do
+    add_local_mate "$dir" "$id"
+    printf 'claude' > "$dir/fake/command.fmses:fm-$id"
+  done
+  make_batch_hooks "$dir"
+
+  export FM_TEST_ROOT="$ROOT"
+  out=$(run_restart "$dir" fm-sm1 fm-sm2 fm-sm3 fm-sm4); rc=$?
+  unset FM_TEST_ROOT
+
+  expect_code 0 "$rc" "every mate in the batch should restart"$'\n'"$out"
+  assert_contains "$out" "summary: 4 of 4 restarted, 0 nudged, 0 unreached" "the whole batch must be restarted"
+  for id in sm1 sm2 sm3 sm4; do
+    assert_contains "$out" "restarted: $id (claude)" "mate $id was not restarted"
+    [ "$(cat "$dir/fake/command.fmses:fm-$id")" = claude ] || fail "mate $id is not running after the batch"
+    assert_grep "$id held" "$dir/fake/watcher" "the watcher's recovery could act on $id while it was mid-restart"
+  done
+  assert_no_grep 'relaunchable' "$dir/fake/watcher" "the watcher's recovery read a mid-restart mate as dead"
+  [ "$(grep -c . "$dir/fake/down-counts")" -eq 4 ] || fail "every mate should have been stopped exactly once"
+  [ "$(sort -n "$dir/fake/down-counts" | tail -1)" -eq 1 ] \
+    || fail "the batch had more than one mate down at once: $(tr '\n' ' ' < "$dir/fake/down-counts")"
+  pass "T12b a batch restart is never raced by dead-secondmate recovery and keeps one mate down at most"
 }
 
 # --- T13: a worker that cannot publish its result cannot hang the pass -------
@@ -891,7 +1012,9 @@ test_unreachable_host_is_reported_unknown
 test_concurrent_reply_cannot_release_persist_gate
 test_persist_waits_are_polled_together
 test_post_stop_failure_is_reported_unreached
+test_post_stop_launch_failure_is_retried
 test_relaunches_do_not_block_persist_polling
+test_batch_restart_is_not_raced_by_liveness_recovery
 test_unpublished_worker_result_is_accounted_for
 test_result_published_while_reaping_is_honored
 test_already_current_mate_restarts_end_to_end

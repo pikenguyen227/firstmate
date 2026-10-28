@@ -120,6 +120,12 @@
 #     classified state acts.
 #   - A composer that visibly holds pending text refuses before an exit command
 #     is typed, so existing text is preserved instead of being concatenated.
+#   - `exit` and `relaunch` of a secondmate hold its endpoint-liveness lock
+#     (bin/fm-secondmate-liveness-lib.sh) for the whole transaction, so the
+#     watcher's dead-secondmate recovery and the session-start sweep never read
+#     the deliberately stopped agent as dead, close its endpoint, or race their
+#     own launch against this one. An episode already in flight is waited out,
+#     and one that outlasts the bound refuses before the agent is touched.
 #
 # Environment knobs (all bounded waits, seconds):
 #   FM_CONTROL_POLL              poll interval for postcondition waits (0.5)
@@ -129,6 +135,8 @@
 #   FM_CONTROL_EXIT_WAIT         alive->dead wait after the exit command (30)
 #   FM_CONTROL_LAUNCH_WAIT       dead->alive wait after a relaunch (90)
 #   FM_CONTROL_EXIT_RETRIES      Enter retries for the exit command (3)
+#   FM_CONTROL_LIVENESS_WAIT     wait for a secondmate's in-flight liveness
+#                                recovery before exit or relaunch (180)
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -174,6 +182,8 @@ DATA="${FM_DATA_OVERRIDE:-$FM_HOME/data}"
 . "$SCRIPT_DIR/fm-pr-lib.sh"
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
+# shellcheck source=bin/fm-secondmate-liveness-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-liveness-lib.sh"
 # shellcheck source=bin/fm-worker-account-lib.sh
 . "$SCRIPT_DIR/fm-worker-account-lib.sh"
 
@@ -182,6 +192,7 @@ SETTLE_WAIT=${FM_CONTROL_SETTLE_WAIT:-5}
 ARM_WAIT=${FM_CONTROL_ARM_WAIT:-1.5}
 EXIT_WAIT=${FM_CONTROL_EXIT_WAIT:-30}
 LAUNCH_WAIT=${FM_CONTROL_LAUNCH_WAIT:-90}
+LIVENESS_WAIT=${FM_CONTROL_LIVENESS_WAIT:-180}
 EXIT_RETRIES=${FM_CONTROL_EXIT_RETRIES:-3}
 
 die() {  # <message>
@@ -191,6 +202,7 @@ die() {  # <message>
 
 CONTROL_LOCK=
 CONTROL_LOCK_HELD=0
+SM_LIVENESS_LOCK_HELD=0
 RELAUNCH_ACTIVE=0
 RELAUNCH_PHASE=start
 
@@ -199,6 +211,10 @@ control_cleanup() {
   if [ "$RELAUNCH_ACTIVE" = 1 ] \
      && declare -F relaunch_rollback >/dev/null 2>&1; then
     relaunch_rollback || true
+  fi
+  if [ "$SM_LIVENESS_LOCK_HELD" = 1 ]; then
+    SM_LIVENESS_LOCK_HELD=0
+    fm_secondmate_liveness_unlock "$ID" || true
   fi
   if [ "$CONTROL_LOCK_HELD" = 1 ]; then
     CONTROL_LOCK_HELD=0
@@ -353,6 +369,15 @@ fm_control_harness_supported "$HARNESS" \
   || die "task $ID records harness '${RECORDED_HARNESS:-none}', which has no verified control mechanics; fm-control refuses to guess an interrupt key or exit command"
 
 fm_backend_validate "$BACKEND" || exit 1
+
+case "$LIVENESS_WAIT" in ''|*[!0-9]*|0) die "FM_CONTROL_LIVENESS_WAIT must be a positive integer: $LIVENESS_WAIT" ;; esac
+if [ "$KIND" = secondmate ] && [ "$VERB" != interrupt ]; then
+  liveness_rc=0
+  fm_secondmate_liveness_lock_wait "$ID" "$LIVENESS_WAIT" || liveness_rc=$?
+  [ "$liveness_rc" -eq 0 ] \
+    || die "secondmate $ID's endpoint is still held by another liveness recovery or lifecycle action${FM_LOCK_HELD_PID:+ (pid $FM_LOCK_HELD_PID)} after ${LIVENESS_WAIT}s; nothing was touched, retry '$VERB' once it finishes"
+  SM_LIVENESS_LOCK_HELD=1
+fi
 
 # --- shared helpers ---------------------------------------------------------
 

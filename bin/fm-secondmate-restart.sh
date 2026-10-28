@@ -38,10 +38,25 @@
 #      open loop owned by the ordinary pending-reply recovery ladder, not state
 #      this restart pass may close.
 #
+# Restarts run ONE AT A TIME, in argument order among the mates whose answers
+# have landed, while the gate keeps collecting the others' answers. A batch is
+# therefore never more than one mate down at once, and no two replacement
+# launches contend for one session. Each relaunch holds that mate's
+# endpoint-liveness lock (bin/fm-control.sh owns it locally, and
+# bin/fm-remote-secondmate-relaunch.sh for a remote route), so the watcher's
+# dead-secondmate recovery cannot mistake the deliberately stopped agent for a
+# dead one and race its own launch against the restart.
+#
 # A mate whose persist answer did not arrive or whose runtime cannot prove a
 # restart gets the ordinary re-read nudge and is reported as a nudge, never as a
-# clean reload. Once a relaunch is attempted, any failed or ambiguous result is
-# reported as unknown rather than attributing it to either incarnation.
+# clean reload. A failed local relaunch is classified from the control plane's
+# own transaction record and a fresh endpoint probe rather than from whatever
+# its output happened to print first: a relaunch refused before the old agent
+# was touched leaves that agent running and is reported as a nudge; one that
+# stopped the old agent and left no agent running is retried once, and is
+# reported as restarted only when a replacement is then proven running. Any
+# result that cannot be attributed to either incarnation is reported unreached
+# with the control plane's own last word on the state it left.
 #
 # Placement changes the transport and nothing else. A local mate is restarted
 # with bin/fm-control.sh <id> relaunch, which republishes this home's own
@@ -82,7 +97,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FM_ROOT="${FM_ROOT_OVERRIDE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 usage() {
-  sed -n '2,75{s/^# \{0,1\}//;p;}' "$0"
+  sed -n '2,93{s/^# \{0,1\}//;p;}' "$0"
 }
 
 case "${1:-}" in
@@ -104,6 +119,8 @@ STATE="${FM_STATE_OVERRIDE:-$FM_HOME/state}"
 . "$SCRIPT_DIR/fm-secondmate-nudge-lib.sh"
 # shellcheck source=bin/fm-pending-reply-lib.sh
 . "$SCRIPT_DIR/fm-pending-reply-lib.sh"
+# shellcheck source=bin/fm-secondmate-liveness-lib.sh
+. "$SCRIPT_DIR/fm-secondmate-liveness-lib.sh"
 
 PERSIST_WAIT=${FM_SECONDMATE_PERSIST_WAIT:-900}
 PERSIST_POLL=${FM_SECONDMATE_PERSIST_POLL:-5}
@@ -185,33 +202,125 @@ report_unreached() {  # <id> <reason>
   printf 'unreached: %s: %s\n' "$1" "$2"
 }
 
+# The line a failed control command's output most usefully reports: its last
+# "error:" line, which is where the control plane's rollback states what it
+# left behind, else its first line that carries anything.
+final_reported_line() {  # <text>
+  local line
+  line=$(printf '%s\n' "$1" | awk '/^error: / { l = $0 } END { print l }')
+  if [ -n "$line" ]; then
+    first_reported_line "$line"
+  else
+    first_reported_line "$1"
+  fi
+}
+
+# A fingerprint of a local mate's relaunch transaction record, so a refusal that
+# never opened a new transaction is told apart from one that did.
+journal_print() {  # <id>
+  { cksum < "$STATE/$1.control-relaunch"; } 2>/dev/null || printf 'none\n'
+}
+
+journal_field() {  # <id> <key>
+  sed -n "s/^$2=//p" "$STATE/$1.control-relaunch" 2>/dev/null | tail -1
+}
+
+run_local_relaunch() {  # <id>; sets RELAUNCH_OUT and RELAUNCH_RC
+  RELAUNCH_RC=0
+  RELAUNCH_OUT=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
+    "$SCRIPT_DIR/fm-control.sh" "$1" relaunch 2>&1) || RELAUNCH_RC=$?
+}
+
+report_restarted() {  # <array-index> <control-output>
+  local i=$1 ran_on
+  ran_on=$(printf '%s\n' "$2" | sed -n 's/^relaunched .* harness=\([^ ]*\).*/\1/p' | tail -1)
+  [ -n "$ran_on" ] || ran_on=${HARNESS[i]}
+  if [ "${PLACEMENT[i]}" = remote ]; then
+    printf 'restarted: %s on %s (%s)\n' "${IDS[$i]}" "${HOST[i]}" "$ran_on"
+  else
+    printf 'restarted: %s (%s)\n' "${IDS[$i]}" "$ran_on"
+  fi
+}
+
+# Probe a local mate's endpoint after a failed relaunch: alive, down (no agent
+# is running), or unknown.
+local_mate_state() {  # <id>
+  fm_secondmate_liveness_probe "$STATE/$1.meta" "$1" poll
+  case "$FM_SM_LIVE_STATUS" in
+    alive) printf 'alive' ;;
+    relaunchable) printf 'down' ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+# Settle a failed local relaunch into an outcome that matches the mate's real
+# state. <before> is the transaction record's fingerprint before the attempt.
+settle_local_failure() {  # <array-index> <before> <control-output>
+  local i=$1 before=$2 out=$3 id phase rollback reason now_state
+  id=${IDS[$i]}
+  reason=$(final_reported_line "$out")
+  [ -n "$reason" ] || reason="the restart failed without a reported reason"
+  phase=
+  rollback=
+  if [ "$(journal_print "$id")" != "$before" ]; then
+    phase=$(journal_field "$id" phase)
+    rollback=$(journal_field "$id" rollback)
+  fi
+  case "$phase:$rollback" in
+    :*|failed:checkpoint:*|failed:noted:*|failed:stopping:instructions-restored-agent-alive)
+      fall_back_to_nudge "$id" "its restart was refused before its agent was touched, so it is still running its previous agent: $reason"
+      return
+      ;;
+    failed:exited:*|failed:launching:*|failed:stopping:prior-record-kept-agent-dead) ;;
+    *)
+      report_unreached "$id" "the restart outcome is unknown: $reason"
+      return
+      ;;
+  esac
+  # The old agent was proven stopped, so any agent running now is a
+  # replacement launched on the current code.
+  now_state=$(local_mate_state "$id")
+  if [ "$now_state" = down ]; then
+    run_local_relaunch "$id"
+    if [ "$RELAUNCH_RC" -eq 0 ]; then
+      report_restarted "$i" "$RELAUNCH_OUT"
+      return
+    fi
+    reason=$(final_reported_line "$RELAUNCH_OUT")
+    [ -n "$reason" ] || reason="the retried launch failed without a reported reason"
+    now_state=$(local_mate_state "$id")
+  fi
+  case "$now_state" in
+    alive) report_restarted "$i" "" ;;
+    down) report_unreached "$id" "no agent is running: its previous agent was stopped and its replacement could not be launched, even on a retry: $reason" ;;
+    *) report_unreached "$id" "its previous agent was stopped but whether a replacement is running cannot be confirmed: $reason" ;;
+  esac
+}
+
 restart_mate() {  # <array-index>
-  local i=$1 id restart_out restart_rc restart_reason ran_on
+  local i=$1 id restart_out restart_rc restart_reason before
   id=${IDS[$i]}
   if [ "${PLACEMENT[i]}" = remote ]; then
     restart_out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
       "$SCRIPT_DIR/fm-remote-secondmate-relaunch.sh" \
       "$id" "${HARNESS[i]}" "${MODEL[i]:-default}" "${EFFORT[i]:-default}" < /dev/null 2>&1)
     restart_rc=$?
-  else
-    restart_out=$(FM_HOME="$FM_HOME" FM_STATE_OVERRIDE="$STATE" \
-      "$SCRIPT_DIR/fm-control.sh" "$id" relaunch 2>&1)
-    restart_rc=$?
-  fi
-  if [ "$restart_rc" -eq 0 ]; then
-    ran_on=$(printf '%s\n' "$restart_out" | sed -n 's/^relaunched .* harness=\([^ ]*\).*/\1/p' | tail -1)
-    [ -n "$ran_on" ] || ran_on=${HARNESS[i]}
-    if [ "${PLACEMENT[i]}" = remote ]; then
-      printf 'restarted: %s on %s (%s)\n' "$id" "${HOST[i]}" "$ran_on"
-    else
-      printf 'restarted: %s (%s)\n' "$id" "$ran_on"
+    if [ "$restart_rc" -eq 0 ]; then
+      report_restarted "$i" "$restart_out"
+      return
     fi
+    restart_reason=$(final_reported_line "$restart_out")
+    [ -n "$restart_reason" ] || restart_reason="the restart failed without a reported reason"
+    report_unreached "$id" "the restart outcome is unknown: $restart_reason"
     return
   fi
-
-  restart_reason=$(first_reported_line "$restart_out")
-  [ -n "$restart_reason" ] || restart_reason="the restart failed without a reported reason"
-  report_unreached "$id" "the restart outcome is unknown: $restart_reason"
+  before=$(journal_print "$id")
+  run_local_relaunch "$id"
+  if [ "$RELAUNCH_RC" -eq 0 ]; then
+    report_restarted "$i" "$RELAUNCH_OUT"
+    return
+  fi
+  settle_local_failure "$i" "$before" "$RELAUNCH_OUT"
 }
 
 launch_restart() {  # <array-index>
@@ -258,6 +367,7 @@ harvest_restarts() {
     case "$out" in
       restarted:*) restarted_count=$((restarted_count + 1)) ;;
       nudged:*) nudged_count=$((nudged_count + 1)) ;;
+      skipped:*) skipped_count=$((skipped_count + 1)) ;;
       *) unreached_count=$((unreached_count + 1)) ;;
     esac
     PLAN[i]="done"
@@ -340,6 +450,7 @@ RESULT_DIR=$(mktemp -d "$STATE/.secondmate-restart.XXXXXX") || {
 }
 trap 'rm -rf -- "$RESULT_DIR"' EXIT
 pending_count=0
+ready_count=0
 restart_active_count=0
 i=0
 while [ "$i" -lt "${#IDS[@]}" ]; do
@@ -352,7 +463,22 @@ while [ "$i" -lt "${#IDS[@]}" ]; do
   i=$((i + 1))
 done
 
-while [ "$((pending_count + restart_active_count))" -gt 0 ]; do
+# Start the first confirmed mate, in argument order, when no restart is running.
+launch_next_ready() {
+  local i
+  [ "$restart_active_count" -eq 0 ] || return 0
+  i=0
+  while [ "$i" -lt "${#IDS[@]}" ]; do
+    if [ "${PLAN[i]}" = ready ]; then
+      ready_count=$((ready_count - 1))
+      launch_restart "$i"
+      return 0
+    fi
+    i=$((i + 1))
+  done
+}
+
+while [ "$((pending_count + ready_count + restart_active_count))" -gt 0 ]; do
   now=$(date +%s)
   next_wait=$PERSIST_POLL
   # Resolve every arrived answer before processing any timeout. Delivery of a
@@ -363,7 +489,8 @@ while [ "$((pending_count + restart_active_count))" -gt 0 ]; do
     if [ "${PLAN[i]}" = persisted-pending ] \
       && fm_pending_reply_try_resolve "$STATE" "${CORR[i]}"; then
       pending_count=$((pending_count - 1))
-      launch_restart "$i"
+      PLAN[i]=ready
+      ready_count=$((ready_count + 1))
     fi
     i=$((i + 1))
   done
@@ -378,7 +505,8 @@ while [ "$((pending_count + restart_active_count))" -gt 0 ]; do
       # timeout decision so an answer already on disk wins over the fallback.
       if fm_pending_reply_try_resolve "$STATE" "${CORR[i]}"; then
         pending_count=$((pending_count - 1))
-        launch_restart "$i"
+        PLAN[i]=ready
+        ready_count=$((ready_count + 1))
       else
         fall_back_to_nudge "${IDS[$i]}" \
           "it did not confirm within ${PERSIST_WAIT}s that its open work is written down, so its conversation was not spent"
@@ -392,7 +520,8 @@ while [ "$((pending_count + restart_active_count))" -gt 0 ]; do
     i=$((i + 1))
   done
   harvest_restarts
-  [ "$((pending_count + restart_active_count))" -eq 0 ] || sleep "$next_wait"
+  launch_next_ready
+  [ "$((pending_count + ready_count + restart_active_count))" -eq 0 ] || sleep "$next_wait"
 done
 
 # --- summary ---------------------------------------------------------------
