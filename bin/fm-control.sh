@@ -128,9 +128,8 @@
 #     and one that outlasts the bound refuses before the agent is touched.
 #   - `relaunch` of a secondmate runs the launch owner's own validation
 #     (bin/fm-spawn.sh --relaunch --preflight) before the old agent is stopped,
-#     so a replacement the launch owner would predictably refuse - an invalid
-#     home, an unresolvable profile, a trust pre-registration that fails -
-#     refuses with the old agent still running instead of after it is gone.
+#     so those checks - including home and profile validation and trust
+#     pre-registration - refuse with the old agent still running.
 #
 # Environment knobs (all bounded waits, seconds):
 #   FM_CONTROL_POLL              poll interval for postcondition waits (0.5)

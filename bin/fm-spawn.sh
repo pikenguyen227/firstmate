@@ -70,8 +70,8 @@
 #   rebind is a recovery, never a teardown. Only a crewmate or scout rebinds: a
 #   secondmate whose endpoint is gone is respawned by its own owner
 #   (`--secondmate`, driven by the session-start liveness sweep).
-#   --preflight, valid only with a secondmate --relaunch, validates the launch
-#   and stops before any endpoint, record, or brief is touched, also
+#   --preflight, valid only with a secondmate --relaunch, runs pre-stop launch
+#   checks and stops before any endpoint, record, or brief is touched, also
 #   accepting an endpoint whose agent is still alive; bin/fm-control.sh runs it
 #   before stopping the agent it replaces, and it prints "preflight-ok".
 #   Every fresh ship/scout launch and replacement explicitly enters the recorded

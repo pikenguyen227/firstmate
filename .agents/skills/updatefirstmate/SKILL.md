@@ -3,7 +3,7 @@ name: updatefirstmate
 description: >-
   Self-update a running firstmate and its secondmates to the latest from origin.
   Use when the captain invokes /updatefirstmate (e.g. "/updatefirstmate", "update firstmate", "pull the latest firstmate").
-  Updates this firstmate repo's default branch and every local or remote secondmate through its guarded convergence path (never forced, never disruptive), then re-reads AGENTS.md and restarts every live second mate through the persist-gated restart, with a fallback re-read nudge only where a restart cannot be proven.
+  Updates this firstmate repo's default branch and every local or remote secondmate through its guarded convergence path (never forced, never disruptive), then re-reads AGENTS.md and restarts every live second mate through the persist-gated restart, reporting verified restarts, live-agent nudges, and unreached outcomes.
 user-invocable: true
 metadata:
   internal: true
@@ -105,4 +105,4 @@ This touches only the firstmate repo and its own worktrees, never anything under
   A local or remote second mate gets a tracked-files fast-forward only when its own checkout is safe to advance, and a mate whose home was skipped is not restarted either.
   A restart replaces that mate's agent in the same home and endpoint after its open work is written down; it is never a teardown and never forced.
   Its crewmates keep running in their own endpoints, and every durable record - backlog, held captain calls, unread status, unhandled instructions - is re-presented to the replacement at startup.
-  A restart refused before its agent is touched leaves that mate on the re-read path; a relaunch that stopped the agent is either proven restarted, reported down with its recovery command, or reported unknown rather than attributed to either incarnation.
+  A restart refused before its agent is touched takes the re-read path, which reports a nudge only when its agent is confirmed running; a relaunch that stopped the agent is either proven restarted, reported down with its recovery command, or reported unknown rather than attributed to either incarnation.

@@ -54,13 +54,14 @@
 # relaunch is classified from the control plane's own transaction rows (the
 # local journal, or the phase the host's relaunch reports) and a fresh endpoint
 # probe, never from whatever its output printed first. bin/fm-control.sh runs
-# the launch owner's validation before it stops anything, so a predictable
-# refusal leaves the old agent running and is reported as a nudge. A mate whose
-# agent is gone is retried once through the guarded secondmate respawn, under
-# its liveness lock, and is reported restarted only when a replacement is then
-# proven running. A mate still left with no agent is reported DOWN with the
-# command that recovers it, and the batch stops there: every mate not yet
-# restarted keeps its old agent and gets the re-read message instead.
+# the launch owner's preflight checks before it stops anything, so a refusal
+# from those checks does not stop the old agent. A mate whose agent is gone is
+# retried once under its placement's liveness guard - by
+# guarded respawn locally or host-local relaunch remotely - and is reported
+# restarted only when a replacement is then proven running. A mate still left
+# with no agent is reported DOWN with its recovery command, and the batch stops
+# there: every mate not yet restarted gets the re-read message instead, without
+# another relaunch attempt.
 #
 # Placement changes the transport and nothing else. A local mate is restarted
 # with bin/fm-control.sh <id> relaunch, which republishes this home's own

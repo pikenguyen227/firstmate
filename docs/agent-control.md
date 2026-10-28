@@ -63,8 +63,8 @@ A relaunch does take one session reference when the endpoint's own runtime recor
 ## Transactional relaunch
 
 `relaunch` is the only verb that changes durable records, so it runs as a transaction with a journal at `state/<id>.control-relaunch`, the prior record preserved beside it, and a ship or scout's prior instructions preserved when a progress note is appended.
-For a `kind=secondmate` task, `relaunch` holds that mate's endpoint-liveness lock for the whole transaction, so the watcher's dead-secondmate recovery and the session-start sweep never read the deliberately stopped agent as dead and race their own launch against this one ([`bin/fm-secondmate-liveness-lib.sh`](../bin/fm-secondmate-liveness-lib.sh) owns that lock); a recovery episode already in flight is waited out up to `FM_CONTROL_LIVENESS_WAIT` seconds, after which the relaunch refuses before touching the agent.
-Before it stops anything, `relaunch` also runs the launch owner's own validation (`bin/fm-spawn.sh <id> --relaunch --preflight`), so a replacement the launch would predictably refuse refuses while the old agent is still running.
+For a `kind=secondmate` task, `relaunch` shares the endpoint-liveness lock with the watcher and session-start sweep so they cannot race its replacement launch; [`bin/fm-control.sh`](../bin/fm-control.sh) owns the lock boundary and bounded wait.
+Before stopping a secondmate's agent, `relaunch` runs the launch owner's preflight checks; [`bin/fm-spawn.sh`](../bin/fm-spawn.sh) owns those checks and their refusal conditions.
 
 1. **Resolve the profile.**
    An explicit `--harness`, `--model`, or `--effort` wins.
