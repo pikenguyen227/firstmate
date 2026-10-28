@@ -58,7 +58,7 @@ DISPATCH='{
     {"when": "light", "strategy": "light", "use": {"harness": "claude", "model": "claude-sonnet-5-5", "effort": "medium"}},
     {"when": "standard", "strategy": "standard", "use": [
       {"harness": "claude", "model": "claude-opus-5-5", "effort": "medium"},
-      {"harness": "codex", "model": "gpt-6.1-sol", "effort": "medium"}]},
+      {"harness": "codex", "model": "gpt-6-sol", "effort": "medium"}]},
     {"when": "hard", "strategy": "hard", "use": {"harness": "claude", "model": "claude-opus-5-5", "effort": "high"}},
     {"when": "research", "strategy": "research", "use": {"harness": "claude", "model": "claude-fable-5-1", "effort": "high"}}
   ],
@@ -95,7 +95,7 @@ test_failed_trigger_steps_light_to_standard() {
   expect_code 0 "$?" 'failed trigger plans a step'
   assert_contains "$out" 'from: light (claude claude-sonnet-5-5 medium)' 'current tier from the recorded runtime'
   assert_contains "$out" 'to: standard' 'next rung'
-  assert_contains "$out" 'candidate: --harness codex --model gpt-6.1-sol --effort medium' 'every next-tier candidate listed'
+  assert_contains "$out" 'candidate: --harness codex --model gpt-6-sol --effort medium' 'every next-tier candidate listed'
   assert_contains "$out" 'posture: automatic (autonomy full)' 'full steps automatically'
 
   out=$(step "$home" apply --trigger failed --cause 'cannot explain a failure')
@@ -106,15 +106,15 @@ test_failed_trigger_steps_light_to_standard() {
   assert_absent "$home/control.argv" 'a refused pick never relaunches'
   assert_no_grep 'stepped up' "$home/state/t1.status" 'a refused pick records nothing'
 
-  out=$(step "$home" apply --trigger failed --cause 'cannot explain a failure' --harness codex --model gpt-6.1-sol --effort medium)
+  out=$(step "$home" apply --trigger failed --cause 'cannot explain a failure' --harness codex --model gpt-6-sol --effort medium)
   expect_code 0 "$?" "apply relaunches: $out"
-  assert_contains "$out" 'stepped-up t1 light -> standard (codex gpt-6.1-sol medium)' 'apply reports the step'
-  assert_equals $'t1\nrelaunch\n--harness\ncodex\n--model\ngpt-6.1-sol\n--effort\nmedium\n--note' "$(head -9 "$home/control.argv")" 'in-place relaunch on the chosen profile'
+  assert_contains "$out" 'stepped-up t1 light -> standard (codex gpt-6-sol medium)' 'apply reports the step'
+  assert_equals $'t1\nrelaunch\n--harness\ncodex\n--model\ngpt-6-sol\n--effort\nmedium\n--note' "$(head -9 "$home/control.argv")" 'in-place relaunch on the chosen profile'
   assert_grep 'after a terminal failure: cannot explain a failure' "$home/control.argv" 'note names the cause'
   assert_grep '(tier: standard, stepped up from light)' "$home/control.argv" 'note asks the final status to name the tier'
   assert_grep 'Validate exactly once' "$home/control.argv" 'no-run note forbids a second validation run'
   assert_equals working "$(status_line_verb "$(last_status_line "$home/state/t1.status")")" 'step recorded as working'
-  assert_grep 'stepped up from light to standard (codex gpt-6.1-sol medium) after a terminal failure' "$home/state/t1.status" 'step record names both tiers'
+  assert_grep 'stepped up from light to standard (codex gpt-6-sol medium) after a terminal failure' "$home/state/t1.status" 'step record names both tiers'
 
   out=$(step "$home" plan --trigger failed --cause 'cannot explain a failure')
   expect_code 1 "$?" 'a second step is refused'

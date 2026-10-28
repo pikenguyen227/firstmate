@@ -1275,13 +1275,13 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | Role | full | balanced | lean |
 |---|---|---|---|
 | Primary coordinator on Claude | Opus 5.5, high effort | same | same |
-| Primary coordinator on Codex | 6.1 Sol, high effort | same | same |
-| Second mates (Opus 5.5 medium or 6.1 Sol medium) | allowed | allowed when the benefit justifies the standing cost | off by default; one coordinator |
+| Primary coordinator on Codex | Sol, high effort | same | same |
+| Second mates (Opus 5.5 medium or Sol medium) | allowed | allowed when the benefit justifies the standing cost | off by default; one coordinator |
 | Light / standard / hard workers on Claude | Sonnet 5.5 low / Opus 5.5 medium / Opus 5.5 high | same | same |
-| Light / standard / hard workers on Codex | Luna high / 6.1 Sol medium / Astra medium | Luna high / 6.1 Sol medium / 6.1 Sol high | same as balanced |
-| A requested Claude or Codex worker | Opus 5.5 high or 6.1 Sol high | same | same |
+| Light / standard / hard workers on Codex | Luna high / Sol medium / Astra medium | Luna high / Sol medium / Sol high | same as balanced |
+| A requested Claude or Codex worker | Opus 5.5 high or Sol high | same | same |
 | A requested exact Claude or Codex model | that model on claude or codex, high effort | same | same |
-| Validation (no-mistakes) | Opus 5.5 high, 6.1 Sol high | same | same |
+| Validation (no-mistakes) | Opus 5.5 high, Sol high | same | same |
 | Autonomy level (`autonomy=`) | full | balanced | lean |
 | Dispatch of authorized work, including queued work | automatic | light/standard automatic; hard or expensive needs a plan, rough cost and approval | every dispatch needs a plan and confirmation |
 | Automatic fix rounds per task | existing pipeline limits | one, then ask | none; ask before fixes or retries |
@@ -1290,9 +1290,7 @@ Worker model switching stays with the tiered dispatch rules for both Claude and 
 | [One-tier model step-up](#automatic-one-tier-step-up-binfm-step-upsh) after a worker failure (`step_up`) | automatic | captain decides | captain decides |
 | While the captain is present | normal supervision | `/quiet`: routine wakes handled without a turn, captain-relevant events batched for up to 90 seconds | `/quiet`, captain-relevant events batched for up to 180 seconds |
 
-Codex routes name `gpt-6.1-sol`, which bills cached input at half the `gpt-6-sol` rate.
-When an interactive worker launch or relaunch refuses a named 6.1 model with `model_not_found` for a ChatGPT account, Firstmate retries once on `gpt-6-sol` at the same effort and records the substitution.
-The launch checks its pane for that refusal for up to 60 seconds after submitting the first prompt.
+Codex Sol routes name `gpt-6-sol` in every mode and plan. A named model that an interactive account refuses requires an explicit profile change and relaunch.
 Luna runs at high effort, the starting effort OpenAI recommends for it, and Astra at medium, its recommended start for work that ran on Sol at high.
 The template table above is what renders when no plan is named.
 
@@ -1345,13 +1343,13 @@ With any plan named, the requested-worker and light, standard, and hard rules ta
 | Claude API, lean | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 medium | Opus 5.5 high | off; Sonnet 5.5 medium if created | none | none |
 | Claude API, balanced | Opus 5.5 medium | Haiku 5.5 medium / Sonnet 5.5 medium / Opus 5.5 high | Opus 5.5 high | Opus 5.5 high | Sonnet 5.5 medium | none | none |
 | Claude API, full | the template | the template | the template | the template | the template | none | none |
-| Codex Plus, balanced | 6.1 Sol medium | Luna high then medium / 6.1 Terra medium then low / 6.1 Sol high then medium | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | 50% | 30% / 20% |
-| Codex Plus, lean | 6.1 Sol medium | Luna medium / 6.1 Terra low then Luna high / 6.1 Sol medium | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | 60% | 30% / 20% |
-| Codex Plus, full | 6.1 Sol medium | Luna high / 6.1 Sol medium / 6.1 Sol high | 6.1 Sol high | 6.1 Sol high | 6.1 Sol medium | none | 30% / 20% |
-| Codex Pro, balanced | 6.1 Sol high | Luna high then medium / 6.1 Terra medium then low / 6.1 Sol high then medium | 6.1 Sol high | 6.1 Sol high | 6.1 Sol medium | 35% | 20% / 10% |
-| Codex Pro, lean | 6.1 Sol medium | Luna medium / 6.1 Terra low then Luna high / 6.1 Sol medium | 6.1 Sol medium | 6.1 Sol high | off; 6.1 Sol medium if created | 50% | 20% / 10% |
+| Codex Plus, balanced | Sol medium | Luna high then medium / 6.1 Terra medium then low / Sol high then medium | Sol medium | Sol high | off; Sol medium if created | 50% | 30% / 20% |
+| Codex Plus, lean | Sol medium | Luna medium / 6.1 Terra low then Luna high / Sol medium | Sol medium | Sol high | off; Sol medium if created | 60% | 30% / 20% |
+| Codex Plus, full | Sol medium | Luna high / Sol medium / Sol high | Sol high | Sol high | Sol medium | none | 30% / 20% |
+| Codex Pro, balanced | Sol high | Luna high then medium / 6.1 Terra medium then low / Sol high then medium | Sol high | Sol high | Sol medium | 35% | 20% / 10% |
+| Codex Pro, lean | Sol medium | Luna medium / 6.1 Terra low then Luna high / Sol medium | Sol medium | Sol high | off; Sol medium if created | 50% | 20% / 10% |
 | Codex Pro, full | the template | the template | the template | the template | the template | none | 20% / 10% |
-| Codex API, lean | 6.1 Sol medium | Luna high / 6.1 Terra medium / 6.1 Sol high | 6.1 Sol medium | 6.1 Sol high | off | none | none |
+| Codex API, lean | Sol medium | Luna high / 6.1 Terra medium / Sol high | Sol medium | Sol high | off | none | none |
 | Codex API, balanced and full | the template | the template | the template | the template | the template | none | none |
 
 Routing uses both the plan and the live quota.
@@ -1360,8 +1358,7 @@ Below its last floor a light or standard tier leaves the provider for the other 
 Balanced steps down to the plan's lean route for that tier, and lean starts there.
 Validation always stays at high effort, and hard work stays on the provider's strongest routed model, stepping down only in effort with its last route never floored, so no quota drop moves hard work to a weaker model; Fable and Astra stay off every tier where they bill credits or have a small allowance.
 Floors use the `all_models` scope, which quota-axi reports for both Claude and Codex (a captured Codex snapshot in [`tests/fm-dispatch-resolve.test.sh`](../tests/fm-dispatch-resolve.test.sh) pins the Codex row); API plans write none because an unmeasured provider makes a floor escalate.
-6.1 Terra routes in the Plus and Pro Codex profiles' lean and balanced tiers and in Codex API lean, and need Codex CLI 0.159.0 or later.
-`show` notes that minimum; an interactive refusal uses the same automatic Sol fallback as other named 6.1 models.
+6.1 Terra routes in the Plus and Pro Codex profiles' lean and balanced tiers and in Codex API lean, and need Codex CLI 0.159.0 or later; `show` notes that minimum and directs an explicit model choice if an interactive session refuses Terra.
 A plan that turns second mates off does so when its provider is the one new second mates launch on, Claude whenever the home has it.
 In a home with both providers each tier lists its Claude routes and then its Codex routes, so the floors pick a route within each provider and [`quota-array-dispatch`](../.agents/skills/quota-array-dispatch/SKILL.md) picks between the providers by remaining quota, and `show` suggests which provider should host the primary coordinator and the no-mistakes validation.
 Full is not recommended on `pro`, `team-standard`, `plus`, or `business-standard`, whose five-hour and weekly limits automatic starts reach first: `show` and `set` warn without refusing, and `list` marks it.

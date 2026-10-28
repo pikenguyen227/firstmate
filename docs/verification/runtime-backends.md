@@ -628,8 +628,8 @@ codex -m gpt-6.1-terra --disable hooks --dangerously-bypass-approvals-and-sandbo
 
 The 0.155.1 interactive session returned `model_not_found` with `The 'gpt-6.1-terra' model is not supported when using Codex with a ChatGPT account.`
 The 0.163.0 interactive session returned `PROBE_OK` with no model error.
-This version-dependent result keeps Terra in the plan routes and makes an interactive refusal, rather than `codex exec` success, the trigger for the worker launch fallback.
-The portable regression is `bash tests/fm-spawn-dispatch-profile.test.sh`.
+This version-dependent result keeps Terra in the plan routes. The shipped tables use `gpt-6-sol` for Sol routes; a refused Terra session requires an explicit available model selection.
+The route regression is `bash tests/fm-strategy.test.sh`.
 
 ## Codex hook trust
 
