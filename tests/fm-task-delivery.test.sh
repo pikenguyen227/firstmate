@@ -1612,6 +1612,26 @@ EOF
   pass "fm-project-mode: --branch-prefix resolves order-independently and defaults to the legacy fm/ prefix"
 }
 
+test_full_branch_name_is_harness_independent() {
+  local rec home proj fakebin id harness branch=feature/selector-task-42 out
+  rec=$(make_home full-branch-harness "- proj [no-mistakes branch-rule=type/ticket-description] - fixture")
+  IFS='|' read -r home proj fakebin <<EOF
+$rec
+EOF
+  for harness in claude codex; do
+    id="branch-$harness"
+    FM_HOME="$home" "$BRIEF" "$id" proj --mode no-mistakes --branch-name "$branch" >/dev/null \
+      || fail "$harness full branch brief failed"
+    fill_brief_subsections "$home/data/$id/brief.md" 'Build the selector.' 'Use the selected branch.'
+    out=$(run_spawn "$home" "$fakebin" "$id" "$proj" "$harness" --mode no-mistakes --yolo off --branch-name "$branch")
+    assert_not_contains "$out" 'branch mismatch' "$harness changed the selected branch"
+    assert_present "$home/data/$id/launch-brief.md" "$harness launch instructions were not rendered"
+    assert_grep "Ship branch: $branch" "$home/data/$id/launch-brief.md" "$harness launch instructions changed the branch"
+    assert_grep "git checkout -b $branch" "$home/data/$id/launch-brief.md" "$harness launch command changed the branch"
+  done
+  pass 'Claude and Codex receive the identical full branch name in launch instructions'
+}
+
 test_ship_spawn_requires_a_valid_delivery_contract
 test_scout_and_secondmate_refuse_delivery_flags
 test_spawn_refuses_a_brief_mode_mismatch
@@ -1637,4 +1657,5 @@ test_spawn_refuses_a_registry_forge_it_cannot_read
 test_promotion_carries_the_forge_binding
 test_spawn_and_promote_require_filled_task_subsections
 test_project_mode_resolves_branch_prefix
+test_full_branch_name_is_harness_independent
 echo "# all fm-task-delivery tests passed"

@@ -35,8 +35,8 @@ Do not overwrite or repurpose an existing path.
 
 ## Delivery posture
 
-The registry records the project's standing delivery posture and optional ship-branch prefix, which are the captain's defaults rather than any task's answer.
-`AGENTS.md` section 7 owns how each task's concrete mode and yolo are resolved at intake and passed explicitly to the brief, the spawn, and any promotion, and `task-intake` owns the per-task surface classification and branch prefix.
+The registry records the project's standing delivery posture and optional ship-branch declaration, which are the captain's defaults rather than any task's answer.
+`AGENTS.md` section 7 owns how each task's concrete mode and yolo are resolved at intake and passed explicitly to the brief, the spawn, and any promotion, and `task-intake` owns the per-task surface classification and branch name.
 Choose that posture when adding or creating the project:
 
 - `no-mistakes` runs the full validation pipeline before a PR.
@@ -65,6 +65,9 @@ A forge composes with `no-mistakes`, `direct-PR`, and `no-mistakes-prod-only`, a
 
 Confirm the source URL, local project name, delivery posture, and autonomy posture, stating the resolved default for each rather than asking the captain to invent one.
 Clone into `projects/<name>` and add the registry entry only after the destination is known to be unused.
+After cloning, run `bin/fm-branch-convention.py projects/<name>` and report any proposed convention and its source.
+Record a prefix proposal as `branch=<prefix>` or a typed proposal as `branch-rule=type/ticket-description` in the new registry entry; when the detector finds no clear rule, leave both absent for the `fm/` fallback.
+An explicit branch declaration supplied by the captain takes precedence over the proposal.
 A `no-mistakes` or `no-mistakes-prod-only` project must have an `origin` remote and must complete the initialization procedure below, because a conditional policy's product-facing work runs the pipeline while its internal-only work still takes the direct PR.
 A `direct-PR` project needs an `origin` remote but skips no-mistakes initialization.
 A `local-only` project may have no remote and skips no-mistakes initialization.
