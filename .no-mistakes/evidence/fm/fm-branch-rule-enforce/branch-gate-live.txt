@@ -1,0 +1,9 @@
+no-rule explicit name: exit=0 status=ok
+finder passage: exit=0 source=registered branch prefix | quote=feature/ |  | source=docs/branching.md:2 | quote=feature/<pillar>/<package>/<TICKET-desc> is the package branch format. |  | source=docs/branching.md:3 | quote=fix/apps/adc/ADCCP-751-project-information-qa is accepted.
+missing derived pattern: exit=1 status=refused | reason=branch rules were found but no pattern is recorded; derive an ERE from them and pass --branch-pattern, or record regex:<pattern> as the project's branch-rule
+fm under UIUX pattern: exit=1 status=refused | reason=branch 'fm/task' does not satisfy the recorded pattern: branch does not match repository pattern
+short name under UIUX pattern: exit=1 status=refused | reason=branch 'feature/x' does not satisfy the recorded pattern: branch does not match repository pattern
+feature UIUX branch: exit=0 status=ok
+fix UIUX branch with advisory feature prefix: exit=0 status=ok
+saved rule refuses fix: exit=1 status=refused | reason=branch 'fix/apps/adc/ADCCP-751-project-information-qa' does not satisfy the registered rule: branch does not match repository pattern
+saved rule accepts feature: exit=0 status=ok

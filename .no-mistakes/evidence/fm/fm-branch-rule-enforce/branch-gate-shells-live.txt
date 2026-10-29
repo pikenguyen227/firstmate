@@ -1,0 +1,6 @@
+/bin/bash fm/task: exit=1 status=refused | reason=branch 'fm/task' does not satisfy the recorded pattern: branch does not match repository pattern
+/bin/bash feature/apps/adc/ADCCP-1-task: exit=0 status=ok
+/bin/sh fm/task: exit=1 status=refused | reason=branch 'fm/task' does not satisfy the recorded pattern: branch does not match repository pattern
+/bin/sh feature/apps/adc/ADCCP-1-task: exit=0 status=ok
+/bin/zsh fm/task: exit=1 status=refused | reason=branch 'fm/task' does not satisfy the recorded pattern: branch does not match repository pattern
+/bin/zsh feature/apps/adc/ADCCP-1-task: exit=0 status=ok
