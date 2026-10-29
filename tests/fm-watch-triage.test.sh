@@ -26,6 +26,7 @@ WATCH="$ROOT/bin/fm-watch.sh"
 DRAIN="$ROOT/bin/fm-wake-drain.sh"
 
 TMP_ROOT=$(fm_test_tmproot fm-watch-triage-tests)
+. "$ROOT/bin/fm-pending-reply-lib.sh"
 
 ack_stopped_cycle() {  # <state>
   local state=$1 err sequence generation
@@ -514,6 +515,7 @@ test_unrecognized_status_prefix_is_visible() {
   status_is_captain_relevant 'merged' || fail "legacy merged free-text stopped being captain-relevant"
 
   (
+    # shellcheck disable=SC2030 # The override is intentionally scoped to this assertion group.
     export FM_CLASSIFY_PAUSED_VERB=holding
     printf 'holding: for the upstream release\n' > "$state/renamed-pause.status"
     status_is_paused "$(last_status_line "$state/renamed-pause.status")" \
@@ -863,7 +865,6 @@ test_secondmate_status_routine_absorbed_routed_surfaced_classifier() {
 test_secondmate_first_reply_surfaces_after_pending_tick() {
   local dir state f corr record endpoint rest ident
   dir=$(make_case secondmate-first-reply); state="$dir/state"; f="$state/sm.status"
-  . "$ROOT/bin/fm-pending-reply-lib.sh"
   printf 'kind=secondmate\n' > "$state/sm.meta"
   corr=$(fm_pending_reply_create "$dir" "$state" sm 'send the result') || fail "pending reply was not created"
   fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
@@ -1782,7 +1783,6 @@ test_secondmate_status_correlated_note_surfaced_despite_busy_agent() {
   local dir state fakebin out drain_out pid corr
   dir=$(make_case secondmate-note-surfaced); state="$dir/state"; fakebin="$dir/fakebin"
   out="$dir/watch.out"; drain_out="$dir/drain.out"
-  . "$ROOT/bin/fm-pending-reply-lib.sh"
   printf 'kind=secondmate\n' > "$state/mate.meta"
   corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
   fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
@@ -1804,7 +1804,6 @@ test_secondmate_routine_progress_absorbed_then_note_surfaced() {
   local dir state fakebin out pid corr
   dir=$(make_case secondmate-routine-absorbed); state="$dir/state"; fakebin="$dir/fakebin"
   out="$dir/watch.out"
-  . "$ROOT/bin/fm-pending-reply-lib.sh"
   printf 'kind=secondmate\n' > "$state/mate.meta"
   corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
   fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
@@ -2027,7 +2026,6 @@ test_self_announced_close_after_fold_still_surfaces_folded_secondmate_lines() {
     status_file="$state/mate.status"
     printf 'kind=secondmate\n' > "$state/mate.meta"
     if [ "$n" -eq 1 ]; then
-      . "$ROOT/bin/fm-pending-reply-lib.sh"
       corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
       fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
       lagging=${lagging/0123456789abcdef/$corr}

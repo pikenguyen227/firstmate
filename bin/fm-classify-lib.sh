@@ -2662,6 +2662,7 @@ _fm_secondmate_corr_awaited() {  # <status-file> <start-offset> <line>
   local f=$1 start=$2 line=$3 state=${1%/*}
   [ "$state" != "$f" ] || state=.
   if ! command -v fm_pending_reply_corr_awaited >/dev/null 2>&1; then
+    # shellcheck disable=SC1091 # Lazy reciprocal import; each library is a canonical lint root.
     . "$_FM_CLASSIFY_LIB_DIR/fm-pending-reply-lib.sh"
   fi
   fm_pending_reply_corr_awaited "$state" "$f" "$start" "$line"
