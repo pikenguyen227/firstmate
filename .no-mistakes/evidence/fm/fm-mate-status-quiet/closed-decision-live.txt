@@ -1,0 +1,4 @@
+watcher=exited
+status=working: routine;needs-decision [key=vendor]: choose one;resolved [key=vendor]: took A;
+watch output=signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.hvyujR/state/mate.status;
+wake queue=1793270548	1	signal	mate.status	needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.hvyujR/state/mate.status;1793270549	2	signal	mate.status	needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.hvyujR/state/mate.status;

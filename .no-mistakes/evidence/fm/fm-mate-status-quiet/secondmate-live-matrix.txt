@@ -1,0 +1,30 @@
+CASE unawaited-correlation
+watcher=running
+appended=note [corr=0123456789abcdef]: incidental
+output=
+wake-queue=empty
+
+CASE awaited-correlation
+watcher=exited
+appended=note [corr=0626111b3f81cfce]: requested answer
+output=signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.8Dvk6X/state/mate.status;
+wake-queue=1793270457	1	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.8Dvk6X/state/mate.status;1793270458	2	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.8Dvk6X/state/mate.status;
+
+CASE decision
+watcher=exited
+appended=needs-decision [key=vendor]: choose one
+output=signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.GjMNkv/state/mate.status;
+wake-queue=1793270466	1	signal	mate.status	needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.GjMNkv/state/mate.status;1793270466	2	signal	mate.status	needs-decision: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.GjMNkv/state/mate.status;
+
+CASE blocked
+watcher=exited
+appended=blocked [key=access]: need access
+output=signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.iawcUW/state/mate.status;
+wake-queue=1793270473	1	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.iawcUW/state/mate.status;1793270473	2	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.iawcUW/state/mate.status;
+
+CASE pr-ready
+watcher=exited
+appended=done: PR https://example.test/pull/1 ready
+output=signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.ouwZoD/state/mate.status;
+wake-queue=1793270479	1	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.ouwZoD/state/mate.status;1793270479	2	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.ouwZoD/state/mate.status;
+

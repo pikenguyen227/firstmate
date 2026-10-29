@@ -1,0 +1,4 @@
+away marker=present
+watcher=running
+wake-queue=empty
+triage=[2026-10-29T17:43:01+0700] absorbed benign signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.FbRPdV/state/mate.status;

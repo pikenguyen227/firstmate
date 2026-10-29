@@ -1,0 +1,5 @@
+pending phase=resolved
+watcher=running
+wake-queue=empty
+watch output=
+triage=[2026-10-29T17:42:04+0700] absorbed benign signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.Us9X2p/state/mate.status;

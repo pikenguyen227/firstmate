@@ -1,0 +1,13 @@
+lab home: disposable marked home
+routine status: note: incidental update;resolved [key=other]: answered;
+watcher after routine: running
+queue after routine: empty
+watch output after routine:
+watcher after failure: exited
+watch output after failure:
+signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.1OTuxZ/state/mate.status
+queue after failure:
+1793270396	1	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.1OTuxZ/state/mate.status
+1793270396	2	signal	mate.status	signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.1OTuxZ/state/mate.status
+triage log:
+[2026-10-29T17:39:52+0700] absorbed benign signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.1OTuxZ/state/mate.status
