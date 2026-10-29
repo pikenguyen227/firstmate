@@ -114,21 +114,26 @@ def doc_evidence(repo):
                 level = len(heading.group(1))
                 if naming_level and level <= naming_level:
                     naming_level = 0
-                if re.search(r"\bbranch\s+nam(?:e|es|ing)\b", heading.group(2), re.I):
+                if re.search(r"\bbranch(?:es|ing)?\b|\bgit workflow\b", heading.group(2), re.I):
                     naming_level = level
+            content = heading.group(2).strip() if heading else stripped
+            if not content or content == "---" or re.search(r"\bgit\s+checkout\s+-b\s+", content):
                 continue
-            if not stripped or stripped == "---" or re.search(r"\bgit\s+checkout\s+-b\s+", line):
-                continue
-            shape = re.search(r"(?<![\w/])(?:feature|fix|hotfix|release)/(?:<[^>]+>|[A-Za-z0-9][\w.-]*)(?:/(?:<[^>]+>|[A-Za-z0-9][\w.-]*))*|<type>/<scope>", line, re.I)
-            if naming_level:
-                shape = shape or re.search(r"(?<![\w/])[A-Za-z][\w-]*/<[^>]+>", line)
-            naming = re.search(
-                r"\b(?:branch\s+names?\s*(?:[:=]|(?:must|should|shall)\s+|(?:start|begin|follow|use)\b)|"
-                r"branches?\s+(?:must|should|shall)\s+be\s+named\b|"
-                r"name\s+(?:your|the)\s+branch\b|branch\s+(?:naming|prefix|pattern|format)\s*[:=])",
-                line, re.I,
+            shape = re.search(
+                r"(?<![\w/])[A-Za-z][\w-]*/(?:(?:<[^>]+>|[A-Za-z0-9][\w.-]*)(?:/(?:<[^>]+>|[A-Za-z0-9][\w.-]*))*)?|<type>/<scope>",
+                content,
             )
-            if not (shape or naming):
+            directive = re.search(
+                r"\bbranch(?:es|ing|\s+names?|\s+naming|\s+prefix|\s+pattern|\s+format)?\b.{0,60}(?:\b(?:must|should|shall|start|begin|use|named|match|regex|pattern|format|prefix)\b|[:=])",
+                content, re.I,
+            )
+            contextual = bool(shape and naming_level and "<" in shape.group() and
+                              (re.fullmatch(r"\s*(?:[-*]\s*)?`?", content[:shape.start()]) or content.lstrip().startswith("|")))
+            use_shape = bool(shape and "<" in shape.group() and
+                             re.search(r"\buse\s+[`\"']?" + re.escape(shape.group()), content, re.I))
+            regex_rule = bool(re.search(r"\bregex\s*[:=]\s*`?\S+", content, re.I) and
+                              (directive or naming_level))
+            if not ((shape and (directive or contextual or use_shape)) or regex_rule):
                 continue
             item = {"source": f"{path.relative_to(repo)}:{number}", "quote": stripped}
             prefix = re.search(

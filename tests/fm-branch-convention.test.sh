@@ -16,6 +16,7 @@ git -C "$repo" add file
 git -C "$repo" commit -qm base
 finder() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-convention.sh" "$repo"; }
 validate() { "$ROOT/bin/fm-branch-name-validate.sh" "$repo" "$@"; }
+gate() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-gate.sh" "$repo" "$@"; }
 
 [ -z "$(finder)" ] || fail 'empty repository should provide no rule evidence'
 [ "$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix repo 2>/dev/null)" = fm/ ] \
@@ -32,6 +33,18 @@ out=$(finder)
   || fail 'architecture prose lost the fm/ fallback'
 rm "$repo/docs/architecture.md"
 pass 'ordinary branch prose leaves the fm/ fallback available'
+
+cat > "$repo/README.md" <<'MD'
+The feature/flags directory stores toggles.
+Branch names should be descriptive.
+## Branching
+The feature/flags directory is part of this repository.
+MD
+out=$(finder)
+[ -z "$out" ] || fail "path prose or vague advice was mistaken for a rule: $out"
+[ "$(gate fm/x)" = status=ok ] || fail 'path prose or vague advice blocked an ordinary ship'
+rm "$repo/README.md"
+pass 'path prose and vague naming advice do not block fm/ ships'
 
 cat > "$repo/CONTRIBUTING.md" <<'MD'
 ## Branch naming
@@ -51,13 +64,20 @@ for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ "$observed" = "$out" ] || fail "finder changed result through $shell"
 done
 rm "$repo/CONTRIBUTING.md"
+printf 'Branches must start with design/.\n' > "$repo/README.md"
+out=$(finder)
+[[ "$out" == *'source=README.md:1'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* ]] \
+  || fail "arbitrary prefix rule outside a naming section was missed: $out"
+rm "$repo/README.md"
+pass 'arbitrary documented prefixes are found outside naming sections'
+
 printf 'Branch name: design/sample\n' > "$repo/BRANCHING.md"
 out=$(finder)
 [[ "$out" == *'source=BRANCHING.md:1'* && "$out" == *'quote=Branch name: design/sample'* ]] \
   || fail "standalone branch name pattern was missed: $out"
 rm "$repo/BRANCHING.md"
 cat > "$repo/README.md" <<'MD'
-## Branch naming
+## Branching
 | Kind | Name |
 | --- | --- |
 | Design | design/<desc> |
@@ -65,6 +85,19 @@ MD
 out=$(finder)
 [[ "$out" == *'source=README.md:4'* && "$out" == *'design/<desc>'* && "$out" != *'source=README.md:2'* ]] \
   || fail "README naming table was missed: $out"
+cat > "$repo/README.md" <<'MD'
+## Branches must start with design/
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:1'* && "$out" == *'pattern=design/'* ]] \
+  || fail "rule written in a heading was missed: $out"
+cat > "$repo/README.md" <<'MD'
+Use feature/<ticket> for feature work.
+Branch naming regex: ^(feature|fix)/[a-z]+$
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:1'* && "$out" == *'source=README.md:2'* ]] \
+  || fail "shape directive or regex rule was missed: $out"
 cat > "$repo/README.md" <<'MD'
 ## Branching
 Follow existing conventions.
@@ -198,7 +231,6 @@ out=$(FM_HOME="$home" PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-conve
   || fail "quoted registered rule was truncated: $out"
 pass 'registered prefixes and rules survive without Python'
 
-gate() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-gate.sh" "$repo" "$@"; }
 uiux='^(feature|fix)/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
 feature_only='^feature/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
 both_declarations=(
