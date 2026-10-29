@@ -597,6 +597,29 @@ test_classify_routine_signal_self() {
   case "$out" in self\|*) pass "routine signal self-handles" ;; *) fail "routine signal did not self-handle: $out" ;; esac
 }
 
+test_secondmate_signal_digest_matrix() {
+  local dir state out line
+  dir=$(make_supercase secondmate-digest)
+  state="$dir/state"
+  printf 'kind=secondmate\n' > "$state/mate.meta"
+  for line in 'working: indexing' 'note: incidental update' 'resolved [key=other]: answered'; do
+    printf '%s\n' "$line" > "$state/mate.status"
+    out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+    case "$out" in self\|*) ;; *) fail "routine secondmate digest escalated ($line): $out" ;; esac
+  done
+  for line in 'failed: child failed' 'done: PR https://example.test/pull/1 checks green' \
+      'resolved [corr=0123456789abcdef]: answered' \
+      'note [key=child-outcome-x-done-12345678]: child x done'; do
+    printf '%s\n' "$line" > "$state/mate.status"
+    out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+    case "$out" in escalate\|*) ;; *) fail "secondmate digest lost event ($line): $out" ;; esac
+  done
+  printf 'needs-decision [key=vendor]: choose one\nresolved [key=vendor]: picked one\n' > "$state/mate.status"
+  out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+  case "$out" in *'needs-decision [key=vendor]: choose one'*) ;; *) fail "closed secondmate decision was lost: $out" ;; esac
+  pass "away digest absorbs routine mate lines and surfaces correlated and child events"
+}
+
 test_classify_terminal_signal_escalates() {
   local dir state kw out
   dir=$(make_supercase classify-terminal)
@@ -3458,6 +3481,7 @@ test_tmux_composer_state_bordered_and_agent_rows_are_empty
 test_tmux_composer_state_requires_matching_box_borders
 test_pane_input_pending_preserves_bright_placeholder_like_draft
 test_classify_signal_dedup_against_scan
+test_secondmate_signal_digest_matrix
 test_classify_signal_skips_turn_end_markers
 test_classify_signal_survives_a_later_routine_append
 test_classification_commits_its_captured_endpoint
