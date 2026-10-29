@@ -26,12 +26,15 @@ if [ -z "$operator" ] || [ -z "$pattern" ]; then
   printf 'status=low-confidence\nreason=incomplete machine pattern\n'
   exit 2
 fi
+regex_matches() { [[ "$branch" =~ $pattern ]]; }
+# fnmatch intentionally uses a glob pattern.
+# shellcheck disable=SC2053
 case "$operator" in
   starts_with) [[ "$branch" == "$pattern"* ]] && matched=1 || matched=0 ;;
   fnmatch) [[ "$branch" == $pattern ]] && matched=1 || matched=0 ;;
   regex)
     rc=0
-    [[ "$branch" =~ $pattern ]] || rc=$?
+    regex_matches || rc=$?
     if [ "$rc" -eq 2 ]; then
       printf 'status=low-confidence\nreason=unsupported regex pattern\n'
       exit 2
