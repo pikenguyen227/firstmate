@@ -1,0 +1,43 @@
+Scenario: UIUX vault evidence
+source=_vaults/workspace/wiki/branching.md:2
+quote=fix/tools/version-flag-rename
+
+source=_vaults/workspace/wiki/branching.md:3
+quote=fix/apps/adc/ADCCP-751-project-information-qa
+
+source=_vaults/workspace/wiki/branching.md:4
+quote=feature/workspace/zod-array-security
+
+source=_vaults/workspace/wiki/branching.md:5
+quote=feature/workspace/update-docker-node22
+
+source=AGENTS.md:2
+quote=Follow existing conventions.
+
+Scenario: selected UIUX branch validates and reaches brief
+status=valid
+check=git
+scaffolded: /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M61MWWBBQF7BZBBQH5NXN3EA/.branch-live.oqLOEB/home/data/uiux-751/brief.md (ship, mode=local-only; replace {TASK} and {FIRSTMATE_SPEC})
+1. First action: create your branch: `git checkout -b fix/apps/adc/ADCCP-751-project-information-qa --`
+Ship branch: fix/apps/adc/ADCCP-751-project-information-qa
+Scenario: default fallback with vague guidance
+source=AGENTS.md:2
+quote=Follow existing conventions.
+
+warn: no registry at /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M61MWWBBQF7BZBBQH5NXN3EA/.branch-live.oqLOEB/home/data/projects.md; defaulting uiux to no-mistakes off
+fm/
+scaffolded: /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M61MWWBBQF7BZBBQH5NXN3EA/.branch-live.oqLOEB/home/data/default-1/brief.md (ship, mode=local-only; replace {TASK} and {FIRSTMATE_SPEC})
+1. First action: create your branch: `git checkout -b fm/default-1 --`
+Ship branch: fm/default-1
+Scenario: saved complex rule and refusal of mismatched branch
+typed:feature/workspace for root work; fix/apps/adc/<ticket> for ADC
+source=registered branch rule
+quote=feature/workspace for root work; fix/apps/adc/<ticket> for ADC
+
+source=AGENTS.md:2
+quote=Follow existing conventions.
+
+status=invalid
+reason=branch does not match repository pattern
+status=invalid
+reason=invalid Git branch name

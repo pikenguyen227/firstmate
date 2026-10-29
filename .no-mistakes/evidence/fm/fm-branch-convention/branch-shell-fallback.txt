@@ -1,0 +1,25 @@
+Invocation through /bin/bash
+source=BRANCHING.md:2
+quote=Branch names must start with design/.
+operator=starts_with
+pattern=design/
+
+Invocation through /bin/zsh
+source=BRANCHING.md:2
+quote=Branch names must start with design/.
+operator=starts_with
+pattern=design/
+
+Invocation through /bin/sh
+source=BRANCHING.md:2
+quote=Branch names must start with design/.
+operator=starts_with
+pattern=design/
+
+Without Python, registered rule:
+source=registered branch rule
+quote=feature/workspace for root work; fix/apps/adc/<ticket> for ADC
+
+Without Python, no registered rule:
+warn: branch rule finder unavailable and no registered rule exists; use fm/
+fm/
