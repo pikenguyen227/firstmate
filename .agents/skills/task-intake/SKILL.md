@@ -36,7 +36,20 @@ Before commissioning an investigation, consult existing reports and established 
 ## Delivery details
 
 On a `no-mistakes-prod-only` project, classify the task's surface: internal-only tooling, automation, contributor or operator process, and release or submission work ships `direct-PR`, while product-facing, mixed, and uncertain work ships `no-mistakes`; never infer internal-only from file location or project name.
-Resolve the project's registered ship-branch prefix with `bin/fm-project-mode.sh --branch-prefix <project>` and pass it explicitly to the brief, ship spawn, and scout promotion as `--branch-prefix` (default `fm/` needs no flag).
+Run `bin/fm-branch-convention.sh projects/<project>` before naming a ship branch.
+It quotes repository docs and tracked vault wiki passages with file:line, GitHub rulesets and classic protection, and any machine-checkable naming pattern, alongside a recorded project declaration.
+The finder supplies evidence, not a rule verdict.
+A GitHub target condition is scope evidence, not a required branch name; apply only naming rules and creation restrictions.
+Read the passages with the task and compose one full branch name.
+A recorded declaration and an explicit task `--branch-prefix` override take precedence; never clear or replace a recorded declaration during detection.
+Validate the chosen name with `bin/fm-branch-name-validate.sh projects/<project> <name>`, then run it once more with `--operator <operator> --pattern <pattern>` for each applicable machine pattern quoted by the finder.
+If a check fails, the evidence conflicts, or the rule cannot be applied confidently, report the evidence and proposed name to the coordinator, ask for one project decision, and record its confirmed rule in `data/projects.md` before writing a brief, spawning, or promoting.
+A saved quoted `branch-rule=` is the coordinator's resolved instruction: compose from it on later tasks rather than asking the same question again; ask only when this task introduces a new ambiguity.
+If GitHub branch settings could not be read and no recorded rule resolves the task, treat that uncertainty as needing a decision.
+If the evidence gives no concrete rule, including vague branch-section advice, use `fm/<id>`; if Python is unavailable, use the saved declaration or fall back to `fm/<id>` with the finder's warning and no decision prompt.
+In the UIUX workspace, valid examples include `fix/tools/version-flag-rename`, `fix/apps/adc/ADCCP-751-project-information-qa`, `feature/workspace/zod-array-security`, and `feature/workspace/update-docker-node22`; `fm/atomic-file-drop-zone` and `fm/adccp-1026` are invalid under that workspace rule.
+Read the current vault rule for the task rather than extrapolating from examples.
+Pass the final name identically as `--branch-name` to the brief, spawn, and promotion; their branch agreement check keeps every harness on that name.
 Record the resulting mode, `yolo` merge posture, and the one-line reason for any deviation in the backlog item note.
 
 ## Concurrency

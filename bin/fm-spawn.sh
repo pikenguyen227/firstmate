@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Spawn a direct report: a crewmate in a treehouse or Orca worktree, or a
 # secondmate in its isolated firstmate home.
-# Usage: fm-spawn.sh <task-id> <project-dir> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
+# Usage: fm-spawn.sh <task-id> <project-dir> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>|--branch-name <name>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
 #        fm-spawn.sh <task-id> <project-dir> --scout [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
 #        fm-spawn.sh <task-id> [<firstmate-home>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>] --secondmate
 #   --mode and --yolo are this task's delivery contract, REQUIRED for every ship
@@ -34,10 +34,12 @@
 #   --branch-prefix is the optional prefix selected at intake for this ship's
 #   immutable branch, defaulting to "fm/". It must agree with the branch recorded
 #   in the brief, and is refused on scouts, secondmates, and relaunches. When the
-#   selected branch does not match the project's registered prefix, the spawn
+#   selected branch does not match a registered prefix, the spawn
 #   prints a one-line deviation notice and continues, because the registered
 #   prefix is the captain's standing preference and the brief agreement above
 #   already guarantees the worker's instructions match the branch.
+#   --branch-name accepts the complete name selected from a repository rule.
+#   An explicit --branch-prefix wins if both flags are supplied.
 #   Ship/scout launches always put fm-dod-lib.sh's current worker role scope
 #   first in the private launch-brief overlay, including the exact task-owned
 #   steering inbox. This never rewrites a project's instruction files or a
@@ -658,6 +660,7 @@ BACKEND_ARG=
 MODE=
 YOLO=
 BRANCH_PREFIX=fm/
+BRANCH_NAME=
 TRACEPARENT_ARG=
 HARNESS_SET=0
 MODEL_SET=0
@@ -666,6 +669,7 @@ BACKEND_SET=0
 MODE_SET=0
 YOLO_SET=0
 BRANCH_PREFIX_SET=0
+BRANCH_NAME_SET=0
 TRACEPARENT_SET=0
 RELAUNCH=0
 PREFLIGHT=0
@@ -707,6 +711,10 @@ for a in "$@"; do
     branch-prefix)
       BRANCH_PREFIX=$a
       BRANCH_PREFIX_SET=1
+      ;;
+    branch-name)
+      BRANCH_NAME=$a
+      BRANCH_NAME_SET=1
       ;;
     traceparent)
       TRACEPARENT_ARG=$a
@@ -765,6 +773,11 @@ for a in "$@"; do
   --branch-prefix=*)
     BRANCH_PREFIX=${a#--branch-prefix=}
     BRANCH_PREFIX_SET=1
+    ;;
+  --branch-name) want_value="branch-name" ;;
+  --branch-name=*)
+    BRANCH_NAME=${a#--branch-name=}
+    BRANCH_NAME_SET=1
     ;;
   --traceparent) want_value=traceparent ;;
   --traceparent=*)
@@ -856,6 +869,10 @@ if [ "$RELAUNCH" -eq 1 ]; then
     echo "error: --relaunch reuses the task's recorded ship branch; --branch-prefix cannot override it" >&2
     exit 1
   }
+  [ "$BRANCH_NAME_SET" -eq 0 ] || {
+    echo "error: --relaunch reuses the task's recorded ship branch; --branch-name cannot override it" >&2
+    exit 1
+  }
 else
   # Delivery contract (AGENTS.md section 7). A ship task's mode and yolo are
   # firstmate's per-task decision, so they are required and closed-set validated
@@ -899,6 +916,10 @@ else
     }
     [ "$BRANCH_PREFIX_SET" -eq 0 ] || {
       echo "error: --branch-prefix applies only to ship spawns; a scout makes no branch and a secondmate records no ship branch" >&2
+      exit 1
+    }
+    [ "$BRANCH_NAME_SET" -eq 0 ] || {
+      echo "error: --branch-name applies only to ship spawns; a scout makes no branch and a secondmate records no ship branch" >&2
       exit 1
     }
   fi
@@ -1467,6 +1488,10 @@ if [ "$RELAUNCH" -eq 1 ] && [ "${#POS[@]}" -gt 0 ] && [ "${POS[0]}" != "$idpart"
   exit 1
 fi
 if [ "${#POS[@]}" -gt 0 ] && [ "${POS[0]}" != "$idpart" ] && case "$idpart" in */*) false ;; *) true ;; esac then
+  if [ "$BRANCH_NAME_SET" -eq 1 ]; then
+    echo "error: --branch-name is single-task only; select a distinct full branch for each task" >&2
+    exit 1
+  fi
   if [ "$KIND" != secondmate ] && [ -z "$HARNESS_ARG" ] && [ -f "$CONFIG/crew-dispatch.json" ]; then
     echo "error: config/crew-dispatch.json is active - pass an explicit harness resolved from the dispatch rules (the consultation backstop, so the rules are never silently skipped)." >&2
     exit 1
@@ -1483,6 +1508,7 @@ if [ "${#POS[@]}" -gt 0 ] && [ "${POS[0]}" != "$idpart" ] && case "$idpart" in *
   [ "$MODE_SET" -eq 0 ] || shared_args+=(--mode "$MODE")
   [ "$YOLO_SET" -eq 0 ] || shared_args+=(--yolo "$YOLO")
   [ "$BRANCH_PREFIX_SET" -eq 0 ] || shared_args+=(--branch-prefix "$BRANCH_PREFIX")
+  [ "$BRANCH_NAME_SET" -eq 0 ] || shared_args+=(--branch-name "$BRANCH_NAME")
   for pair in "${POS[@]}"; do
     case "$pair" in
     *=*) : ;;
@@ -1517,6 +1543,8 @@ fm_task_id_creation_valid "$ID" || {
 }
 if [ "$RELAUNCH" -eq 0 ] && [ "$KIND" = ship ]; then
   BRANCH="$BRANCH_PREFIX$ID"
+  [ "$BRANCH_NAME_SET" -eq 0 ] || BRANCH=$BRANCH_NAME
+  [ "$BRANCH_PREFIX_SET" -eq 0 ] || BRANCH="$BRANCH_PREFIX$ID"
   if ! git check-ref-format --branch "$BRANCH" >/dev/null 2>&1; then
     echo "error: --branch-prefix and task id must form a valid git branch (got '$BRANCH')" >&2
     exit 1
@@ -3131,7 +3159,7 @@ if [ "$KIND" = ship ]; then
       exit 1
     }
   elif [ "$BRANCH" != "fm/$ID" ]; then
-    # A relaunch's branch comes from the meta record (--branch-prefix is refused
+    # A relaunch's branch comes from the meta record (both branch flags are refused
     # there), so a promoted scout whose brief never carried a Ship branch line
     # must relaunch on that recorded branch rather than be refused.
     if [ "$RELAUNCH" -eq 1 ]; then
@@ -3140,7 +3168,7 @@ if [ "$KIND" = ship ]; then
       echo "error: $BRIEF records no ship branch; regenerate it with --branch-prefix before spawning $BRANCH" >&2
       exit 1
     fi
-  else
+  elif [ "$RELAUNCH" -eq 0 ]; then
     echo "warning: $BRIEF records no ship branch; defaulting to legacy branch $BRANCH" >&2
   fi
   if [ -z "$BRIEF_MODE" ]; then
@@ -3179,13 +3207,13 @@ if [ "$KIND" = ship ]; then
     [ "$(delivery_rigor_rank "$MODE")" -lt "$(delivery_rigor_rank "$STANDING_MODE")" ]; then
     echo "notice: $ID ships mode=$MODE while the standing posture for $PROJ_NAME is $STANDING_MODE - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state" >&2
   fi
-  # The registered ship-branch prefix (bin/fm-project-mode.sh) is the captain's
-  # answer to "should this project's branches read as firstmate-authored", so a
-  # spawn that ships the legacy fm/ prefix past a registered override is
-  # announced, not refused: the brief-vs-spawn agreement above already
+  # A registered prefix has a mechanical name to compare with this task's branch.
+  # A recorded complex rule is resolved at intake, so only the prefix path emits
+  # an advisory deviation notice; the brief-vs-spawn agreement above still
   # guarantees the worker's instructions match the branch this spawn selected.
+  STANDING_SETTING=$("$FM_ROOT/bin/fm-project-mode.sh" --branch-setting "$PROJ_NAME" 2>/dev/null) || STANDING_SETTING=none
   STANDING_BRANCH=$("$FM_ROOT/bin/fm-project-mode.sh" --branch-prefix "$PROJ_NAME" 2>/dev/null) || STANDING_BRANCH=
-  if [ "$BRANCH" != "$STANDING_BRANCH$ID" ]; then
+  if [ "$STANDING_SETTING" != none ] && [[ "$STANDING_SETTING" != typed:* ]] && [ "$BRANCH" != "$STANDING_BRANCH$ID" ]; then
     echo "notice: $ID ships branch=$BRANCH while $PROJ_NAME registers the ship-branch prefix '$STANDING_BRANCH' (branch $STANDING_BRANCH$ID) - the task's branch and PR will read as firstmate-authored; proceed only on a current explicit captain instruction or an intake judgment you can state" >&2
   fi
 fi

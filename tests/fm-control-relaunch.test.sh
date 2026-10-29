@@ -1088,6 +1088,28 @@ test_spawn_relaunch_without_a_harness_reuses_the_recorded_one() {
   pass "fm-spawn --relaunch: with no explicit harness it reuses the task's recorded one, never the crew default"
 }
 
+test_legacy_ship_relaunch_uses_the_default_branch_silently() {
+  local dir out id
+  for id in rl-legacy-direct rl-legacy-control; do
+    dir=$(new_case "$id" "$id")
+    add_ship_task "$dir" "$id" claude
+    if [ "$id" = rl-legacy-direct ]; then
+      printf 'zsh' > "$dir/fake/command"
+      out=$(run_spawn "$dir" "$id" --relaunch) \
+        || fail "direct legacy relaunch failed: $out"
+      assert_contains "$out" "spawned $id" "the direct legacy relaunch did not complete"
+    else
+      out=$(run_control "$dir" "$id" relaunch --note "continue the same task") \
+        || fail "control legacy relaunch failed: $out"
+      assert_contains "$out" "relaunched $id" "the control legacy relaunch did not complete"
+    fi
+    assert_not_contains "$out" "records no ship branch" "a default-branch legacy relaunch warned about its old brief"
+    [ "$(meta_field "$dir" "$id" branch)" = "fm/$id" ] \
+      || fail "the legacy relaunch did not keep the default branch"
+  done
+  pass "legacy ship relaunches keep the default branch silently through direct and control paths"
+}
+
 # A promoted scout records kind=ship and a custom ship branch in its meta, but
 # its brief is the scout scaffold: it never gained a Ship branch line, and a
 # relaunch cannot regenerate the brief (--branch-prefix is refused there). The
@@ -2422,6 +2444,7 @@ test_secondmate_relaunch_onto_a_crewmate_only_adapter_refuses_before_stop
 test_explicit_secondmate_harness_ignores_configured_profile_axes
 test_ship_relaunch_ignores_the_crew_harness_config
 test_spawn_relaunch_without_a_harness_reuses_the_recorded_one
+test_legacy_ship_relaunch_uses_the_default_branch_silently
 test_spawn_relaunch_of_promoted_scout_uses_the_recorded_branch
 test_promoted_scout_relaunch_receives_the_current_delivery_contract
 test_prefixed_prior_harness_wiring_is_still_retired
