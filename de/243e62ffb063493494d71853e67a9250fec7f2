@@ -1,0 +1,22 @@
+bin/fm-spawn.sh
+  s_8c3ef3686ae955::t_509553c0987d83 3171
+tests/fm-control-relaunch.test.sh
+  s_8c3ef3686ae955::t_88fb3647e94ba8 1100,1104
+  s_8c3ef3686ae955::t_e86bc968f6c515 1091-1099,1101-1103,1105-1112,2447
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de243e62ffb063493494d71853e67a9250fec7f2",
+  "prompts": {},
+  "sessions": {
+    "s_8c3ef3686ae955": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a185a9-e304-71e1-99c7-8aad59dc5d64",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
