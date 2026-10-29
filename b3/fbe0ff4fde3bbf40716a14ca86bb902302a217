@@ -1,0 +1,25 @@
+tests/fm-branch-convention.test.sh
+  s_800993f6979451::t_44064f4620af88 4
+bin/fm-spawn.sh
+  s_800993f6979451::t_44064f4620af88 777
+bin/fm-promote.sh
+  s_800993f6979451::t_44064f4620af88 98
+bin/fm-brief.sh
+  s_800993f6979451::t_44064f4620af88 230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3fbe0ff4fde3bbf40716a14ca86bb902302a217",
+  "prompts": {},
+  "sessions": {
+    "s_800993f6979451": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18568-28bb-7612-bb38-b7c5436cc0eb",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
