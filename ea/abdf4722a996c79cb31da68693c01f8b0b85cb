@@ -1,0 +1,19 @@
+.agents/skills/task-intake/SKILL.md
+  s_0865c04ad67817::t_ad24ec56fab420 46,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eaabdf4722a996c79cb31da68693c01f8b0b85cb",
+  "prompts": {},
+  "sessions": {
+    "s_0865c04ad67817": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-7197-7a93-8897-f0ec10df37e6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
