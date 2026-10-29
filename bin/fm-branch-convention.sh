@@ -11,7 +11,6 @@ case "$setting" in
   prefix:*)
     prefix=${setting#prefix:}
     printf 'source=registered branch prefix\nquote=%s\n' "$prefix"
-    [ -z "$prefix" ] || printf 'operator=starts_with\npattern=%s\n' "$prefix"
     printf '\n' ;;
   typed:*)
     rule=${setting#typed:}

@@ -4,11 +4,6 @@
 #
 # Runs fm-branch-convention.sh and fm-branch-name-validate.sh, so spawn and
 # promotion enforce the same decision intake made.
-#   - No rule passage found: the branch needs only valid Git syntax (fm/ default).
-#   - Any passage found (docs, vault, GitHub, or a registered declaration): the
-#     coordinator must supply the ERE it derived from them as --pattern, which the
-#     branch must match. A registered regex can supply that pattern; registered
-#     rules are also enforced and are never cleared or replaced.
 # Prints status=ok or status=refused plus a reason; exit 0 only for ok.
 set -eu
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -37,7 +32,8 @@ checks=()
 finder_out=$("$BASH" "$SCRIPT_DIR/fm-branch-convention.sh" "$repo" 2>/dev/null) || finder_out=
 while IFS= read -r line || [ -n "$line" ]; do
   case "$line" in
-    source=registered*) found=1; registered=1 ;;
+    source=registered\ branch\ prefix) ;;
+    source=registered\ branch\ rule) found=1; registered=1 ;;
     source=GitHub\ branch\ settings) ;;
     source=*) found=1; repository_found=1; registered=0 ;;
     operator=*) operator=${line#operator=} ;;

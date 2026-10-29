@@ -155,7 +155,7 @@ pass 'unreadable GitHub settings require a decision'
 
 printf '%s\n' '# Projects' '- repo [no-mistakes branch=owner/] - fixture' > "$home/data/projects.md"
 out=$(finder)
-[[ "$out" == *'source=registered branch prefix'* && "$out" == *'pattern=owner/'* ]] \
+[[ "$out" == *'source=registered branch prefix'* && "$out" == *'quote=owner/'* ]] \
   || fail "recorded prefix was lost: $out"
 printf '%s\n' '# Projects' '- repo [no-mistakes branch-rule="regex:^feature/[a-z0-9-]+$"] - fixture' > "$home/data/projects.md"
 out=$(finder)
@@ -188,6 +188,9 @@ git -C "$repo" remote remove origin
 out=$(gate fm/x) || fail "no-rule repo refused the fm/ default: $out"
 [ "$(gate fm/x)" = status=ok ] || fail 'no-rule repo needs no pattern'
 [ "$(gate feature/x)" = status=ok ] || fail 'no-rule explicit branch name was refused'
+printf '%s\n' '# Projects' '- repo [no-mistakes branch=feature/] - fixture' > "$home/data/projects.md"
+[ "$(gate fix/apps/adc/ADCCP-751-project-information-qa)" = status=ok ] || fail 'advisory prefix blocked an explicit branch without repository rules'
+printf '%s\n' '# Projects' '- repo [no-mistakes] - fixture' > "$home/data/projects.md"
 mkdir -p "$repo/docs"
 cat > "$repo/docs/branching.md" <<'MD'
 ## Git workflow
@@ -210,6 +213,11 @@ for declaration in 'branch=feature/' 'branch-rule="starts_with:feature/"' 'branc
   if out=$(gate feature/x --pattern "$uiux"); then fail "$declaration allowed a branch against the derived pattern"; fi
   [[ "$out" == *'does not satisfy the recorded pattern'* ]] || fail "pattern refusal unclear for $declaration: $out"
   [ "$(gate feature/apps/adc/ADCCP-1-x --pattern "$uiux")" = status=ok ] || fail "$declaration rejected a conforming branch"
+  if [ "$declaration" = 'branch=feature/' ]; then
+    [ "$(gate fix/apps/adc/ADCCP-751-project-information-qa --pattern "$uiux")" = status=ok ] || fail 'advisory prefix rejected a valid fix branch'
+  elif gate fix/apps/adc/ADCCP-751-project-information-qa --pattern "$uiux" >/dev/null; then
+    fail "$declaration did not enforce its explicit branch rule"
+  fi
 done
 printf '%s\n' '# Projects' "- repo [no-mistakes branch-rule=\"regex:$uiux\"] - fixture" > "$home/data/projects.md"
 [ "$(gate fix/apps/adc/ADCCP-1-x)" = status=ok ] || fail 'registered machine pattern was not accepted as the record'

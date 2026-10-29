@@ -41,8 +41,8 @@ It quotes repository docs and tracked vault wiki passages with file:line, GitHub
 The finder supplies evidence, not a rule verdict.
 A GitHub target condition is scope evidence, not a required branch name; apply only naming rules and creation restrictions.
 Read the passages with the task and compose one full branch name.
-A recorded declaration and an explicit task `--branch-prefix` override take precedence; never clear or replace a recorded declaration during detection.
-Validate the chosen name with `bin/fm-branch-name-validate.sh projects/<project> <name>`, then run it once more with `--operator <operator> --pattern <pattern>` for each applicable machine pattern quoted by the finder.
+A recorded `branch=` prefix guides composition, and an explicit task `--branch-prefix` overrides that choice; current repository passages may permit another prefix. Never clear or replace a recorded declaration during detection.
+Validate the chosen name with `bin/fm-branch-name-validate.sh projects/<project> <name>`, then run it once more with `--operator <operator> --pattern <pattern>` for each applicable machine pattern quoted by the finder; enforce explicit `branch-rule=` checks, while `branch=` remains composition guidance.
 When the finder quotes any rule passage, also derive an ERE from the applicable passages and validate the name with `--operator regex --pattern <ere>`; a name that fails it, such as `fm/<id>` under a repository that has rules, is never used.
 Record that pattern by passing `--branch-pattern <ere>` to spawn and promotion, or durably as `branch-rule="regex:<ere>"`; `bin/fm-branch-gate.sh` runs there and refuses a ship whose current repository passages lack a recorded pattern, even when a branch prefix is registered.
 When the passages give no concrete naming rule, the pattern for the `fm/<id>` choice is `^fm/[^/]+$`.
