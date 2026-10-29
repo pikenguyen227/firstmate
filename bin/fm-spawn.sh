@@ -3168,7 +3168,7 @@ if [ "$KIND" = ship ]; then
       echo "error: $BRIEF records no ship branch; regenerate it with --branch-prefix before spawning $BRANCH" >&2
       exit 1
     fi
-  else
+  elif [ "$RELAUNCH" -eq 0 ]; then
     echo "warning: $BRIEF records no ship branch; defaulting to legacy branch $BRANCH" >&2
   fi
   if [ -z "$BRIEF_MODE" ]; then
