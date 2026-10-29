@@ -107,42 +107,58 @@ def doc_evidence(repo):
         if not path.is_file():
             continue
         naming_level = 0
+        heading_level = 0
+        table_naming = False
         for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
             stripped = line.strip()
             heading = re.match(r"^\s{0,3}(#{1,6})\s+(.+)", line)
             if heading:
+                table_naming = False
                 level = len(heading.group(1))
                 if naming_level and level <= naming_level:
                     naming_level = 0
-                if re.search(r"\bbranch(?:es|ing)?\b|\bgit workflow\b", heading.group(2), re.I):
+                if heading_level and level <= heading_level:
+                    heading_level = 0
+                if re.search(r"\bbranch\s+nam(?:e|es|ing)\b|\bbranching\b", heading.group(2), re.I):
                     naming_level = level
+                if re.search(r"\bbranch\s+nam(?:e|es|ing)\b", heading.group(2), re.I):
+                    heading_level = level
             content = heading.group(2).strip() if heading else stripped
-            if not content or content == "---" or re.search(r"\bgit\s+checkout\s+-b\s+", content):
+            if not content:
+                table_naming = False
                 continue
-            shape = re.search(
-                r"(?<![\w/])[A-Za-z][\w-]*/(?:(?:<[^>]+>|[A-Za-z0-9][\w.-]*)(?:/(?:<[^>]+>|[A-Za-z0-9][\w.-]*))*)?|<type>/<scope>",
-                content,
-            )
-            directive = re.search(
-                r"\bbranch(?:es|ing|\s+names?|\s+naming|\s+prefix|\s+pattern|\s+format)?\b.{0,60}(?:\b(?:must|should|shall|start|begin|use|named|match|regex|pattern|format|prefix)\b|[:=])",
-                content, re.I,
-            )
-            contextual = bool(shape and naming_level and "<" in shape.group() and
-                              (re.fullmatch(r"\s*(?:[-*]\s*)?`?", content[:shape.start()]) or content.lstrip().startswith("|")))
-            use_shape = bool(shape and "<" in shape.group() and
-                             re.search(r"\buse\s+[`\"']?" + re.escape(shape.group()), content, re.I))
-            regex_rule = bool(re.search(r"\bregex\s*[:=]\s*`?\S+", content, re.I) and
-                              (directive or naming_level))
-            if not ((shape and (directive or contextual or use_shape)) or regex_rule):
+            if content.lstrip().startswith("|") and re.search(r"\|\s*(?:branch(?:\s+name)?|name|pattern|prefix|format)\s*\|", content, re.I):
+                table_naming = True
+            if content == "---" or re.search(r"\bgit\s+checkout\s+-b\s+", content):
                 continue
-            item = {"source": f"{path.relative_to(repo)}:{number}", "quote": stripped}
-            prefix = re.search(
-                r"\bbranch(?:es| names| naming)?\s*(?:prefix\s*[:=]?|(?:must|should)\s+(?:start|begin)\s+with\s+)[`\"']?([A-Za-z][A-Za-z0-9_-]*/)",
-                line, re.I,
-            )
-            if prefix and not re.search(r"<[^>]+>", line):
-                item.update(operator="starts_with", pattern=prefix.group(1))
-            found.append(item)
+            for sentence in re.split(r"(?<=[.!?])\s+", content):
+                subject = re.search(
+                    r"\bbranch\s+nam(?:e|es|ing)\b|\bbranch\s+(?:prefix|pattern|format)\b|"
+                    r"\bname\s+(?:your|the)\s+branch(?:es)?\b|"
+                    r"\bbranch(?:es)?\s+(?:must|should|shall)\s+(?:be\s+named|start\s+with|begin\s+with|match|use)\b|"
+                    r"\buse\b.+\bfor\s+branch\s+names?\b",
+                    sentence, re.I,
+                )
+                contextual = (naming_level and table_naming and sentence.lstrip().startswith("|")) or (heading_level and heading and
+                              re.match(r"[A-Za-z][\w-]*/|<[^>]+>", sentence))
+                concrete = re.search(
+                    r"(?<![\w/])[A-Za-z][\w-]*/(?=$|[\s`'\".,;:!?)}])|"
+                    r"<[^>\s]+>|\{[^}\s]+\}|\^[^\s`]+|\[[^]\s]+\]|\.\*|\.\+|\\[dws]",
+                    sentence,
+                )
+                example = re.search(r"\bbranch\s+names?\s*[:=]\s*[`'\"]?[A-Za-z][\w-]*/[A-Za-z0-9][\w.-]*", sentence, re.I)
+                if not (subject or contextual) or not (concrete or example):
+                    continue
+                item = {"source": f"{path.relative_to(repo)}:{number}", "quote": stripped}
+                prefix = re.search(
+                    r"\bbranch(?:es| names| naming)?\s*(?:prefix\s*[:=]?|(?:must|should)\s+(?:start|begin)\s+with\s+)[`\"']?([A-Za-z][A-Za-z0-9_-]*/)|"
+                    r"\buse\s+[`\"']?([A-Za-z][A-Za-z0-9_-]*/)\s+for\s+branch\s+names?\b",
+                    sentence, re.I,
+                )
+                if prefix and not re.search(r"<[^>]+>", sentence):
+                    item.update(operator="starts_with", pattern=prefix.group(1) or prefix.group(2))
+                found.append(item)
+                break
     return found
 
 
