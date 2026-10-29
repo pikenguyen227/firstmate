@@ -1,0 +1,23 @@
+bin/fm-branch-gate.sh
+  s_0865c04ad67817::t_3f255ff06d208f 10-11,30,32,42,47,54-57
+tests/fm-branch-convention.test.sh
+  s_0865c04ad67817::t_3f255ff06d208f 190,206-213
+.agents/skills/task-intake/SKILL.md
+  s_0865c04ad67817::t_3f255ff06d208f 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b46b78ce83d7d6d63a0628ca50b532ec078587f",
+  "prompts": {},
+  "sessions": {
+    "s_0865c04ad67817": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-7197-7a93-8897-f0ec10df37e6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
