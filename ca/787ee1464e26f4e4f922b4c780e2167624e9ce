@@ -1,0 +1,40 @@
+.agents/skills/task-intake/SKILL.md
+  s_47b0ade5f1d944::t_9238219d1548fa 39-52
+.agents/skills/project-management/SKILL.md
+  s_47b0ade5f1d944::t_9238219d1548fa 68-70
+bin/fm-dod-lib.sh
+  s_47b0ade5f1d944::t_d8b3478d104972 13-14
+docs/scripts.md
+  s_47b0ade5f1d944::t_d8b3478d104972 78
+bin/fm-project-mode.sh
+  s_47b0ade5f1d944::t_d8b3478d104972 7-8,17,19,36-37,39,55,60-61,133-135
+README.md
+  s_47b0ade5f1d944::t_9434e341db1ff5 49
+  s_47b0ade5f1d944::t_67129605d5d1a3 48
+.agents/skills/operational-home-layout/SKILL.md
+  s_47b0ade5f1d944::t_d8b3478d104972 56
+docs/architecture.md
+  s_47b0ade5f1d944::t_67129605d5d1a3 294,379
+bin/fm-promote.sh
+  s_47b0ade5f1d944::t_d8b3478d104972 25
+bin/fm-brief.sh
+  s_47b0ade5f1d944::t_135ee61371dd22 58-60
+bin/fm-spawn.sh
+  s_47b0ade5f1d944::t_135ee61371dd22 37,3162,3210-3212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca787ee1464e26f4e4f922b4c780e2167624e9ce",
+  "prompts": {},
+  "sessions": {
+    "s_47b0ade5f1d944": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18516-34dd-7c51-acee-a5363d9696a5",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
