@@ -1,0 +1,31 @@
+.agents/skills/task-intake/SKILL.md
+  s_55309c034c2f2e::t_0fbda1b42ee6fe 39-41
+bin/fm-branch-convention.py
+  s_55309c034c2f2e::t_843d1df41709ab 64,164,169
+  s_55309c034c2f2e::t_0fbda1b42ee6fe 105,189
+.agents/skills/project-management/SKILL.md
+  s_55309c034c2f2e::t_4283b8a63ed78f 68
+tests/fm-task-delivery.test.sh
+  s_55309c034c2f2e::t_0fbda1b42ee6fe 1617
+tests/fm-branch-convention.test.sh
+  s_55309c034c2f2e::t_843d1df41709ab 19,23,49-58,91,105,116,120,126,145-150
+  s_55309c034c2f2e::t_a068e39daa5f9b 135,138,142,144
+bin/fm-branch-convention.sh
+  s_55309c034c2f2e::t_0fbda1b42ee6fe 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "525cc3cbddfa8afc9d3a91698e020b8c8ad57fa6",
+  "prompts": {},
+  "sessions": {
+    "s_55309c034c2f2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18358-0fe0-7680-9e99-251861b649d6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
