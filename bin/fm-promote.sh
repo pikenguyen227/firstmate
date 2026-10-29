@@ -36,7 +36,7 @@
 # binding and bin/fm-dod-lib.sh owns what it changes for the worker, including
 # the refusal of a forge on local-only.
 # --branch-pattern is the ERE derived from the repository's branch rules; the ship branch
-# is checked against it by bin/fm-branch-gate.sh, which refuses rules found without one.
+# is checked by bin/fm-branch-gate.sh against it or a recorded regex branch-rule.
 # Usage: fm-promote.sh <task-id> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>|--branch-name <name>] [--branch-pattern <regex>]
 set -eu
 

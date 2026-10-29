@@ -44,7 +44,7 @@ Read the passages with the task and compose one full branch name.
 A recorded `branch=` prefix guides composition, and an explicit task `--branch-prefix` overrides that choice; current repository passages may permit another prefix. Never clear or replace a recorded declaration during detection.
 Validate the chosen name with `bin/fm-branch-name-validate.sh projects/<project> <name>`, then run it once more with `--operator <operator> --pattern <pattern>` for each applicable machine pattern quoted by the finder; enforce explicit `branch-rule=` checks, while `branch=` remains composition guidance.
 When the finder quotes any rule passage, also derive an ERE from the applicable passages and validate the name with `--operator regex --pattern <ere>`; a name that fails it, such as `fm/<id>` under a repository that has rules, is never used.
-Record that pattern by passing `--branch-pattern <ere>` to spawn and promotion, or durably as `branch-rule="regex:<ere>"`; `bin/fm-branch-gate.sh` runs there and refuses a ship whose current repository passages lack a recorded pattern, even when a branch prefix is registered.
+Record that pattern by passing `--branch-pattern <ere>` to spawn and promotion, or, when no `branch-rule=` exists, durably as `branch-rule="regex:<ere>"`; `bin/fm-branch-gate.sh` runs there and refuses a ship whose current repository passages lack either record, even when a branch prefix is registered.
 When the passages give no concrete naming rule, the pattern for the `fm/<id>` choice is `^fm/[^/]+$`.
 No passages at all means no pattern is needed.
 If a check fails, the evidence conflicts, or the rule cannot be applied confidently, report the evidence and proposed name to the coordinator, ask for one project decision, and record its confirmed rule in `data/projects.md` before writing a brief, spawning, or promoting.
@@ -53,7 +53,8 @@ If GitHub branch settings could not be read and no recorded rule resolves the ta
 If the evidence gives no concrete rule, including vague branch-section advice, use `fm/<id>`; if Python is unavailable, use the saved declaration or fall back to `fm/<id>` with the finder's warning and no decision prompt.
 In the UIUX workspace, both `feature/` and `fix/` are accepted in three-part `<type>/<pillar>/<desc>` and four-part `<type>/<pillar>/<package>/<TICKET-desc>` forms where applicable. Valid examples include `fix/tools/version-flag-rename`, `fix/apps/adc/ADCCP-751-project-information-qa`, `feature/workspace/zod-array-security`, and `feature/workspace/update-docker-node22`; `fm/atomic-file-drop-zone` and `fm/adccp-1026` are invalid under that workspace rule.
 Read the current vault rule for the task rather than extrapolating from examples.
-Pass the final name identically as `--branch-name` to the brief, spawn, and promotion, and the derived pattern as `--branch-pattern` to spawn and promotion; their branch agreement check keeps every harness on that name.
+Pass the final name identically as `--branch-name` to the brief, spawn, and promotion; pass the derived pattern as `--branch-pattern` to spawn and promotion unless that current pattern is recorded as a regex `branch-rule=`.
+Their branch agreement check keeps every harness on that name.
 Record the resulting mode, `yolo` merge posture, and the one-line reason for any deviation in the backlog item note.
 
 ## Concurrency
