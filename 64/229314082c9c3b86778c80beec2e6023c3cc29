@@ -1,0 +1,29 @@
+.agents/skills/project-management/SKILL.md
+  s_894719e994136b::t_31eaf32395ab7c 69-70
+README.md
+  s_894719e994136b::t_a5f5ccd504887e 49
+docs/scripts.md
+  s_894719e994136b::t_a5f5ccd504887e 80
+.agents/skills/task-intake/SKILL.md
+  s_894719e994136b::t_4f96c639b4dcc4 47
+  s_894719e994136b::t_31eaf32395ab7c 57
+  s_894719e994136b::t_cf05ff2659516c 56
+bin/fm-promote.sh
+  s_894719e994136b::t_cf05ff2659516c 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64229314082c9c3b86778c80beec2e6023c3cc29",
+  "prompts": {},
+  "sessions": {
+    "s_894719e994136b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18678-c083-7a13-8d0b-71c109e16294",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
