@@ -597,6 +597,44 @@ test_classify_routine_signal_self() {
   case "$out" in self\|*) pass "routine signal self-handles" ;; *) fail "routine signal did not self-handle: $out" ;; esac
 }
 
+test_secondmate_signal_digest_matrix() {
+  local dir state out line corr record endpoint rest ident
+  dir=$(make_supercase secondmate-digest)
+  state="$dir/state"
+  printf 'kind=secondmate\n' > "$state/mate.meta"
+  for line in 'working: indexing' 'note: incidental update' 'resolved [key=other]: answered' \
+      'note [key=child-outcome-x-done-12345678]: incidental' \
+      'note [key=child-pr-x-done-12345678]: incidental' \
+      'note [corr=0123456789abcdef]: unawaited'; do
+    printf '%s\n' "$line" > "$state/mate.status"
+    out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+    case "$out" in self\|*) ;; *) fail "routine secondmate digest escalated ($line): $out" ;; esac
+  done
+  for line in 'failed: child failed' 'done: PR https://example.test/pull/1 checks green' \
+      'needs-decision [key=vendor]: choose one'; do
+    printf '%s\n' "$line" > "$state/mate.status"
+    out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+    case "$out" in escalate\|*) ;; *) fail "secondmate digest lost event ($line): $out" ;; esac
+  done
+  printf 'needs-decision [key=vendor]: choose one\nresolved [key=vendor]: picked one\n' > "$state/mate.status"
+  out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+  case "$out" in *'needs-decision [key=vendor]: choose one'*) ;; *) fail "closed secondmate decision was lost: $out" ;; esac
+  . "$ROOT/bin/fm-pending-reply-lib.sh"
+  corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
+  fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
+  printf 'note [corr=%s]: first answer\n' "$corr" > "$state/mate.status"
+  fm_pending_reply_try_resolve "$state" "$corr" || fail "pending tick did not resolve the first answer"
+  out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+  case "$out" in escalate\|*'first answer'*) ;; *) fail "first awaited reply was lost after resolution: $out" ;; esac
+  record=$(status_span_first_actionable_record "$state/mate.status" 0) || fail "first reply was absent from span"
+  endpoint=${record%%$'\t'*}; rest=${record#*$'\t'}; ident=${rest%%$'\t'*}
+  mark_status_seen "$state" mate "$endpoint" "$ident" || fail "first reply was not marked seen"
+  printf 'note [corr=%s]: routine follow-up\n' "$corr" >> "$state/mate.status"
+  out=$(FM_STATE_OVERRIDE="$state" classify_signal "$state/mate.status" "$state")
+  case "$out" in self\|*) ;; *) fail "resolved follow-up escalated: $out" ;; esac
+  pass "away digest absorbs routine mate lines and resolved follow-ups"
+}
+
 test_classify_terminal_signal_escalates() {
   local dir state kw out
   dir=$(make_supercase classify-terminal)
@@ -3390,6 +3428,11 @@ test_inject_msg_defers_on_unrecognized_composer_state() {
   pass "inject_msg: unrecognized composer states defer by default"
 }
 
+if [ -n "${FM_TEST_ONLY:-}" ]; then
+  "$FM_TEST_ONLY"
+  exit 0
+fi
+
 test_afk_start_refuses_when_flag_cannot_be_written
 test_afk_start_ignores_stale_pidfile_without_lock
 test_afk_start_reclaims_stale_daemon_lock_reused_pid
@@ -3458,6 +3501,7 @@ test_tmux_composer_state_bordered_and_agent_rows_are_empty
 test_tmux_composer_state_requires_matching_box_borders
 test_pane_input_pending_preserves_bright_placeholder_like_draft
 test_classify_signal_dedup_against_scan
+test_secondmate_signal_digest_matrix
 test_classify_signal_skips_turn_end_markers
 test_classify_signal_survives_a_later_routine_append
 test_classification_commits_its_captured_endpoint

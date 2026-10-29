@@ -27,7 +27,7 @@
 # A missing, malformed, identity-mismatched, or past-end classified position reads
 # from byte 0, preferring a bounded duplicate over a lost event.
 #
-# There are four documented exceptions. The absorb classification
+# There are five documented exceptions. The absorb classification
 # (crew_absorb_class and its working/paused wrappers) is NOT a pure status-file
 # read: it reuses bin/fm-crew-state.sh, which may make a bounded no-mistakes call,
 # to decide whether a crew that just stopped its turn or went stale is working,
@@ -43,6 +43,10 @@
 # crew_worktree_written_since reads the task's meta file and walks a bounded slice
 # of its worktree instead of a status file, so callers run it only at the moment
 # they would otherwise escalate.
+# Secondmate correlation classification also reads the parent-owned pending-reply
+# record and the already-classified status prefix, so a first correlated reply
+# remains actionable after the pending record resolves while later routine
+# lines carrying that correlation can be absorbed.
 
 # Directory of this library, used to locate the sibling fm-crew-state.sh reader.
 # Resolved at source time from BASH_SOURCE so it works whether sourced by a
@@ -74,8 +78,9 @@ case $- in *u*) _fm_classify_nounset=on ;; *) _fm_classify_nounset=off ;; esac
 unset _fm_classify_nounset
 
 # Captain-relevant status verbs. A status line carrying any of these is work
-# firstmate must see. Lines without these verbs are no-verb signals: the watcher
-# absorbs them only with positive provably-working evidence, while the daemon uses
+# firstmate must see. Lines without these verbs are no-verb signals: ordinary
+# crew need positive provably-working evidence for watcher absorption, while
+# secondmate status lines follow the routine-line rule below and the daemon uses
 # its away-mode classification. FM_CAPTAIN_RE overrides the whole set when a home
 # needs a custom verb vocabulary; absent, this default applies.
 #
@@ -2307,10 +2312,11 @@ _fm_status_open_decision_origins() {  # <status-file> [<kind>]
 
 status_span_first_actionable_record() {  # <status-file> <start-offset> [record-var] [needs-decision-var]
   local f=$1 start=${2:-0} output_var=${3-} needs_var=${4-} size ident cur_ident scratch chunk_file result
-  local line verb key origins='' folded=0 rc=1 failed=0 line_number=0 live_line='' events='' _line _key _fm_span_needs_decision=0
+  local line verb key kind origins='' folded=0 rc=1 failed=0 line_number=0 live_line='' events='' _line _key _fm_span_needs_decision=0
   [ -e "$f" ] || { [ -L "$f" ] && return 2; return 1; }
   [ -f "$f" ] && [ -r "$f" ] && [ ! -L "$f" ] || return 2
   ident=$(_fm_open_decisions_file_ident "$f") || return 2
+  kind=$(_fm_status_kind "$f")
   size=$(_fm_status_file_size "$f") || return 2
   size=${size//[[:space:]]/}
   case "$size" in ''|*[!0-9]*) return 2 ;; esac
@@ -2338,6 +2344,24 @@ status_span_first_actionable_record() {  # <status-file> <start-offset> [record-
   while IFS= read -r line || [ -n "$line" ]; do
     line_number=$((line_number + 1))
     case "$line" in *[![:space:]]*) ;; *) continue ;; esac
+    if [ "$kind" = secondmate ]; then
+      case "$line" in
+        *corr=*)
+          if _fm_secondmate_corr_awaited "$f" "$start" "$line"; then
+            [ -n "$events" ] && events="${events} ; "
+            events="${events}${line}"
+            verb=$(status_line_verb "$line")
+            if [ "$verb" = needs-decision ] || { [ "$verb" = blocked ] &&
+              key=$(_fm_decision_key "$line") &&
+              _fm_is_pending_reply_escalation "$key" "$(status_line_note "$line")"; }; then
+              _fm_span_needs_decision=1
+            fi
+            rc=0
+            continue
+          fi
+          ;;
+      esac
+    fi
     if status_is_captain_held "$line"; then
       # A transfer closes the status-log decision and remains non-actionable to
       # stale classification. The side-band marker lets signal routing surface
@@ -2349,6 +2373,19 @@ status_span_first_actionable_record() {  # <status-file> <start-offset> [record-
     verb=$(status_line_verb "$line")
     case "$verb" in
       needs-decision|blocked)
+        # A secondmate's report is an event for its parent even if a later
+        # resolved line closes the mate's local decision in this same span.
+        if [ "$kind" = secondmate ]; then
+          [ -n "$events" ] && events="${events} ; "
+          events="${events}${line}"
+          if [ "$verb" = needs-decision ] || { [ "$verb" = blocked ] &&
+            key=$(_fm_decision_key "$line") &&
+            _fm_is_pending_reply_escalation "$key" "$(status_line_note "$line")"; }; then
+            _fm_span_needs_decision=1
+          fi
+          rc=0
+          continue
+        fi
         key=$(_fm_decision_key "$line") || {
           [ -n "$events" ] && events="${events} ; "
           events="${events}${line}"
@@ -2605,27 +2642,35 @@ crew_worktree_written_since() {  # <id> <state> <anchor-file>
 }
 
 # 0 (benign/absorb) if EVERY task referenced by a no-verb "signal:" wake is provably
-# working; 1 (actionable/surface) if any is not, or no task can be resolved. Pass the
+# working or is a routine secondmate status; 1 (actionable/surface) if any is not,
+# or no task can be resolved. Pass the
 # same space-separated file list the caller classified with the span read above.
 # Files are mapped to task ids by stripping the .status / .turn-ended suffix;
 # a no-verb wake with nothing
 # provably working must surface, so an empty/unresolvable list returns 1.
-# A kind=secondmate task's .status stream doubles as its routed-reply channel,
-# so the lines new since the watcher's classified position are read before any
-# busy evidence counts: a decision, blocker, terminal outcome, `note:`, any line
-# carrying a correlation marker (fm_pending_reply_corr_token, bracketed or not),
-# and any verb this library does not know is parent-directed content the
-# supervisor must read, so it surfaces regardless of how busy the mate is. Only
-# unmarked routine `working:` and `paused:` progress falls through
-# to the same provably-working absorb an ordinary crewmate gets, so a healthy
-# mate's progress no longer wakes the primary on every append while an unproven
-# mate still surfaces. The span starts at the classified position its owner
+# A kind=secondmate task's .status stream doubles as its routed-reply channel.
+# Unawaited working, note, and resolved lines are routine even when the mate
+# is idle; paused retains its existing working-evidence requirement. Decisions,
+# blockers, outcomes, awaited correlation
+# markers, and unknown verbs still surface. The span starts at the classified
+# position its owner
 # reports (fm_wake_signal_seen_size, bin/fm-wake-lib.sh, loaded by every watcher
 # caller); a caller without that library reads the whole log, which can only
 # surface more. An unreadable span surfaces. Scoped to .status files - a mate's
 # bare turn-ended ping always used the ordinary provably-working absorb.
+_fm_secondmate_corr_awaited() {  # <status-file> <start-offset> <line>
+  local f=$1 start=$2 line=$3 state=${1%/*}
+  [ "$state" != "$f" ] || state=.
+  if ! command -v fm_pending_reply_corr_awaited >/dev/null 2>&1; then
+    # shellcheck disable=SC1091 # Lazy reciprocal import; each library is a canonical lint root.
+    . "$_FM_CLASSIFY_LIB_DIR/fm-pending-reply-lib.sh"
+  fi
+  fm_pending_reply_corr_awaited "$state" "$f" "$start" "$line"
+}
+
 _fm_secondmate_status_new_lines_routine() {  # <status-file> <state>
   local f=$1 state=$2 start=0 size chunk line verb
+  FM_SM_ROUTINE_REQUIRES_WORKING=0
   if command -v fm_wake_signal_seen_size >/dev/null 2>&1; then
     start=$(fm_wake_signal_seen_size "$state" "$f")
   fi
@@ -2638,10 +2683,12 @@ _fm_secondmate_status_new_lines_routine() {  # <status-file> <state>
   chunk=$(_fm_status_read_span "$f" "$start" "$((size - start))") || return 1
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in *[![:space:]]*) ;; *) continue ;; esac
-    case "$line" in *corr=*) return 1 ;; esac
+    case "$line" in *corr=*) _fm_secondmate_corr_awaited "$f" "$start" "$line" && return 1 ;; esac
+    status_is_captain_relevant "$line" && return 1
     status_line_verb "$line" verb
     case "$verb" in
-      working|"${FM_CLASSIFY_PAUSED_VERB:-$FM_CLASSIFY_PAUSED_VERB_DEFAULT}") ;;
+      working|note|resolved) ;;
+      "${FM_CLASSIFY_PAUSED_VERB:-$FM_CLASSIFY_PAUSED_VERB_DEFAULT}") FM_SM_ROUTINE_REQUIRES_WORKING=1 ;;
       *) return 1 ;;
     esac
   done <<EOF
@@ -2665,6 +2712,11 @@ signal_crew_provably_working() {  # <file> ...
       *.status)
         if [ "$(grep '^kind=' "$dir/$task.meta" 2>/dev/null | tail -1 | cut -d= -f2-)" = secondmate ]; then
           _fm_secondmate_status_new_lines_routine "$f" "$dir" || return 1
+          if [ "$FM_SM_ROUTINE_REQUIRES_WORKING" -eq 1 ]; then
+            crew_is_provably_working "$task" || return 1
+          fi
+          seen="$seen $task"
+          continue
         fi
         ;;
     esac
@@ -2674,6 +2726,19 @@ signal_crew_provably_working() {  # <file> ...
   done
   [ -n "$seen" ] || return 1
   return 0
+}
+
+signal_secondmate_routine() {  # <status-file> ...
+  local f base dir task seen=0
+  for f in "$@"; do
+    base=${f##*/}; dir=${f%/*}
+    case "$base" in *.status) task=${base%.status} ;; *) return 1 ;; esac
+    [ "$(grep '^kind=' "$dir/$task.meta" 2>/dev/null | tail -1 | cut -d= -f2-)" = secondmate ] || return 1
+    _fm_secondmate_status_new_lines_routine "$f" "$dir" || return 1
+    [ "$FM_SM_ROUTINE_REQUIRES_WORKING" -eq 0 ] || return 1
+    seen=1
+  done
+  [ "$seen" -eq 1 ]
 }
 
 # 0 (terminal/actionable) if a stale window's latest recognized status event is

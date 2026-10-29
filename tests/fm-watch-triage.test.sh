@@ -26,6 +26,7 @@ WATCH="$ROOT/bin/fm-watch.sh"
 DRAIN="$ROOT/bin/fm-wake-drain.sh"
 
 TMP_ROOT=$(fm_test_tmproot fm-watch-triage-tests)
+. "$ROOT/bin/fm-pending-reply-lib.sh"
 
 ack_stopped_cycle() {  # <state>
   local state=$1 err sequence generation
@@ -514,6 +515,7 @@ test_unrecognized_status_prefix_is_visible() {
   status_is_captain_relevant 'merged' || fail "legacy merged free-text stopped being captain-relevant"
 
   (
+    # shellcheck disable=SC2030 # The override is intentionally scoped to this assertion group.
     export FM_CLASSIFY_PAUSED_VERB=holding
     printf 'holding: for the upstream release\n' > "$state/renamed-pause.status"
     status_is_paused "$(last_status_line "$state/renamed-pause.status")" \
@@ -824,28 +826,31 @@ test_secondmate_status_routine_absorbed_routed_surfaced_classifier() {
     || fail "a working secondmate's routine working/paused progress was not absorbed"
   signal_crew_provably_working "$state/sm.turn-ended" \
     || fail "a working secondmate's bare turn-end lost its ordinary absorb"
-  # A terminal outcome surfaces even from a healthy mate: an unmarked resolved:
-  # line self-closing a decision must still wake the primary.
-  printf 'working: routine\nresolved: took A\n' > "$state/sm.status"
+  # Uncorrelated progress remains quiet even when the mate is idle.
+  export FM_FAKE_CREW_STATE_sm='state: unknown · source: none · idle worker'
+  printf 'working: routine\nnote: incidental update\nresolved [key=other]: answered\n' > "$state/sm.status"
+  signal_crew_provably_working "$state/sm.status" \
+    || fail "an idle secondmate's uncorrelated progress was not absorbed"
+  printf 'paused: awaiting CI\n' > "$state/sm.status"
   ! signal_crew_provably_working "$state/sm.status" \
-    || fail "a healthy secondmate's unmarked resolved: line was absorbed as routine progress"
-  # Parent-directed content surfaces regardless of busy evidence: decisions,
-  # blockers, terminal outcomes, notes, correlation-marked lines (both forms the
-  # fleet writes), and any verb the classifier does not know.
+    || fail "an idle secondmate's paused status lost its prior working-evidence rule"
+  # Decisions, blockers, terminal outcomes, PR readiness, and unknown verbs
+  # surface regardless of busy evidence.
   for line in 'needs-decision [key=k2]: pick one' 'blocked [key=k3]: need access' \
-      'done [at=1]: shipped' 'failed [at=1]: broke' 'note: routed reply for the parent' \
-      'resolved corr=0123456789abcdef [key=k4]: answered' \
-      'working [corr=0123456789abcdef]: mirrored remote line' \
+      'done [at=1]: shipped' 'failed [at=1]: broke' 'note: PR ready' \
       'shrug: an unknown verb'; do
     printf 'working: routine\n%s\nworking: routine again\n' "$line" > "$state/sm.status"
     ! signal_crew_provably_working "$state/sm.status" \
       || fail "a busy secondmate's '$line' was absorbed as routine progress"
   done
-  # Routine progress from a mate that is NOT provably working still surfaces.
-  export FM_FAKE_CREW_STATE_sm='state: unknown · source: none · idle worker'
-  printf 'working: step 3 of 5\n' > "$state/sm.status"
-  ! signal_crew_provably_working "$state/sm.status" \
-    || fail "an unproven secondmate's routine progress was absorbed"
+  for line in 'note [key=child-outcome-x-done-12345678]: incidental' \
+      'note [key=child-pr-x-done-12345678]: incidental' \
+      'working [corr=0123456789abcdef]: unawaited progress' \
+      'resolved corr=0123456789abcdef [key=k4]: unawaited answer'; do
+    printf '%s\n' "$line" > "$state/sm.status"
+    signal_crew_provably_working "$state/sm.status" \
+      || fail "an unawaited secondmate line surfaced: $line"
+  done
   # An ordinary crewmate keeps the plain provably-working rule: the marker and
   # verb read is keyed on recorded kind, not on task naming or content guessing.
   export FM_FAKE_CREW_STATE_crew='state: working · source: run-step · running'
@@ -854,7 +859,28 @@ test_secondmate_status_routine_absorbed_routed_surfaced_classifier() {
   signal_crew_provably_working "$state/crew.status" \
     || fail "the secondmate rule leaked onto an ordinary crewmate status"
   unset FM_FAKE_CREW_STATE_sm FM_FAKE_CREW_STATE_crew
-  pass "a secondmate's unmarked routine progress absorbs when provably working; routed, terminal, note, marked, and unknown lines surface"
+  pass "uncorrelated secondmate progress absorbs while decisions, outcomes, and correlated replies surface"
+}
+
+test_secondmate_first_reply_surfaces_after_pending_tick() {
+  local dir state f corr record endpoint rest ident
+  dir=$(make_case secondmate-first-reply); state="$dir/state"; f="$state/sm.status"
+  printf 'kind=secondmate\n' > "$state/sm.meta"
+  corr=$(fm_pending_reply_create "$dir" "$state" sm 'send the result') || fail "pending reply was not created"
+  fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
+  printf 'note [corr=%s]: first answer\n' "$corr" > "$f"
+  fm_pending_reply_try_resolve "$state" "$corr" || fail "pending tick did not resolve the first answer"
+  ! signal_crew_provably_working "$f" || fail "the first correlated reply was absorbed after resolution"
+  record=$(status_span_first_actionable_record "$f" 0) || fail "the first correlated reply was absent from the span"
+  case "$record" in *'first answer'*) ;; *) fail "the span omitted the first answer" ;; esac
+  endpoint=${record%%$'\t'*}; rest=${record#*$'\t'}; ident=${rest%%$'\t'*}
+  fm_wake_status_seen_commit "$state" "$f" "$endpoint" "$ident" || fail "first reply was not marked seen"
+  printf 'note [corr=%s]: routine follow-up\n' "$corr" >> "$f"
+  signal_crew_provably_working "$f" || fail "resolved correlation woke for a routine follow-up"
+  if status_span_first_actionable_record "$f" "$endpoint" >/dev/null; then
+    fail "resolved correlation surfaced from the next span"
+  fi
+  pass "first correlated reply surfaces after pending resolution; later notes absorb"
 }
 
 # --- benign wakes are absorbed ONLY when the crew is provably working ---------
@@ -1753,31 +1779,34 @@ test_working_note_not_working_surfaced() {
   pass "a no-verb working: note whose crew is idle with no running pipeline is surfaced"
 }
 
-test_secondmate_status_note_surfaced_despite_busy_agent() {
-  local dir state fakebin out drain_out pid
+test_secondmate_status_correlated_note_surfaced_despite_busy_agent() {
+  local dir state fakebin out drain_out pid corr
   dir=$(make_case secondmate-note-surfaced); state="$dir/state"; fakebin="$dir/fakebin"
   out="$dir/watch.out"; drain_out="$dir/drain.out"
   printf 'kind=secondmate\n' > "$state/mate.meta"
-  printf 'note: routed reply landed in the parent stream\n' > "$state/mate.status"
-  # Busy evidence that absorbs routine progress must not absorb a secondmate's
-  # parent-directed note: its status stream is the routed-reply channel.
+  corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
+  fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
+  printf 'note [corr=%s]: routed reply landed in the parent stream\n' "$corr" > "$state/mate.status"
+  # A correlated note remains a parent-directed reply despite busy evidence.
   export FM_FAKE_CREW_STATE='state: working · source: run-step · running'
   FM_CONFIG_OVERRIDE="$(churn_config "$dir")" watch_bg "$state" "$fakebin" "$out"
   pid=$!
-  wait_for_exit "$pid" 100 || fail "watcher absorbed a busy secondmate's routed status note"
+  wait_for_exit "$pid" 100 || fail "watcher absorbed a busy secondmate's correlated status note"
   grep -F "signal: $state/mate.status" "$out" >/dev/null \
     || fail "watcher did not print the surfaced secondmate note"
   FM_STATE_OVERRIDE="$state" "$DRAIN" > "$drain_out" 2>/dev/null || fail "drain after the surfaced note failed"
   grep "$(printf '\tsignal\t')" "$drain_out" | grep -F "$state/mate.status" >/dev/null \
     || fail "surfaced secondmate note was not queued"
-  pass "a secondmate's status note surfaces even while its own agent is busy"
+  pass "a secondmate's correlated note surfaces even while its own agent is busy"
 }
 
 test_secondmate_routine_progress_absorbed_then_note_surfaced() {
-  local dir state fakebin out pid
+  local dir state fakebin out pid corr
   dir=$(make_case secondmate-routine-absorbed); state="$dir/state"; fakebin="$dir/fakebin"
   out="$dir/watch.out"
   printf 'kind=secondmate\n' > "$state/mate.meta"
+  corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
+  fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
   printf 'working: step 2 of 5\n' > "$state/mate.status"
   # A provably working mate's unmarked routine progress is absorbed exactly like
   # an ordinary crewmate's (no exit, no durable wake, suppressor advanced)...
@@ -1790,8 +1819,8 @@ test_secondmate_routine_progress_absorbed_then_note_surfaced() {
   [ ! -s "$out" ] || { reap "$pid"; fail "routine secondmate progress printed a wake reason: $(cat "$out")"; }
   [ ! -s "$state/.wake-queue" ] || { reap "$pid"; fail "routine secondmate progress enqueued a durable wake"; }
   [ -s "$state/.seen-mate_status" ] || { reap "$pid"; fail "absorbed secondmate progress did not advance its .seen-* suppressor"; }
-  # ...while a note: from the SAME still-busy mate surfaces on the next append.
-  printf 'note: routed reply for the parent\n' >> "$state/mate.status"
+  # ...while a correlated note from the SAME mate surfaces on the next append.
+  printf 'note [corr=%s]: routed reply for the parent\n' "$corr" >> "$state/mate.status"
   wait_for_exit "$pid" 100 || fail "watcher absorbed a busy secondmate's note after absorbing its routine progress"
   grep -F "signal: $state/mate.status" "$out" >/dev/null \
     || fail "watcher did not print the surfaced secondmate note"
@@ -1986,16 +2015,21 @@ test_self_announced_close_after_fold_still_surfaces_folded_worker_failure() {
 }
 
 test_self_announced_close_after_fold_still_surfaces_folded_secondmate_lines() {
-  local dir state fakebin out status_file pid rc lagging n=0
-  # A secondmate's note carries no captain verb, and a decision the mate
-  # raised and closed itself is never listed as open; the fold shows neither,
-  # yet both are parent-directed content and must still wake.
-  for lagging in 'note: vendor quote arrived, holding it for the parent' \
+  local dir state fakebin out status_file pid rc lagging n=0 corr
+  # A correlated secondmate note carries no captain verb, and a decision the
+  # mate raised and closed itself is never listed as open; the fold shows
+  # neither, yet both must still wake.
+  for lagging in 'note [corr=0123456789abcdef]: vendor quote arrived, holding it for the parent' \
     $'needs-decision [key=vendor]: vendor A or B?\nresolved [key=vendor]: picked vendor B myself, cheaper'; do
     n=$((n + 1))
     dir=$(make_case "self-close-folded-mate-$n"); state="$dir/state"; fakebin="$dir/fakebin"; out="$dir/watch.out"
     status_file="$state/mate.status"
     printf 'kind=secondmate\n' > "$state/mate.meta"
+    if [ "$n" -eq 1 ]; then
+      corr=$(fm_pending_reply_create "$dir" "$state" mate 'send the result') || fail "pending reply was not created"
+      fm_pending_reply_mark_delivered "$state" "$corr" || fail "pending reply was not delivered"
+      lagging=${lagging/0123456789abcdef/$corr}
+    fi
     printf 'needs-decision [key=budget]: approve spend?\n' > "$status_file"
     prime_status_seen "$state" "$status_file" || fail "could not prime the announced baseline"
     printf '%s\n' "$lagging" >> "$status_file"
@@ -6369,6 +6403,28 @@ test_afk_present_reverts_watcher_to_one_shot() {
   pass "with .afk present the watcher reverts to one-shot so the daemon owns triage (no double-triage)"
 }
 
+test_afk_secondmate_routine_status_stays_in_triage_log() {
+  local dir state fakebin out pid
+  dir=$(make_case afk-secondmate-routine); state="$dir/state"; fakebin="$dir/fakebin"
+  out="$dir/watch.out"
+  printf 'kind=secondmate\n' > "$state/mate.meta"
+  printf 'note: incidental update\nresolved [key=other]: answered\n' > "$state/mate.status"
+  date '+%s' > "$state/.afk"
+  export FM_FAKE_CREW_STATE='state: unknown · source: none · idle worker'
+  watch_bg "$state" "$fakebin" "$out"
+  pid=$!
+  if ! wait_poll_cycle "$state" "$pid"; then
+    reap "$pid"; fail "away watcher woke for routine secondmate status"
+  fi
+  [ ! -s "$state/.wake-queue" ] || { reap "$pid"; fail "routine secondmate status queued an away wake"; }
+  grep -F "absorbed benign signal: $state/mate.status" "$state/.watch-triage.log" >/dev/null \
+    || { reap "$pid"; fail "absorbed mate status was not logged in triage"; }
+  grep -Fq 'note: incidental update' "$state/mate.status" \
+    || { reap "$pid"; fail "absorbed mate note disappeared from status log"; }
+  reap "$pid"
+  pass "away watcher logs and absorbs routine secondmate status without a wake"
+}
+
 # A paused pane can first appear as a changed hash. In AFK mode that initial path
 # must still hand off the plain window identity to the daemon, rather than running
 # the normal-mode pause re-surface and decorating the stale identity.
@@ -6681,6 +6737,7 @@ test_empty_write_prune_from_the_environment_widens_the_probe
 test_worktree_write_probe_is_wall_clock_bounded
 test_signal_crew_provably_working_classifier
 test_secondmate_status_routine_absorbed_routed_surfaced_classifier
+test_secondmate_first_reply_surfaces_after_pending_tick
 test_provably_working_signal_absorbed
 test_turn_ended_provably_working_absorbed
 test_turn_ended_not_working_surfaced
@@ -6708,7 +6765,7 @@ test_signal_grace_ends_once_turn_end_already_landed
 test_signal_grace_still_coalesces_a_trailing_turn_end
 test_signal_grace_without_turn_end_marker_keeps_full_grace
 test_working_note_not_working_surfaced
-test_secondmate_status_note_surfaced_despite_busy_agent
+test_secondmate_status_correlated_note_surfaced_despite_busy_agent
 test_secondmate_routine_progress_absorbed_then_note_surfaced
 test_secondmate_buried_block_wakes_despite_busy_agent
 test_self_announced_close_does_not_rewake_but_next_note_does
@@ -6799,6 +6856,7 @@ test_heartbeat_backstop_surfaces_a_masked_status
 test_beacon_stays_fresh_while_absorbing
 test_afk_signal_records_heartbeat_endpoint
 test_afk_present_reverts_watcher_to_one_shot
+test_afk_secondmate_routine_status_stays_in_triage_log
 test_afk_paused_changed_pane_hands_off_plain_stale
 test_captain_held_never_rechecked_while_away_record_exists
 test_live_captain_held_first_sight_silenced_by_away_record

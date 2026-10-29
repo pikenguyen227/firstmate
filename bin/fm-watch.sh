@@ -3027,7 +3027,7 @@ EOF
     # passes it to handle_wake (see the comment above handle_wake in
     # bin/fm-supervise-daemon.sh).
     # shellcheck disable=SC2086  # same space-separated status-path list
-    if afk_present || [ "$signal_actionable" -eq 0 ] \
+    if { afk_present && ! signal_secondmate_routine $files; } || [ "$signal_actionable" -eq 0 ] \
       || { ! signal_crew_provably_working $files && ! signal_turnend_panes_churned $files; }; then
       while IFS=$(printf '\t') read -r sf sig f; do
         [ -n "$sf" ] || continue
