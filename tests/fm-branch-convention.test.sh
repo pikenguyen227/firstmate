@@ -187,6 +187,7 @@ rm -f "$FM_TEST_RULESET_DETAIL"
 git -C "$repo" remote remove origin
 out=$(gate fm/x) || fail "no-rule repo refused the fm/ default: $out"
 [ "$(gate fm/x)" = status=ok ] || fail 'no-rule repo needs no pattern'
+[ "$(gate feature/x)" = status=ok ] || fail 'no-rule explicit branch name was refused'
 mkdir -p "$repo/docs"
 cat > "$repo/docs/branching.md" <<'MD'
 ## Git workflow
@@ -202,6 +203,14 @@ for good in feature/apps/adc/ADCCP-1-x fix/apps/adc/ADCCP-1-x; do
 done
 if gate bad..name --pattern "$uiux" >/dev/null; then fail 'invalid git ref passed the gate'; fi
 if gate fm/x --pattern '(' >/dev/null; then fail 'unusable pattern passed the gate'; fi
+for declaration in 'branch=feature/' 'branch-rule="starts_with:feature/"' 'branch-rule="fnmatch:feature/*"'; do
+  printf '%s\n' '# Projects' "- repo [no-mistakes $declaration] - fixture" > "$home/data/projects.md"
+  if out=$(gate feature/x); then fail "$declaration bypassed repository passages without a derived pattern"; fi
+  [[ "$out" == *status=refused* && "$out" == *'no pattern is recorded'* ]] || fail "missing-pattern refusal unclear for $declaration: $out"
+  if out=$(gate feature/x --pattern "$uiux"); then fail "$declaration allowed a branch against the derived pattern"; fi
+  [[ "$out" == *'does not satisfy the recorded pattern'* ]] || fail "pattern refusal unclear for $declaration: $out"
+  [ "$(gate feature/apps/adc/ADCCP-1-x --pattern "$uiux")" = status=ok ] || fail "$declaration rejected a conforming branch"
+done
 printf '%s\n' '# Projects' "- repo [no-mistakes branch-rule=\"regex:$uiux\"] - fixture" > "$home/data/projects.md"
 [ "$(gate fix/apps/adc/ADCCP-1-x)" = status=ok ] || fail 'registered machine pattern was not accepted as the record'
 if gate fm/x >/dev/null; then fail 'registered pattern did not reject fm/'; fi

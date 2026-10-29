@@ -44,7 +44,7 @@ Read the passages with the task and compose one full branch name.
 A recorded declaration and an explicit task `--branch-prefix` override take precedence; never clear or replace a recorded declaration during detection.
 Validate the chosen name with `bin/fm-branch-name-validate.sh projects/<project> <name>`, then run it once more with `--operator <operator> --pattern <pattern>` for each applicable machine pattern quoted by the finder.
 When the finder quotes any rule passage, also derive an ERE from the applicable passages and validate the name with `--operator regex --pattern <ere>`; a name that fails it, such as `fm/<id>` under a repository that has rules, is never used.
-Record that pattern by passing `--branch-pattern <ere>` to spawn and promotion, or durably as `branch-rule="regex:<ere>"`; `bin/fm-branch-gate.sh` runs there and refuses a ship whose rules were found without a recorded pattern.
+Record that pattern by passing `--branch-pattern <ere>` to spawn and promotion, or durably as `branch-rule="regex:<ere>"`; `bin/fm-branch-gate.sh` runs there and refuses a ship whose current repository passages lack a recorded pattern, even when a branch prefix is registered.
 When the passages give no concrete naming rule, the pattern for the `fm/<id>` choice is `^fm/[^/]+$`.
 No passages at all means no pattern is needed.
 If a check fails, the evidence conflicts, or the rule cannot be applied confidently, report the evidence and proposed name to the coordinator, ask for one project decision, and record its confirmed rule in `data/projects.md` before writing a brief, spawning, or promoting.
