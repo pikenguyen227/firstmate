@@ -27,7 +27,7 @@
 # A missing, malformed, identity-mismatched, or past-end classified position reads
 # from byte 0, preferring a bounded duplicate over a lost event.
 #
-# There are four documented exceptions. The absorb classification
+# There are five documented exceptions. The absorb classification
 # (crew_absorb_class and its working/paused wrappers) is NOT a pure status-file
 # read: it reuses bin/fm-crew-state.sh, which may make a bounded no-mistakes call,
 # to decide whether a crew that just stopped its turn or went stale is working,
@@ -43,6 +43,10 @@
 # crew_worktree_written_since reads the task's meta file and walks a bounded slice
 # of its worktree instead of a status file, so callers run it only at the moment
 # they would otherwise escalate.
+# Secondmate correlation classification also reads the parent-owned pending-reply
+# record and the already-classified status prefix, so a first correlated reply
+# remains actionable after the pending record resolves while later routine
+# lines carrying that correlation can be absorbed.
 
 # Directory of this library, used to locate the sibling fm-crew-state.sh reader.
 # Resolved at source time from BASH_SOURCE so it works whether sourced by a
@@ -74,8 +78,9 @@ case $- in *u*) _fm_classify_nounset=on ;; *) _fm_classify_nounset=off ;; esac
 unset _fm_classify_nounset
 
 # Captain-relevant status verbs. A status line carrying any of these is work
-# firstmate must see. Lines without these verbs are no-verb signals: the watcher
-# absorbs them only with positive provably-working evidence, while the daemon uses
+# firstmate must see. Lines without these verbs are no-verb signals: ordinary
+# crew need positive provably-working evidence for watcher absorption, while
+# secondmate status lines follow the routine-line rule below and the daemon uses
 # its away-mode classification. FM_CAPTAIN_RE overrides the whole set when a home
 # needs a custom verb vocabulary; absent, this default applies.
 #
