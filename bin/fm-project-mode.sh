@@ -4,8 +4,8 @@
 # no-mistakes|direct-PR|local-only and yolo is on|off.
 # --branch-prefix instead prints one value: the project's registered ship-branch
 # prefix, "fm/" when the project registers none, is unregistered, or the registry
-# is absent, so every existing installation keeps its current "fm/<task-id>"
-# branch names unchanged.
+# is absent. This query preserves the legacy prefix for callers that still
+# request it; intake may select a complete branch name from repository evidence.
 # --branch-setting distinguishes an explicit prefix (including an empty one),
 # a branch rule, and no declaration, so intake can detect only when needed.
 # With --forge it prints one word instead: the project's registered forge,
@@ -14,9 +14,9 @@
 #
 # MECHANICAL CONSUMERS ONLY. This answers "what posture did the captain register
 # for this project", never "how does this task ship". A task's delivery mode,
-# yolo, and ship-branch prefix are resolved by firstmate at intake and passed
+# yolo, and full ship-branch name are resolved by firstmate at intake and passed
 # explicitly to bin/fm-brief.sh, bin/fm-spawn.sh, and bin/fm-promote.sh (AGENTS.md
-# section 7; bin/fm-brief.sh's own header owns the --branch-prefix flag it accepts).
+# section 7; each caller's header owns its branch flags).
 # The consumers are bin/fm-fleet-sync.sh (skip local-only clones),
 # bin/fm-home-seed.sh and bin/fm-remote-home-seed.sh (refuse local-only seeding,
 # run no-mistakes init), bin/fm-spawn.sh's advisory registry-deviation notice,
@@ -33,10 +33,10 @@
 #   - <name> [<mode> forge=gerrit] - <desc> (added <date>)           -> <mode> off, --forge gerrit
 #   <name> may contain spaces; it ends at the literal " [" or " - " that follows it.
 #   Bracket tokens are order-independent: +yolo, branch=<prefix>,
-#   branch-rule="<rule>", and forge=<value>.
+#   branch-rule="<rule>", and forge=<value> are recognized by shape wherever
+#   they appear, and whichever token is left over is the mode.
 #   An explicit branch=<prefix> wins over a branch-rule token.
-#   are recognized by their own shape wherever they appear, and whichever token is
-#   left over is the mode. <prefix> must not contain a space; an empty override
+#   <prefix> must not contain a space; an empty override
 #   ("branch=") resolves to "" for a bare "<task-id>" ship branch instead of the
 #   legacy "fm/<task-id>".
 #
@@ -52,11 +52,13 @@
 #                          project as the remote-backed pipeline project it is.
 # yolo (orthogonal) = merge authority only: when on, firstmate merges green,
 #   in-scope work itself (AGENTS.md section 7).
-# branch=<prefix> (orthogonal) = overrides the "fm/" ship-branch prefix so a
+# branch=<prefix> (orthogonal) = overrides the legacy "fm/" ship-branch prefix so a
 #   project's branch and PR do not read as firstmate-authored, e.g. for a
 #   third-party repo that does not use this tooling. Query it with
 #   --branch-prefix; it never appears in the default "<mode> <yolo>" output, so
 #   existing mechanical callers are unaffected by its presence.
+# branch-rule="<rule>" = a recorded naming instruction, returned by
+#   --branch-setting for intake; it does not alter the legacy --branch-prefix query.
 # forge (orthogonal, and orthogonal to yolo too) = which forge the project's
 #   remote actually is, never inferred from mode, remote name, host, or protocol.
 #   `none` means a forge whose pull requests and checks no-mistakes already
@@ -128,9 +130,9 @@ if [ ! -f "$REG" ]; then
 fi
 
 # awk emits one "near <token>" line per keyed token whose key is a near miss of
-# `forge`, then "posture <mode> <yolo> <branch-prefix> <forge>" (branch-prefix is
-# the raw prefix, defaulting to "fm/"; forge is `none` or the whole `forge=<value>`
-# token, so an empty value survives the split), or nothing if the project is
+# `forge`, then "posture <mode> <yolo> <forge> <branch-setting> <branch-prefix>"
+# (branch-prefix is the raw prefix, defaulting to "fm/"; forge is `none` or the
+# whole `forge=<value>` token, so an empty value survives the split), or nothing if the project is
 # absent. Every other token beside the mode is ignored, exactly as before either
 # annotation existed.
 parsed=$(awk -v n="$NAME" '

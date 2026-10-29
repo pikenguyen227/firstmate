@@ -55,9 +55,9 @@
 # to "fm/" when omitted, so every existing installation's branch names are
 # unchanged. Like --mode, this script never reads data/projects.md for it: the
 # registry's optional "branch=<prefix>" annotation (bin/fm-project-mode.sh's
-# header owns that format and its --branch-prefix query) is the captain's
-# standing per-project preference, and firstmate resolves it per task at intake
-# and passes the explicit flag. Refused on --scout and --secondmate: a scout
+# header owns that format and its --branch-prefix query) is a standing
+# per-project declaration, and firstmate resolves it per task at intake before
+# passing the explicit flag. Refused on --scout and --secondmate: a scout
 # makes no branch and a charter is not a delivery contract.
 # --branch-name accepts a complete name proposed from a repository naming rule.
 # When both branch flags are supplied, the explicit --branch-prefix wins.

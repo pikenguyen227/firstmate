@@ -34,7 +34,7 @@
 #   --branch-prefix is the optional prefix selected at intake for this ship's
 #   immutable branch, defaulting to "fm/". It must agree with the branch recorded
 #   in the brief, and is refused on scouts, secondmates, and relaunches. When the
-#   selected branch does not match the project's registered prefix, the spawn
+#   selected branch does not match a registered prefix, the spawn
 #   prints a one-line deviation notice and continues, because the registered
 #   prefix is the captain's standing preference and the brief agreement above
 #   already guarantees the worker's instructions match the branch.
@@ -3159,7 +3159,7 @@ if [ "$KIND" = ship ]; then
       exit 1
     }
   elif [ "$BRANCH" != "fm/$ID" ]; then
-    # A relaunch's branch comes from the meta record (--branch-prefix is refused
+    # A relaunch's branch comes from the meta record (both branch flags are refused
     # there), so a promoted scout whose brief never carried a Ship branch line
     # must relaunch on that recorded branch rather than be refused.
     if [ "$RELAUNCH" -eq 1 ]; then
@@ -3207,10 +3207,9 @@ if [ "$KIND" = ship ]; then
     [ "$(delivery_rigor_rank "$MODE")" -lt "$(delivery_rigor_rank "$STANDING_MODE")" ]; then
     echo "notice: $ID ships mode=$MODE while the standing posture for $PROJ_NAME is $STANDING_MODE - less rigor than the captain's standing posture; proceed only on a current explicit captain instruction or an intake judgment you can state" >&2
   fi
-  # The registered ship-branch prefix (bin/fm-project-mode.sh) is the captain's
-  # answer to "should this project's branches read as firstmate-authored", so a
-  # spawn that ships the legacy fm/ prefix past a registered override is
-  # announced, not refused: the brief-vs-spawn agreement above already
+  # A registered prefix has a mechanical name to compare with this task's branch.
+  # A recorded complex rule is resolved at intake, so only the prefix path emits
+  # an advisory deviation notice; the brief-vs-spawn agreement above still
   # guarantees the worker's instructions match the branch this spawn selected.
   STANDING_SETTING=$("$FM_ROOT/bin/fm-project-mode.sh" --branch-setting "$PROJ_NAME" 2>/dev/null) || STANDING_SETTING=none
   STANDING_BRANCH=$("$FM_ROOT/bin/fm-project-mode.sh" --branch-prefix "$PROJ_NAME" 2>/dev/null) || STANDING_BRANCH=
