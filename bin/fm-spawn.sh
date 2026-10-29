@@ -774,7 +774,7 @@ for a in "$@"; do
     BRANCH_PREFIX=${a#--branch-prefix=}
     BRANCH_PREFIX_SET=1
     ;;
-  --branch-name) want_value=branch-name ;;
+  --branch-name) want_value="branch-name" ;;
   --branch-name=*)
     BRANCH_NAME=${a#--branch-name=}
     BRANCH_NAME_SET=1

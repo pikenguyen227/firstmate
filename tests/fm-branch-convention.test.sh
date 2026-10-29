@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Branch rule evidence and name validation through executable interfaces.
 set -u
+# shellcheck source=tests/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 tmp=$(fm_test_tmproot fm-branch-convention)
