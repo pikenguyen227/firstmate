@@ -1,0 +1,40 @@
+bin/fm-pending-reply-lib.sh
+  s_24c4af8b39bf80::t_95207fd0ede962 600,602-605,608-613,615-623
+  s_24c4af8b39bf80::t_4fd5235535a9c0 614
+  s_24c4af8b39bf80::t_d243d3b7b5f07c 601,606-607
+tests/fm-daemon.test.sh
+  s_24c4af8b39bf80::t_4871185f3c5477 601,605-608,614,622-635
+  s_24c4af8b39bf80::t_3d974674709825 3431-3435
+bin/fm-classify-lib.sh
+  s_24c4af8b39bf80::t_a879e9d0df2b47 2346-2354,2657-2658,2662
+  s_24c4af8b39bf80::t_7a014fc3bba2b4 2345
+  s_24c4af8b39bf80::t_a9fb62a22365ed 2344,2355,2647,2649,2656,2659-2661,2663-2664,2680
+tests/fm-watch-triage.test.sh
+  s_24c4af8b39bf80::t_037204b5d1a009 835-836,844-851,863-882,6742
+  s_24c4af8b39bf80::t_e8c4477a15ef9b 1782,1785,1787-1789,1804,1807,1809-1810,1824,2019,2029-2034
+  s_fcbf03fe256097::t_035bfd5fe9b9b3 883-884
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a55c6607b6bd39853c747c38cec3133c0f416482",
+  "prompts": {},
+  "sessions": {
+    "s_24c4af8b39bf80": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1871a-9d0b-7052-ac69-0ca3f2f760f1",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    },
+    "s_fcbf03fe256097": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18662-281f-7551-9862-acf64136043d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
