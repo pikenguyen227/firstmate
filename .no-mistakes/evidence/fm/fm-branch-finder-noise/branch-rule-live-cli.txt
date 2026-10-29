@@ -1,0 +1,18 @@
+BEFORE FIX: architecture.md was classified as branch-rule evidence
+source=docs/architecture.md:282
+quote=Crewmates never intentionally touch your project clone; [treehouse](https://github.com/kunchenguid/treehouse) pools clean worktrees for tmux, herdr, zellij, and cmux tasks, while Orca creates its own worktrees for `backend=orca`.
+
+source=docs/architecture.md:283
+AFTER FIX: architecture prose produced no rule; prefix=fm/; gate=status=ok
+ADVERSARIAL PROSE: path examples and vague guidance produced no rule; gate=status=ok
+CONCRETE RULE: source=README.md:1
+quote=Branches must start with design/.
+operator=starts_with
+pattern=design/
+status=refused
+reason=branch rules were found but no pattern is recorded; derive an ERE from them and pass --branch-pattern, or record regex:<pattern> as the project's branch-rule
+MATCHING BRANCH WITH RECORDED PATTERN: status=ok
+NAMING TABLE: source=README.md:4
+quote=| Design | design/<desc> |
+status=refused
+reason=branch rules were found but no pattern is recorded; derive an ERE from them and pass --branch-pattern, or record regex:<pattern> as the project's branch-rule
