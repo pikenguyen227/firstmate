@@ -597,6 +597,30 @@ fm_pending_reply_find_resolve_line() {  # <status-file> <corr_id>
   return 0
 }
 
+fm_pending_reply_corr_awaited() {  # <state-dir> <status-file> <start-offset> <line>
+  local state=$1 status_file=$2 start=$3 line=$4 corr rec phase prior task
+  corr=$(fm_pending_reply_extract_corr "$line")
+  [ -n "$corr" ] || return 1
+  rec=$(fm_pending_reply_path "$state" "$corr")
+  [ -f "$rec" ] || return 1
+  task=${status_file##*/}; task=${task%.status}
+  [ "$(fm_pending_reply_get "$rec" task_id)" = "$task" ] || return 1
+  phase=$(fm_pending_reply_get "$rec" phase)
+  case "$phase" in
+    awaiting_report|delivery_unknown|recovery_sending|recovery_sent|recovery_failed|recovery_unknown|escalated)
+      return 0
+      ;;
+    resolved)
+      [ "$start" -eq 0 ] && return 0
+      while IFS= read -r prior || [ -n "$prior" ]; do
+        fm_pending_reply_line_resolves "$prior" "$corr" && return 1
+      done < <(LC_ALL=C head -c "$start" "$status_file")
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 fm_pending_reply_file_signature() {  # <path>
   local path=$1
   [ -f "$path" ] || { printf 'missing'; return 0; }

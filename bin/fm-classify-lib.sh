@@ -2341,17 +2341,19 @@ status_span_first_actionable_record() {  # <status-file> <start-offset> [record-
     case "$line" in *[![:space:]]*) ;; *) continue ;; esac
     if [ "$kind" = secondmate ]; then
       case "$line" in
-        *corr=*|*child-outcome-*|*child-pr-*)
-          [ -n "$events" ] && events="${events} ; "
-          events="${events}${line}"
-          verb=$(status_line_verb "$line")
-          if [ "$verb" = needs-decision ] || { [ "$verb" = blocked ] &&
-            key=$(_fm_decision_key "$line") &&
-            _fm_is_pending_reply_escalation "$key" "$(status_line_note "$line")"; }; then
-            _fm_span_needs_decision=1
+        *corr=*)
+          if _fm_secondmate_corr_awaited "$f" "$start" "$line"; then
+            [ -n "$events" ] && events="${events} ; "
+            events="${events}${line}"
+            verb=$(status_line_verb "$line")
+            if [ "$verb" = needs-decision ] || { [ "$verb" = blocked ] &&
+              key=$(_fm_decision_key "$line") &&
+              _fm_is_pending_reply_escalation "$key" "$(status_line_note "$line")"; }; then
+              _fm_span_needs_decision=1
+            fi
+            rc=0
+            continue
           fi
-          rc=0
-          continue
           ;;
       esac
     fi
@@ -2642,15 +2644,24 @@ crew_worktree_written_since() {  # <id> <state> <anchor-file>
 # a no-verb wake with nothing
 # provably working must surface, so an empty/unresolvable list returns 1.
 # A kind=secondmate task's .status stream doubles as its routed-reply channel.
-# Uncorrelated working, note, and resolved lines are routine even when the mate
+# Unawaited working, note, and resolved lines are routine even when the mate
 # is idle; paused retains its existing working-evidence requirement. Decisions,
-# blockers, outcomes, child reports, correlation
+# blockers, outcomes, awaited correlation
 # markers, and unknown verbs still surface. The span starts at the classified
 # position its owner
 # reports (fm_wake_signal_seen_size, bin/fm-wake-lib.sh, loaded by every watcher
 # caller); a caller without that library reads the whole log, which can only
 # surface more. An unreadable span surfaces. Scoped to .status files - a mate's
 # bare turn-ended ping always used the ordinary provably-working absorb.
+_fm_secondmate_corr_awaited() {  # <status-file> <start-offset> <line>
+  local f=$1 start=$2 line=$3 state=${1%/*}
+  [ "$state" != "$f" ] || state=.
+  if ! command -v fm_pending_reply_corr_awaited >/dev/null 2>&1; then
+    . "$_FM_CLASSIFY_LIB_DIR/fm-pending-reply-lib.sh"
+  fi
+  fm_pending_reply_corr_awaited "$state" "$f" "$start" "$line"
+}
+
 _fm_secondmate_status_new_lines_routine() {  # <status-file> <state>
   local f=$1 state=$2 start=0 size chunk line verb
   FM_SM_ROUTINE_REQUIRES_WORKING=0
@@ -2666,7 +2677,7 @@ _fm_secondmate_status_new_lines_routine() {  # <status-file> <state>
   chunk=$(_fm_status_read_span "$f" "$start" "$((size - start))") || return 1
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in *[![:space:]]*) ;; *) continue ;; esac
-    case "$line" in *corr=*|*child-outcome-*|*child-pr-*) return 1 ;; esac
+    case "$line" in *corr=*) _fm_secondmate_corr_awaited "$f" "$start" "$line" && return 1 ;; esac
     status_is_captain_relevant "$line" && return 1
     status_line_verb "$line" verb
     case "$verb" in
