@@ -1,0 +1,22 @@
+tests/fm-branch-convention.test.sh
+  s_5963ce82536e58::t_db32f24f44165a 19,37-48,67-73,80,89-101
+bin/fm-branch-convention.py
+  s_5963ce82536e58::t_48c2825d55cb1d 123
+  s_5963ce82536e58::t_5fa9ddcee5c6e6 117,119-120,122,124-128,130-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecc87f2b4901fc7a1f340ca98e6187592ed8c9ab",
+  "prompts": {},
+  "sessions": {
+    "s_5963ce82536e58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18752-a9b7-7040-a413-6589f8e0cadf",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
