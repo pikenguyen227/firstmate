@@ -16,6 +16,7 @@ git -C "$repo" add file
 git -C "$repo" commit -qm base
 finder() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-convention.sh" "$repo"; }
 validate() { "$ROOT/bin/fm-branch-name-validate.sh" "$repo" "$@"; }
+gate() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-gate.sh" "$repo" "$@"; }
 
 [ -z "$(finder)" ] || fail 'empty repository should provide no rule evidence'
 [ "$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix repo 2>/dev/null)" = fm/ ] \
@@ -24,15 +25,46 @@ git -C "$repo" update-ref refs/remotes/origin/feature/one "$(git -C "$repo" rev-
 [ -z "$(finder)" ] || fail 'branch history should not be treated as a rule'
 pass 'no rule retains fm/ fallback'
 
+mkdir -p "$repo/docs"
+cp "$ROOT/docs/architecture.md" "$repo/docs/architecture.md"
+out=$(finder)
+[ -z "$out" ] || fail "architecture prose was mistaken for a naming rule: $out"
+[ "$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix repo)" = fm/ ] \
+  || fail 'architecture prose lost the fm/ fallback'
+rm "$repo/docs/architecture.md"
+pass 'ordinary branch prose leaves the fm/ fallback available'
+
+cat > "$repo/README.md" <<'MD'
+The feature/flags directory stores toggles.
+Branch names should be descriptive.
+## Branching
+The feature/flags directory is part of this repository.
+Use config/<name> for configuration files.
+Branches use the feature/flags directory.
+config/<name> is a file path.
+### config/<name> files
+Branch names should be descriptive. The feature/flags directory stores toggles.
+Branch names should be descriptive. use config/<name> for configuration files.
+
+| File | Path |
+| --- | --- |
+| Config | config/<name> |
+MD
+out=$(finder)
+[ -z "$out" ] || fail "path prose or vague advice was mistaken for a rule: $out"
+[ "$(gate fm/x)" = status=ok ] || fail 'path prose or vague advice blocked an ordinary ship'
+rm "$repo/README.md"
+pass 'path prose and vague naming advice do not block fm/ ships'
+
 cat > "$repo/CONTRIBUTING.md" <<'MD'
 ## Branch naming
 Branch names must start with design/.
 git checkout -b design/example
-design/<desc> is used for design work.
+Branch names use design/<desc> for design work.
 Follow the repository's branch instructions.
 MD
 out=$(finder)
-[[ "$out" == *'source=CONTRIBUTING.md:2'* && "$out" == *'quote=Branch names must start with design/.'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* && "$out" == *'source=CONTRIBUTING.md:4'* && "$out" == *'source=CONTRIBUTING.md:5'* && "$out" != *'source=CONTRIBUTING.md:3'* ]] \
+[[ "$out" == *'source=CONTRIBUTING.md:2'* && "$out" == *'quote=Branch names must start with design/.'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* && "$out" == *'source=CONTRIBUTING.md:4'* && "$out" != *'source=CONTRIBUTING.md:5'* && "$out" != *'source=CONTRIBUTING.md:3'* ]] \
   || fail "documented rule passages were missed: $out"
 for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ -x "$shell" ] || continue
@@ -42,6 +74,13 @@ for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ "$observed" = "$out" ] || fail "finder changed result through $shell"
 done
 rm "$repo/CONTRIBUTING.md"
+printf 'Branches must start with design/.\n' > "$repo/README.md"
+out=$(finder)
+[[ "$out" == *'source=README.md:1'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* ]] \
+  || fail "arbitrary prefix rule outside a naming section was missed: $out"
+rm "$repo/README.md"
+pass 'arbitrary documented prefixes are found outside naming sections'
+
 printf 'Branch name: design/sample\n' > "$repo/BRANCHING.md"
 out=$(finder)
 [[ "$out" == *'source=BRANCHING.md:1'* && "$out" == *'quote=Branch name: design/sample'* ]] \
@@ -49,12 +88,54 @@ out=$(finder)
 rm "$repo/BRANCHING.md"
 cat > "$repo/README.md" <<'MD'
 ## Branching
+| Kind | Name |
+| --- | --- |
+| Design | design/<desc> |
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:4'* && "$out" == *'design/<desc>'* && "$out" != *'source=README.md:2'* ]] \
+  || fail "README naming table was missed: $out"
+cat > "$repo/README.md" <<'MD'
+## Branches must start with design/
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:1'* && "$out" == *'pattern=design/'* ]] \
+  || fail "rule written in a heading was missed: $out"
+cat > "$repo/README.md" <<'MD'
+Use feature/<ticket> for branch names.
+Branch naming regex: ^(feature|fix)/[a-z]+$
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:1'* && "$out" == *'source=README.md:2'* ]] \
+  || fail "shape directive or regex rule was missed: $out"
+cat > "$repo/README.md" <<'MD'
+Branches must be named task-<ticket>.
+Use design/ for branch names.
+Branches must match regex ^[a-z]+/[0-9]+$
+Branch names must use task-{ticket}.
+Branch must start with design/.
+Name your branch task-<ticket>.
+MD
+out=$(finder)
+for line in 1 2 3 4 5 6; do
+  [[ "$out" == *"source=README.md:$line"* ]] || fail "concrete rule on line $line was missed: $out"
+done
+[[ "$out" == *'pattern=design/'* ]] || fail "reverse-order prefix rule was not recorded: $out"
+if gate fm/x >/dev/null; then fail 'named, prefix, or regex rules allowed an unrecorded fm/ ship'; fi
+cat > "$repo/README.md" <<'MD'
+## Branch naming
+### design/<desc>
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:2'* ]] || fail "pattern heading under branch naming was missed: $out"
+cat > "$repo/README.md" <<'MD'
+## Branching
 Follow existing conventions.
 ## Configuration
 config/<name> is a file path.
 MD
 out=$(finder)
-[[ "$out" == *'source=README.md:2'* && "$out" == *'quote=Follow existing conventions.'* && "$out" != *'config/<name>'* && "$out" != *'status='* ]] \
+[[ -z "$out" ]] \
   || fail "vague advice or unrelated path was mishandled: $out"
 rm "$repo/README.md"
 pass 'repository docs are quoted with line provenance across shells'
@@ -62,8 +143,8 @@ pass 'repository docs are quoted with line provenance across shells'
 mkdir -p "$repo/_vaults/workspace/wiki" "$repo/_vaults/workspace/raw"
 cat > "$repo/_vaults/workspace/wiki/project-context.md" <<'MD'
 ## Git workflow
-feature/workspace/<desc>                          ← root configs
-feature/<pillar>/<package>/<TICKET-desc>          ← package work
+Branch names use feature/workspace/<desc> for root configs
+Branch names use feature/<pillar>/<package>/<TICKET-desc> for package work
 MD
 printf 'Branch prefix: secret/\n' > "$repo/_vaults/workspace/raw/scratch.md"
 git -C "$repo" add _vaults/workspace/wiki
@@ -180,7 +261,6 @@ out=$(FM_HOME="$home" PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-conve
   || fail "quoted registered rule was truncated: $out"
 pass 'registered prefixes and rules survive without Python'
 
-gate() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-gate.sh" "$repo" "$@"; }
 uiux='^(feature|fix)/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
 feature_only='^feature/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
 both_declarations=(
@@ -209,8 +289,8 @@ printf '%s\n' '# Projects' '- repo [no-mistakes] - fixture' > "$home/data/projec
 mkdir -p "$repo/docs"
 cat > "$repo/docs/branching.md" <<'MD'
 ## Git workflow
-feature/<pillar>/<package>/<TICKET-desc>   - package work
-fix/apps/adc/ADCCP-751-project-information-qa
+Branch names use feature/<pillar>/<package>/<TICKET-desc> for package work
+Branch names use fix/<pillar>/<package>/<TICKET-desc> for fixes
 MD
 if out=$(gate fm/x); then fail 'rules found without a pattern were accepted'; fi
 [[ "$out" == *status=refused* && "$out" == *'no pattern is recorded'* ]] || fail "missing-pattern refusal unclear: $out"
