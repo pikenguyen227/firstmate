@@ -27,5 +27,4 @@ if command -v python3 >/dev/null 2>&1; then
   if python3 "$SCRIPT_DIR/fm-branch-convention.py" "$repo"; then exit 0; fi
 fi
 case "$setting" in prefix:*|typed:*) exit 0 ;; esac
-echo 'warn: branch rule finder unavailable and no registered rule exists' >&2
-printf 'status=unavailable\nsource=branch rule finder\nquote=repository rules could not be read\n'
+echo 'warn: branch rule finder unavailable and no registered rule exists; use fm/' >&2

@@ -61,8 +61,7 @@ def axi_protection_rules(name):
         if not isinstance(node, dict) or not isinstance(node.get("pattern"), str) or not isinstance(node.get("blocksCreations"), bool):
             return [], True
         found.append({"source": "GitHub classic branch protection",
-                      "quote": f"pattern={node['pattern']} blocksCreations={str(node['blocksCreations']).lower()}",
-                      "naming": node["blocksCreations"]})
+                      "quote": f"pattern={node['pattern']} blocksCreations={str(node['blocksCreations']).lower()}"})
     return found, False
 
 
@@ -103,8 +102,7 @@ def doc_evidence(repo):
                 continue
             pattern_line = re.search(r"\bbranch\w*\b.{0,50}\b(?:prefix|pattern|format|must\s+(?:start|begin)|should\s+(?:start|begin))\b", line, re.I)
             label_line = re.search(r"\bbranch(?:es|ing| names| name| naming| rule)?\s*[:=]\s*\S+", line, re.I)
-            template = re.search(r"\b[A-Za-z][A-Za-z0-9_-]*/[^\s`|]*<[^>]+>", line)
-            if not (workflow_level or pattern_line or label_line or template):
+            if not (workflow_level or pattern_line or label_line):
                 continue
             item = {"source": f"{path.relative_to(repo)}:{number}", "quote": stripped}
             prefix = re.search(
@@ -163,12 +161,12 @@ def ruleset_evidence(repo):
             if not isinstance(rule, dict) or rule.get("type") not in {"branch_name_pattern", "creation"}:
                 continue
             if rule["type"] == "creation":
-                found.append({"source": source, "quote": "creation restriction", "naming": True})
+                found.append({"source": source, "quote": "creation restriction"})
                 continue
             params = rule.get("parameters") or {}
             if not isinstance(params, dict):
                 params = {}
-            item = {"source": source, "quote": f"branch_name_pattern {json.dumps(params, sort_keys=True)}", "naming": True}
+            item = {"source": source, "quote": f"branch_name_pattern {json.dumps(params, sort_keys=True)}"}
             if isinstance(params.get("pattern"), str) and params.get("operator") in {"regex", "starts_with", "fnmatch"} and not params.get("negate"):
                 item.update(operator=params["operator"], pattern=params["pattern"])
             found.append(item)
@@ -188,14 +186,12 @@ def main():
     protection, protection_unavailable = axi_protection_rules(github_name) if github_name else ([], False)
     unavailable = unavailable or protection_unavailable
     if unavailable:
-        print("status=unavailable\nsource=GitHub branch settings\nquote=branch settings could not be read")
+        print("source=GitHub branch settings\nquote=branch settings could not be read\n")
     for item in docs + rulesets + protection:
         print(f"source={item['source']}\nquote={item['quote']}")
         if "pattern" in item:
             print(f"operator={item['operator']}\npattern={item['pattern']}")
         print()
-    if not docs and not any(item.get("naming") for item in rulesets + protection) and not unavailable:
-        print("status=no-rule")
 
 
 if __name__ == "__main__":

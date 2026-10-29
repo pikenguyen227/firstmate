@@ -176,7 +176,6 @@ parsed=$(awk -v n="$NAME" '
       for (j=1; j<=k; j++) {
         if (a[j]=="+yolo") { yolo="on"; continue }
         if (a[j] ~ /^branch=/) { branch = substr(a[j], 8); setting = "prefix:" branch; continue }
-        if (a[j] ~ /^branch-rule=/) { if (setting == "none") setting = "typed:" substr(a[j], 13); continue }
         if (a[j] ~ /^forge=/) { forge = a[j]; continue }
         if (a[j] ~ /^[^=]+=/) {
           key = substr(a[j], 1, index(a[j], "=") - 1);

@@ -1614,7 +1614,7 @@ EOF
 
 test_full_branch_name_is_harness_independent() {
   local rec home proj fakebin id harness branch=feature/selector-task-42 out
-  rec=$(make_home full-branch-harness "- proj [no-mistakes branch-rule=type/ticket-description] - fixture")
+  rec=$(make_home full-branch-harness '- proj [no-mistakes branch-rule="type/ticket-description"] - fixture')
   IFS='|' read -r home proj fakebin <<EOF
 $rec
 EOF
