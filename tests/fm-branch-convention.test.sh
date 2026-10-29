@@ -74,14 +74,34 @@ git -C "$repo" reset -q -- _vaults
 rm -rf "$repo/_vaults"
 pass 'tracked UIUX-shaped vault wiki is quoted and raw notes are excluded'
 
+# Mirrors gh-axi api: only --field/--jq/--full are accepted, failures exit non-zero,
+# and a --jq read is answered as an api_response body of plain lines.
 cat > "$tmp/fakebin/gh-axi" <<'AXI'
 #!/usr/bin/env bash
-[ "${FM_TEST_FAIL:-0}" = 0 ] || exit 1
-case "$3" in
-  */rulesets\?*) [ -f "$FM_TEST_RULESET_DETAIL" ] && printf '[{"id":71,"enforcement":"active","target":"branch"}]\n' || printf '[]\n' ;;
-  */rulesets/71) cat "$FM_TEST_RULESET_DETAIL" ;;
-esac
-if [ "$2" = graphql ]; then cat "$FM_TEST_CLASSIC_DETAIL"; fi
+[ "${FM_TEST_FAIL:-0}" = 0 ] || { echo 'error: "gh: Not Found (HTTP 404)"'; exit 1; }
+for arg in "$@"; do
+  case "$arg" in -f|-F) echo 'error: "unknown flag"'; exit 1 ;; esac
+done
+python3 - "$@" <<'PY'
+import json, os, sys
+args = sys.argv[1:]
+def emit(lines):
+    print("api_response:\n  body: " + json.dumps("\n".join(lines)) + "\n  truncated: false")
+def load(name):
+    return json.load(open(os.environ[name]))
+path = next(a for a in args[1:] if a == "graphql" or a.startswith("/repos/"))
+if path == "graphql":
+    rules = load("FM_TEST_CLASSIC_DETAIL")["data"]["repository"]["branchProtectionRules"]
+    emit(["more=" + str(rules["pageInfo"]["hasNextPage"]).lower()] +
+         ["rule=%s\t%s" % (json.dumps(n["pattern"]), str(n["blocksCreations"]).lower()) for n in rules["nodes"]])
+elif "/rulesets/" in path:
+    detail = load("FM_TEST_RULESET_DETAIL")
+    ref = (detail.get("conditions") or {}).get("ref_name") or {}
+    emit(["ref_include=" + json.dumps(ref.get("include") or []), "ref_exclude=" + json.dumps(ref.get("exclude") or [])] +
+         ["rule=" + json.dumps(r) for r in detail.get("rules") or [] if r.get("type") in ("branch_name_pattern", "creation")])
+else:
+    emit(["ruleset=71\tactive\tbranch"] if os.path.isfile(os.environ["FM_TEST_RULESET_DETAIL"]) else [])
+PY
 AXI
 chmod +x "$tmp/fakebin/gh-axi"
 export FM_TEST_RULESET_DETAIL="$tmp/ruleset-detail"
@@ -91,6 +111,10 @@ git -C "$repo" remote add origin https://github.com/example/project.git
 git -C "$repo" remote set-url origin ssh://git@github.com/example/project.git
 [ -z "$(finder)" ] || fail 'declined ssh origin form was accepted'
 git -C "$repo" remote set-url origin https://github.com/example/project.git
+out=$(finder 2>&1)
+[ -z "$out" ] || fail "empty GitHub rulesets and protection were not read as no rules: $out"
+pass 'empty GitHub rulesets read as none, not unreadable'
+
 printf '%s\n' '{"conditions":{"ref_name":{"include":[],"exclude":[]}},"rules":[{"type":"branch_name_pattern","parameters":{"operator":"regex","pattern":"^feature/[a-z0-9-]+$","negate":false}}]}' > "$FM_TEST_RULESET_DETAIL"
 out=$(finder)
 [[ "$out" == *'source=GitHub ruleset 71'* && "$out" == *'operator=regex'* && "$out" == *'pattern=^feature/[a-z0-9-]+$'* ]] \
@@ -131,7 +155,7 @@ pass 'unreadable GitHub settings require a decision'
 
 printf '%s\n' '# Projects' '- repo [no-mistakes branch=owner/] - fixture' > "$home/data/projects.md"
 out=$(finder)
-[[ "$out" == *'source=registered branch prefix'* && "$out" == *'pattern=owner/'* ]] \
+[[ "$out" == *'source=registered branch prefix'* && "$out" == *'quote=owner/'* ]] \
   || fail "recorded prefix was lost: $out"
 printf '%s\n' '# Projects' '- repo [no-mistakes branch-rule="regex:^feature/[a-z0-9-]+$"] - fixture' > "$home/data/projects.md"
 out=$(finder)
@@ -155,5 +179,72 @@ out=$(FM_HOME="$home" PATH="$tmp/no-python" /bin/bash "$ROOT/bin/fm-branch-conve
 [[ "$out" == *'quote=feature/workspace for root work; feature/[a-z] for packages'* ]] \
   || fail "quoted registered rule was truncated: $out"
 pass 'registered prefixes and rules survive without Python'
+
+gate() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-gate.sh" "$repo" "$@"; }
+uiux='^(feature|fix)/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
+feature_only='^feature/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
+both_declarations=(
+  "branch=feature/ branch-rule=\"regex:$feature_only\""
+  "branch-rule=\"regex:$feature_only\" branch=feature/"
+)
+printf '%s\n' '# Projects' '- repo [no-mistakes] - fixture' > "$home/data/projects.md"
+rm -f "$FM_TEST_RULESET_DETAIL"
+git -C "$repo" remote remove origin
+out=$(gate fm/x) || fail "no-rule repo refused the fm/ default: $out"
+[ "$(gate fm/x)" = status=ok ] || fail 'no-rule repo needs no pattern'
+[ "$(gate feature/x)" = status=ok ] || fail 'no-rule explicit branch name was refused'
+printf '%s\n' '# Projects' '- repo [no-mistakes branch=feature/] - fixture' > "$home/data/projects.md"
+[ "$(gate fix/apps/adc/ADCCP-751-project-information-qa)" = status=ok ] || fail 'advisory prefix blocked an explicit branch without repository rules'
+for declarations in "${both_declarations[@]}"; do
+  printf '%s\n' '# Projects' "- repo [no-mistakes $declarations] - fixture" > "$home/data/projects.md"
+  [ "$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix repo)" = feature/ ] || fail "prefix was lost for $declarations"
+  settings=$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-setting repo)
+  [ "$settings" = "$(printf 'prefix:feature/\ntyped:regex:%s' "$feature_only")" ] || fail "branch declarations were lost for $declarations: $settings"
+  out=$(finder)
+  [[ "$out" == *'source=registered branch prefix'* && "$out" == *'source=registered branch rule'* && "$out" == *"pattern=$feature_only"* ]] || fail "finder lost a declaration for $declarations: $out"
+  if gate fix/x >/dev/null; then fail "explicit rule allowed fix/x without repository passages for $declarations"; fi
+  [ "$(gate feature/apps/adc/ADCCP-1-x)" = status=ok ] || fail "explicit rule rejected a conforming name without repository passages for $declarations"
+done
+printf '%s\n' '# Projects' '- repo [no-mistakes] - fixture' > "$home/data/projects.md"
+mkdir -p "$repo/docs"
+cat > "$repo/docs/branching.md" <<'MD'
+## Git workflow
+feature/<pillar>/<package>/<TICKET-desc>   - package work
+fix/apps/adc/ADCCP-751-project-information-qa
+MD
+if out=$(gate fm/x); then fail 'rules found without a pattern were accepted'; fi
+[[ "$out" == *status=refused* && "$out" == *'no pattern is recorded'* ]] || fail "missing-pattern refusal unclear: $out"
+if out=$(gate fm/x --pattern "$uiux"); then fail 'fm/ branch passed the derived pattern'; fi
+[[ "$out" == *'does not satisfy the recorded pattern'* ]] || fail "pattern refusal unclear: $out"
+for good in feature/apps/adc/ADCCP-1-x fix/apps/adc/ADCCP-1-x; do
+  [ "$(gate "$good" --pattern "$uiux")" = status=ok ] || fail "$good was refused under the derived pattern"
+done
+if gate bad..name --pattern "$uiux" >/dev/null; then fail 'invalid git ref passed the gate'; fi
+if gate fm/x --pattern '(' >/dev/null; then fail 'unusable pattern passed the gate'; fi
+for declaration in 'branch=feature/' 'branch-rule="starts_with:feature/"' 'branch-rule="fnmatch:feature/*"'; do
+  printf '%s\n' '# Projects' "- repo [no-mistakes $declaration] - fixture" > "$home/data/projects.md"
+  if out=$(gate feature/x); then fail "$declaration bypassed repository passages without a derived pattern"; fi
+  [[ "$out" == *status=refused* && "$out" == *'no pattern is recorded'* ]] || fail "missing-pattern refusal unclear for $declaration: $out"
+  if out=$(gate feature/x --pattern "$uiux"); then fail "$declaration allowed a branch against the derived pattern"; fi
+  [[ "$out" == *'does not satisfy the recorded pattern'* ]] || fail "pattern refusal unclear for $declaration: $out"
+  [ "$(gate feature/apps/adc/ADCCP-1-x --pattern "$uiux")" = status=ok ] || fail "$declaration rejected a conforming branch"
+  if [ "$declaration" = 'branch=feature/' ]; then
+    [ "$(gate fix/apps/adc/ADCCP-751-project-information-qa --pattern "$uiux")" = status=ok ] || fail 'advisory prefix rejected a valid fix branch'
+  elif gate fix/apps/adc/ADCCP-751-project-information-qa --pattern "$uiux" >/dev/null; then
+    fail "$declaration did not enforce its explicit branch rule"
+  fi
+done
+for declarations in "${both_declarations[@]}"; do
+  printf '%s\n' '# Projects' "- repo [no-mistakes $declarations] - fixture" > "$home/data/projects.md"
+  if gate fix/x >/dev/null; then fail "explicit rule allowed fix/x with repository passages for $declarations"; fi
+  [ "$(gate feature/apps/adc/ADCCP-1-x)" = status=ok ] || fail "explicit rule rejected a conforming name with repository passages for $declarations"
+done
+printf '%s\n' '# Projects' "- repo [no-mistakes branch-rule=\"regex:$uiux\"] - fixture" > "$home/data/projects.md"
+[ "$(gate fix/apps/adc/ADCCP-1-x)" = status=ok ] || fail 'registered machine pattern was not accepted as the record'
+if gate fm/x >/dev/null; then fail 'registered pattern did not reject fm/'; fi
+printf '%s\n' '# Projects' '- repo [no-mistakes branch-rule="feature or fix by ticket"] - fixture' > "$home/data/projects.md"
+if gate fm/x >/dev/null; then fail 'registered prose rule needed no pattern'; fi
+[ "$(gate fix/apps/adc/ADCCP-1-x --pattern "$uiux")" = status=ok ] || fail 'prose rule plus pattern was refused'
+pass 'gate enforces a recorded pattern wherever rules are found and leaves no-rule repos on fm/'
 
 echo '# all fm-branch-convention tests passed'

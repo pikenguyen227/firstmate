@@ -35,7 +35,9 @@
 # its value against the registry; bin/fm-project-mode.sh's header owns the
 # binding and bin/fm-dod-lib.sh owns what it changes for the worker, including
 # the refusal of a forge on local-only.
-# Usage: fm-promote.sh <task-id> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>|--branch-name <name>]
+# --branch-pattern is the ERE derived from the repository's branch rules; the ship branch
+# is checked by bin/fm-branch-gate.sh against it or a recorded regex branch-rule.
+# Usage: fm-promote.sh <task-id> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>|--branch-name <name>] [--branch-pattern <regex>]
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -67,8 +69,10 @@ MODE=
 YOLO=
 BRANCH_PREFIX=fm/
 BRANCH_NAME=
+BRANCH_PATTERN=
 BRANCH_PREFIX_SET=0
 BRANCH_NAME_SET=0
+BRANCH_PATTERN_SET=0
 MODE_SET=0
 YOLO_SET=0
 FORGE=none
@@ -84,6 +88,7 @@ for a in "$@"; do
       yolo) YOLO=$a; YOLO_SET=1 ;;
       branch-prefix) BRANCH_PREFIX=$a; BRANCH_PREFIX_SET=1 ;;
       branch-name) BRANCH_NAME=$a; BRANCH_NAME_SET=1 ;;
+      branch-pattern) BRANCH_PATTERN=$a; BRANCH_PATTERN_SET=1 ;;
     esac
     want_value=
     continue
@@ -97,6 +102,8 @@ for a in "$@"; do
     --branch-prefix=*) BRANCH_PREFIX=${a#--branch-prefix=}; BRANCH_PREFIX_SET=1 ;;
     --branch-name) want_value="branch-name" ;;
     --branch-name=*) BRANCH_NAME=${a#--branch-name=}; BRANCH_NAME_SET=1 ;;
+    --branch-pattern) want_value="branch-pattern" ;;
+    --branch-pattern=*) BRANCH_PATTERN=${a#--branch-pattern=}; BRANCH_PATTERN_SET=1 ;;
     *) POS+=("$a") ;;
   esac
 done
@@ -204,6 +211,14 @@ if [ -n "$PROMOTE_PROJECT" ]; then
   fi
   FORGE=${PROMOTE_STANDING_FORGE:-none}
   refuse_impossible_forge_posture || exit 1
+  if [ -d "$PROMOTE_PROJECT" ]; then
+    gate_args=()
+    [ "$BRANCH_PATTERN_SET" -eq 0 ] || gate_args+=(--pattern "$BRANCH_PATTERN")
+    if ! gate_out=$("$FM_ROOT/bin/fm-branch-gate.sh" "$PROMOTE_PROJECT" "$BRANCH" "${gate_args[@]+"${gate_args[@]}"}"); then
+      echo "error: $ID cannot promote: ship branch '$BRANCH' refused for $PROMOTE_PROJECT_NAME: ${gate_out#*reason=}" >&2
+      exit 1
+    fi
+  fi
 fi
 # An unbound project keeps the exact wording it always had.
 PROMOTE_FORGE_WORDS=

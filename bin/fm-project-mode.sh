@@ -6,8 +6,8 @@
 # prefix, "fm/" when the project registers none, is unregistered, or the registry
 # is absent. This query preserves the legacy prefix for callers that still
 # request it; intake may select a complete branch name from repository evidence.
-# --branch-setting distinguishes an explicit prefix (including an empty one),
-# a branch rule, and no declaration, so intake can detect only when needed.
+# --branch-setting prints each explicit prefix and branch rule on its own line,
+# or none when neither is declared.
 # With --forge it prints one word instead: the project's registered forge,
 # none|gerrit. The forge is asked for explicitly, so the default output stays
 # the same two words for every project, bound or not.
@@ -35,7 +35,6 @@
 #   Bracket tokens are order-independent: +yolo, branch=<prefix>,
 #   branch-rule="<rule>", and forge=<value> are recognized by shape wherever
 #   they appear, and whichever token is left over is the mode.
-#   An explicit branch=<prefix> wins over a branch-rule token.
 #   <prefix> must not contain a space; an empty override
 #   ("branch=") resolves to "" for a bare "<task-id>" ship branch instead of the
 #   legacy "fm/<task-id>".
@@ -188,7 +187,7 @@ parsed=$(awk -v n="$NAME" '
         }
         if (a[j] != "" && mode_set == 0) { mode = a[j]; mode_set = 1 }
       }
-      if (quoted_rule != "" && setting == "none") { setting = "typed:"; print "rule", quoted_rule }
+      if (quoted_rule != "") print "rule", quoted_rule
     }
     # branch is printed LAST: an empty branch= override must survive as an
     # empty final field, which only holds when nothing follows it.
@@ -221,7 +220,6 @@ while IFS=' ' read -r m y f s b; do
 done <<EOF
 $posture
 EOF
-if [ "$setting" = typed: ]; then setting="typed:$registered_rule"; fi
 forge=${rest_forge:-none}
 case "$mode" in
   no-mistakes|direct-PR|local-only|no-mistakes-prod-only) ;;
@@ -229,7 +227,9 @@ case "$mode" in
 esac
 case "$yolo" in on|off) ;; *) yolo=off ;; esac
 if [ "$BRANCH_SETTING_QUERY" -eq 1 ]; then
-  echo "$setting"
+  if [ "$setting" = none ] && [ -z "$registered_rule" ]; then echo none; fi
+  [ "$setting" = none ] || echo "$setting"
+  [ -z "$registered_rule" ] || echo "typed:$registered_rule"
   exit 0
 fi
 if [ "$BRANCH_PREFIX_QUERY" -eq 1 ]; then

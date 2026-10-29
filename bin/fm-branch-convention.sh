@@ -6,12 +6,12 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo=${1:?repository required}
 project=${repo%/}
 project=${project##*/}
-setting=$("$BASH" "$SCRIPT_DIR/fm-project-mode.sh" --branch-setting "$project" 2>/dev/null) || setting=none
+settings=$("$BASH" "$SCRIPT_DIR/fm-project-mode.sh" --branch-setting "$project" 2>/dev/null) || settings=none
+while IFS= read -r setting; do
 case "$setting" in
   prefix:*)
     prefix=${setting#prefix:}
     printf 'source=registered branch prefix\nquote=%s\n' "$prefix"
-    [ -z "$prefix" ] || printf 'operator=starts_with\npattern=%s\n' "$prefix"
     printf '\n' ;;
   typed:*)
     rule=${setting#typed:}
@@ -23,8 +23,9 @@ case "$setting" in
     esac
     printf '\n' ;;
 esac
+done <<< "$settings"
 if command -v python3 >/dev/null 2>&1; then
   if python3 "$SCRIPT_DIR/fm-branch-convention.py" "$repo"; then exit 0; fi
 fi
-case "$setting" in prefix:*|typed:*) exit 0 ;; esac
+case "$settings" in none) ;; *) exit 0 ;; esac
 echo 'warn: branch rule finder unavailable and no registered rule exists; use fm/' >&2
