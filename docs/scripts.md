@@ -77,6 +77,7 @@ The shared no-mistakes gate lifecycle boundary is summarized in [architecture.md
 | `fm-step-up.sh`          | Decide, record, and apply the one-tier model step-up after a real worker failure ([contract](configuration.md#automatic-one-tier-step-up-binfm-step-upsh)) |
 | `fm-project-mode.sh`     | Resolve a project's registered delivery posture, forge binding, or branch declaration from `data/projects.md` for fleet sync, home seeding, intake, and forge agreement at spawn or promotion |
 | `fm-branch-convention.sh` | Quote branch-rule passages from repository docs and tracked vault wiki plus GitHub rulesets and classic protection for project add and task intake; preserve registered rules and report unreadable settings |
+| `fm-branch-gate.sh` | Refuse a ship branch at spawn or promotion when repository branch rules were found but no derived pattern is recorded, or when the name fails that pattern or a registered rule |
 | `fm-branch-name-validate.sh` | Check a chosen ship branch with Git ref syntax and any quoted machine pattern before brief, spawn, or promotion |
 | `fm-forge-detect.sh`     | Propose a clone's forge binding from its origin remote for project-add intake, never recording it |
 | `fm-merge-local.sh`      | Fast-forward a `local-only` project's local default branch after approval            |

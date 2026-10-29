@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Spawn a direct report: a crewmate in a treehouse or Orca worktree, or a
 # secondmate in its isolated firstmate home.
-# Usage: fm-spawn.sh <task-id> <project-dir> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>|--branch-name <name>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
+# Usage: fm-spawn.sh <task-id> <project-dir> --mode <no-mistakes|direct-PR|local-only> --yolo <on|off> [--branch-prefix <prefix>|--branch-name <name>] [--branch-pattern <regex>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
 #        fm-spawn.sh <task-id> <project-dir> --scout [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>]
 #        fm-spawn.sh <task-id> [<firstmate-home>] [--harness <name>|harness|launch-command] [--model <name>] [--effort <level>] [--backend <name>] --secondmate
 #   --mode and --yolo are this task's delivery contract, REQUIRED for every ship
@@ -40,6 +40,11 @@
 #   already guarantees the worker's instructions match the branch.
 #   --branch-name accepts the complete name selected from a repository rule.
 #   An explicit --branch-prefix wins if both flags are supplied.
+#   --branch-pattern is the ERE the coordinator derived from the repository's
+#   branch rules at intake. Every non-relaunch ship spawn runs bin/fm-branch-gate.sh,
+#   which refuses a branch that fails Git syntax or this pattern, and refuses when
+#   rules were found but no pattern was supplied or registered. A repository with
+#   no branch rules needs no pattern.
 #   Ship/scout launches always put fm-dod-lib.sh's current worker role scope
 #   first in the private launch-brief overlay, including the exact task-owned
 #   steering inbox. This never rewrites a project's instruction files or a
@@ -661,6 +666,7 @@ MODE=
 YOLO=
 BRANCH_PREFIX=fm/
 BRANCH_NAME=
+BRANCH_PATTERN=
 TRACEPARENT_ARG=
 HARNESS_SET=0
 MODEL_SET=0
@@ -670,6 +676,7 @@ MODE_SET=0
 YOLO_SET=0
 BRANCH_PREFIX_SET=0
 BRANCH_NAME_SET=0
+BRANCH_PATTERN_SET=0
 TRACEPARENT_SET=0
 RELAUNCH=0
 PREFLIGHT=0
@@ -715,6 +722,10 @@ for a in "$@"; do
     branch-name)
       BRANCH_NAME=$a
       BRANCH_NAME_SET=1
+      ;;
+    branch-pattern)
+      BRANCH_PATTERN=$a
+      BRANCH_PATTERN_SET=1
       ;;
     traceparent)
       TRACEPARENT_ARG=$a
@@ -778,6 +789,11 @@ for a in "$@"; do
   --branch-name=*)
     BRANCH_NAME=${a#--branch-name=}
     BRANCH_NAME_SET=1
+    ;;
+  --branch-pattern) want_value="branch-pattern" ;;
+  --branch-pattern=*)
+    BRANCH_PATTERN=${a#--branch-pattern=}
+    BRANCH_PATTERN_SET=1
     ;;
   --traceparent) want_value=traceparent ;;
   --traceparent=*)
@@ -873,6 +889,10 @@ if [ "$RELAUNCH" -eq 1 ]; then
     echo "error: --relaunch reuses the task's recorded ship branch; --branch-name cannot override it" >&2
     exit 1
   }
+  [ "$BRANCH_PATTERN_SET" -eq 0 ] || {
+    echo "error: --relaunch reuses the task's recorded ship branch; --branch-pattern cannot apply to it" >&2
+    exit 1
+  }
 else
   # Delivery contract (AGENTS.md section 7). A ship task's mode and yolo are
   # firstmate's per-task decision, so they are required and closed-set validated
@@ -920,6 +940,10 @@ else
     }
     [ "$BRANCH_NAME_SET" -eq 0 ] || {
       echo "error: --branch-name applies only to ship spawns; a scout makes no branch and a secondmate records no ship branch" >&2
+      exit 1
+    }
+    [ "$BRANCH_PATTERN_SET" -eq 0 ] || {
+      echo "error: --branch-pattern applies only to ship spawns; a scout makes no branch and a secondmate records no ship branch" >&2
       exit 1
     }
   fi
@@ -1490,6 +1514,10 @@ fi
 if [ "${#POS[@]}" -gt 0 ] && [ "${POS[0]}" != "$idpart" ] && case "$idpart" in */*) false ;; *) true ;; esac then
   if [ "$BRANCH_NAME_SET" -eq 1 ]; then
     echo "error: --branch-name is single-task only; select a distinct full branch for each task" >&2
+    exit 1
+  fi
+  if [ "$BRANCH_PATTERN_SET" -eq 1 ]; then
+    echo "error: --branch-pattern is single-task only; derive the pattern from each project's own rules" >&2
     exit 1
   fi
   if [ "$KIND" != secondmate ] && [ -z "$HARNESS_ARG" ] && [ -f "$CONFIG/crew-dispatch.json" ]; then
@@ -3137,6 +3165,14 @@ delivery_rigor_rank() { # <mode> -> 3 (most rigor) .. 1 (least); 0 = not a task 
 # differ, which is the exact drift this contract prevents.
 if [ "$KIND" = ship ]; then
   PROJ_NAME=$(basename "$PROJ_ABS")
+  if [ "$RELAUNCH" -eq 0 ]; then
+    gate_args=()
+    [ "$BRANCH_PATTERN_SET" -eq 0 ] || gate_args+=(--pattern "$BRANCH_PATTERN")
+    if ! gate_out=$("$FM_ROOT/bin/fm-branch-gate.sh" "$PROJ_ABS" "$BRANCH" "${gate_args[@]+"${gate_args[@]}"}"); then
+      echo "error: $ID cannot launch: ship branch '$BRANCH' refused for $PROJ_NAME: ${gate_out#*reason=}" >&2
+      exit 1
+    fi
+  fi
   # The parser's own refusal reaches the operator here rather than being
   # discarded: an entry it refuses (an unknown forge token, or a forge on
   # local-only) resolves to no posture at all, and launching on the silent

@@ -4,7 +4,8 @@
 Usage: fm-branch-convention.py <repo>
 
 Each observed passage prints source=<file:line>, quote=<text>, and optional
-operator=/pattern= lines. GitHub ruleset reads use gh-axi and remain read-only.
+operator=/pattern= lines. GitHub reads use gh-axi (read-only); an empty
+list of rules is a successful read, while a failed call is reported as unreadable.
 """
 
 import argparse
@@ -29,39 +30,60 @@ def github_repo(repo):
     return "/".join(match.groups()) if match else None
 
 
-def axi_read(path):
+def axi_lines(*args):
+    """Run gh-axi and return the lines of its api_response body, or None if unreadable.
+
+    gh-axi re-encodes JSON objects into its own text format, so each read asks jq
+    for plain lines instead. An empty body is a successful read of nothing.
+    """
     try:
-        result = subprocess.run(["gh-axi", "api", "GET", path, "--full"],
+        result = subprocess.run(["gh-axi", "api", *args, "--full"],
                                 text=True, capture_output=True, check=False, timeout=20)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    return result.stdout if result.returncode == 0 else None
+    if result.returncode != 0:
+        return None
+    match = re.search(r"^\s*body:[ \t]*(.*)$", result.stdout, re.M)
+    if not match:
+        return None
+    raw = match.group(1).strip()
+    if raw.startswith('"'):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return None
+    return raw.splitlines()
+
+
+PROTECTION_JQ = ('.data.repository.branchProtectionRules | "more=\\(.pageInfo.hasNextPage)", '
+                 '(.nodes[] | "rule=\\(.pattern|tojson)\\t\\(.blocksCreations)")')
+SUMMARY_JQ = '.[] | "ruleset=\\(.id)\\t\\(.enforcement)\\t\\(.target)"'
+DETAIL_JQ = ('(.conditions.ref_name // {}) as $r | "ref_include=\\($r.include // [] | tojson)", '
+             '"ref_exclude=\\($r.exclude // [] | tojson)", '
+             '(.rules // [] | .[] | select(.type=="branch_name_pattern" or .type=="creation") | "rule=\\(tojson)")')
+PROTECTION_QUERY = ("query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo)"
+                    "{branchProtectionRules(first:100){nodes{pattern blocksCreations}"
+                    "pageInfo{hasNextPage}}}}")
 
 
 def axi_protection_rules(name):
     owner, repo = name.split("/", 1)
-    query = ("query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo)"
-             "{branchProtectionRules(first:100){nodes{pattern blocksCreations}"
-             "pageInfo{hasNextPage}}}}")
-    try:
-        result = subprocess.run(["gh-axi", "api", "graphql", "-f", f"query={query}",
-                                 "-F", f"owner={owner}", "-F", f"repo={repo}"],
-                                text=True, capture_output=True, check=False, timeout=20)
-        body = json.loads(result.stdout) if result.returncode == 0 else None
-        if not isinstance(body, dict) or body.get("errors"):
-            return [], True
-        rules = body["data"]["repository"]["branchProtectionRules"]
-        nodes = rules["nodes"]
-        if not isinstance(nodes, list) or rules["pageInfo"]["hasNextPage"]:
-            return [], True
-    except (OSError, subprocess.TimeoutExpired, ValueError, KeyError, TypeError):
+    lines = axi_lines("POST", "graphql", "--field", f"query={PROTECTION_QUERY}",
+                      "--field", f"owner={owner}", "--field", f"repo={repo}",
+                      "--jq", PROTECTION_JQ)
+    if lines is None or not lines or lines[0] != "more=false":
         return [], True
     found = []
-    for node in nodes:
-        if not isinstance(node, dict) or not isinstance(node.get("pattern"), str) or not isinstance(node.get("blocksCreations"), bool):
+    for line in lines[1:]:
+        match = re.fullmatch(r"rule=(\".*\")\t(true|false)", line)
+        if not match:
+            return [], True
+        try:
+            pattern = json.loads(match.group(1))
+        except ValueError:
             return [], True
         found.append({"source": "GitHub classic branch protection",
-                      "quote": f"pattern={node['pattern']} blocksCreations={str(node['blocksCreations']).lower()}"})
+                      "quote": f"pattern={pattern} blocksCreations={match.group(2)}"})
     return found, False
 
 
@@ -119,48 +141,49 @@ def ruleset_evidence(repo):
     name = github_repo(repo)
     if not name:
         return [], False
-    body = axi_read(f"/repos/{name}/rulesets?includes_parents=true")
-    if body is None:
-        return [], True
-    try:
-        summaries = json.loads(body)
-    except ValueError:
-        return [], True
-    if not isinstance(summaries, list):
+    summaries = axi_lines(f"/repos/{name}/rulesets?includes_parents=true", "--jq", SUMMARY_JQ)
+    if summaries is None:
         return [], True
     found = []
     unavailable = False
-    for entry in summaries:
-        if not isinstance(entry, dict) or entry.get("enforcement") != "active" or entry.get("target") != "branch":
-            continue
-        rule_id = entry.get("id")
-        if not isinstance(rule_id, int):
+    for line in summaries:
+        match = re.fullmatch(r"ruleset=(\d+)\t(\S*)\t(\S*)", line)
+        if not match:
             unavailable = True
             continue
-        body = axi_read(f"/repos/{name}/rulesets/{rule_id}")
-        try:
-            detail = json.loads(body) if body is not None else None
-        except ValueError:
-            detail = None
-        if not isinstance(detail, dict):
+        rule_id, enforcement, target = match.groups()
+        if enforcement != "active" or target != "branch":
+            continue
+        detail = axi_lines(f"/repos/{name}/rulesets/{rule_id}", "--jq", DETAIL_JQ)
+        if detail is None:
             unavailable = True
             continue
         source = f"GitHub ruleset {rule_id}"
-        conditions = detail.get("conditions")
-        if not isinstance(conditions, dict):
-            conditions = {}
-        ref_name = conditions.get("ref_name") or {}
-        if not isinstance(ref_name, dict):
-            ref_name = {}
-        includes = ref_name.get("include") or []
-        excludes = ref_name.get("exclude") or []
-        if includes or excludes:
-            item = {"source": source, "quote": f"ref_name include={includes} exclude={excludes}"}
-            found.append(item)
-        for rule in detail.get("rules") or []:
-            if not isinstance(rule, dict) or rule.get("type") not in {"branch_name_pattern", "creation"}:
+        includes = excludes = []
+        for entry in detail:
+            key, _, value = entry.partition("=")
+            try:
+                parsed = json.loads(value)
+            except ValueError:
+                unavailable = True
                 continue
-            if rule["type"] == "creation":
+            if key == "ref_include" and isinstance(parsed, list):
+                includes = parsed
+            elif key == "ref_exclude" and isinstance(parsed, list):
+                excludes = parsed
+        if includes or excludes:
+            found.append({"source": source, "quote": f"ref_name include={includes} exclude={excludes}"})
+        for entry in detail:
+            key, _, value = entry.partition("=")
+            if key != "rule":
+                continue
+            try:
+                rule = json.loads(value)
+            except ValueError:
+                continue
+            if not isinstance(rule, dict):
+                continue
+            if rule.get("type") == "creation":
                 found.append({"source": source, "quote": "creation restriction"})
                 continue
             params = rule.get("parameters") or {}
