@@ -24,6 +24,15 @@ git -C "$repo" update-ref refs/remotes/origin/feature/one "$(git -C "$repo" rev-
 [ -z "$(finder)" ] || fail 'branch history should not be treated as a rule'
 pass 'no rule retains fm/ fallback'
 
+mkdir -p "$repo/docs"
+cp "$ROOT/docs/architecture.md" "$repo/docs/architecture.md"
+out=$(finder)
+[ -z "$out" ] || fail "architecture prose was mistaken for a naming rule: $out"
+[ "$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix repo)" = fm/ ] \
+  || fail 'architecture prose lost the fm/ fallback'
+rm "$repo/docs/architecture.md"
+pass 'ordinary branch prose leaves the fm/ fallback available'
+
 cat > "$repo/CONTRIBUTING.md" <<'MD'
 ## Branch naming
 Branch names must start with design/.
@@ -32,7 +41,7 @@ design/<desc> is used for design work.
 Follow the repository's branch instructions.
 MD
 out=$(finder)
-[[ "$out" == *'source=CONTRIBUTING.md:2'* && "$out" == *'quote=Branch names must start with design/.'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* && "$out" == *'source=CONTRIBUTING.md:4'* && "$out" == *'source=CONTRIBUTING.md:5'* && "$out" != *'source=CONTRIBUTING.md:3'* ]] \
+[[ "$out" == *'source=CONTRIBUTING.md:2'* && "$out" == *'quote=Branch names must start with design/.'* && "$out" == *'operator=starts_with'* && "$out" == *'pattern=design/'* && "$out" == *'source=CONTRIBUTING.md:4'* && "$out" != *'source=CONTRIBUTING.md:5'* && "$out" != *'source=CONTRIBUTING.md:3'* ]] \
   || fail "documented rule passages were missed: $out"
 for shell in /bin/bash /bin/zsh /bin/sh "$(command -v bash)"; do
   [ -x "$shell" ] || continue
@@ -48,13 +57,22 @@ out=$(finder)
   || fail "standalone branch name pattern was missed: $out"
 rm "$repo/BRANCHING.md"
 cat > "$repo/README.md" <<'MD'
+## Branch naming
+| Kind | Name |
+| --- | --- |
+| Design | design/<desc> |
+MD
+out=$(finder)
+[[ "$out" == *'source=README.md:4'* && "$out" == *'design/<desc>'* && "$out" != *'source=README.md:2'* ]] \
+  || fail "README naming table was missed: $out"
+cat > "$repo/README.md" <<'MD'
 ## Branching
 Follow existing conventions.
 ## Configuration
 config/<name> is a file path.
 MD
 out=$(finder)
-[[ "$out" == *'source=README.md:2'* && "$out" == *'quote=Follow existing conventions.'* && "$out" != *'config/<name>'* && "$out" != *'status='* ]] \
+[[ -z "$out" ]] \
   || fail "vague advice or unrelated path was mishandled: $out"
 rm "$repo/README.md"
 pass 'repository docs are quoted with line provenance across shells'

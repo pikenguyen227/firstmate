@@ -106,25 +106,29 @@ def doc_evidence(repo):
     for path in markdown_paths(repo):
         if not path.is_file():
             continue
-        workflow_level = 0
+        naming_level = 0
         for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
-            if line.strip() == "---":
-                workflow_level = 0
-                continue
+            stripped = line.strip()
             heading = re.match(r"^\s{0,3}(#{1,6})\s+(.+)", line)
             if heading:
                 level = len(heading.group(1))
-                if workflow_level and level <= workflow_level:
-                    workflow_level = 0
-                if re.search(r"\bbranch\w*\b|\bgit workflow\b", heading.group(2), re.I):
-                    workflow_level = level
+                if naming_level and level <= naming_level:
+                    naming_level = 0
+                if re.search(r"\bbranch\s+nam(?:e|es|ing)\b", heading.group(2), re.I):
+                    naming_level = level
                 continue
-            stripped = line.strip()
-            if not stripped or re.search(r"\bgit\s+checkout\s+-b\s+", line):
+            if not stripped or stripped == "---" or re.search(r"\bgit\s+checkout\s+-b\s+", line):
                 continue
-            pattern_line = re.search(r"\bbranch\w*\b.{0,50}\b(?:prefix|pattern|format|must\s+(?:start|begin)|should\s+(?:start|begin))\b", line, re.I)
-            label_line = re.search(r"\bbranch(?:es|ing| names| name| naming| rule)?\s*[:=]\s*\S+", line, re.I)
-            if not (workflow_level or pattern_line or label_line):
+            shape = re.search(r"(?<![\w/])(?:feature|fix|hotfix|release)/(?:<[^>]+>|[A-Za-z0-9][\w.-]*)(?:/(?:<[^>]+>|[A-Za-z0-9][\w.-]*))*|<type>/<scope>", line, re.I)
+            if naming_level:
+                shape = shape or re.search(r"(?<![\w/])[A-Za-z][\w-]*/<[^>]+>", line)
+            naming = re.search(
+                r"\b(?:branch\s+names?\s*(?:[:=]|(?:must|should|shall)\s+|(?:start|begin|follow|use)\b)|"
+                r"branches?\s+(?:must|should|shall)\s+be\s+named\b|"
+                r"name\s+(?:your|the)\s+branch\b|branch\s+(?:naming|prefix|pattern|format)\s*[:=])",
+                line, re.I,
+            )
+            if not (shape or naming):
                 continue
             item = {"source": f"{path.relative_to(repo)}:{number}", "quote": stripped}
             prefix = re.search(
