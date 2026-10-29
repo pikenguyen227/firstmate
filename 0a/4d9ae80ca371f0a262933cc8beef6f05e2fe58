@@ -1,0 +1,22 @@
+bin/fm-classify-lib.sh
+  s_8230f7a1a322aa::t_fbf73c7ba4e527 47-49
+  s_8230f7a1a322aa::t_af2ded378a2520 30,46,81-83
+docs/architecture.md
+  s_8230f7a1a322aa::t_af2ded378a2520 83,87,92-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a4d9ae80ca371f0a262933cc8beef6f05e2fe58",
+  "prompts": {},
+  "sessions": {
+    "s_8230f7a1a322aa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18742-7f32-7b80-9d80-2995b59fa176",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
