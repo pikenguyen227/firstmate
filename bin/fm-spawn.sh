@@ -3249,7 +3249,7 @@ if [ "$KIND" = ship ]; then
   # guarantees the worker's instructions match the branch this spawn selected.
   STANDING_SETTING=$("$FM_ROOT/bin/fm-project-mode.sh" --branch-setting "$PROJ_NAME" 2>/dev/null) || STANDING_SETTING=none
   STANDING_BRANCH=$("$FM_ROOT/bin/fm-project-mode.sh" --branch-prefix "$PROJ_NAME" 2>/dev/null) || STANDING_BRANCH=
-  if [ "$STANDING_SETTING" != none ] && [[ "$STANDING_SETTING" != typed:* ]] && [ "$BRANCH" != "$STANDING_BRANCH$ID" ]; then
+  if [[ "$STANDING_SETTING" == prefix:* ]] && [ "$BRANCH" != "$STANDING_BRANCH$ID" ]; then
     echo "notice: $ID ships branch=$BRANCH while $PROJ_NAME registers the ship-branch prefix '$STANDING_BRANCH' (branch $STANDING_BRANCH$ID) - the task's branch and PR will read as firstmate-authored; proceed only on a current explicit captain instruction or an intake judgment you can state" >&2
   fi
 fi

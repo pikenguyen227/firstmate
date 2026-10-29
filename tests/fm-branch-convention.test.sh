@@ -182,6 +182,11 @@ pass 'registered prefixes and rules survive without Python'
 
 gate() { FM_HOME="$home" PATH="$tmp/fakebin:$PATH" "$ROOT/bin/fm-branch-gate.sh" "$repo" "$@"; }
 uiux='^(feature|fix)/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
+feature_only='^feature/[^/]+/[^/]+/[A-Z]+-[0-9]+-.+$'
+both_declarations=(
+  "branch=feature/ branch-rule=\"regex:$feature_only\""
+  "branch-rule=\"regex:$feature_only\" branch=feature/"
+)
 printf '%s\n' '# Projects' '- repo [no-mistakes] - fixture' > "$home/data/projects.md"
 rm -f "$FM_TEST_RULESET_DETAIL"
 git -C "$repo" remote remove origin
@@ -190,6 +195,16 @@ out=$(gate fm/x) || fail "no-rule repo refused the fm/ default: $out"
 [ "$(gate feature/x)" = status=ok ] || fail 'no-rule explicit branch name was refused'
 printf '%s\n' '# Projects' '- repo [no-mistakes branch=feature/] - fixture' > "$home/data/projects.md"
 [ "$(gate fix/apps/adc/ADCCP-751-project-information-qa)" = status=ok ] || fail 'advisory prefix blocked an explicit branch without repository rules'
+for declarations in "${both_declarations[@]}"; do
+  printf '%s\n' '# Projects' "- repo [no-mistakes $declarations] - fixture" > "$home/data/projects.md"
+  [ "$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-prefix repo)" = feature/ ] || fail "prefix was lost for $declarations"
+  settings=$(FM_HOME="$home" "$ROOT/bin/fm-project-mode.sh" --branch-setting repo)
+  [ "$settings" = "$(printf 'prefix:feature/\ntyped:regex:%s' "$feature_only")" ] || fail "branch declarations were lost for $declarations: $settings"
+  out=$(finder)
+  [[ "$out" == *'source=registered branch prefix'* && "$out" == *'source=registered branch rule'* && "$out" == *"pattern=$feature_only"* ]] || fail "finder lost a declaration for $declarations: $out"
+  if gate fix/x >/dev/null; then fail "explicit rule allowed fix/x without repository passages for $declarations"; fi
+  [ "$(gate feature/apps/adc/ADCCP-1-x)" = status=ok ] || fail "explicit rule rejected a conforming name without repository passages for $declarations"
+done
 printf '%s\n' '# Projects' '- repo [no-mistakes] - fixture' > "$home/data/projects.md"
 mkdir -p "$repo/docs"
 cat > "$repo/docs/branching.md" <<'MD'
@@ -218,6 +233,11 @@ for declaration in 'branch=feature/' 'branch-rule="starts_with:feature/"' 'branc
   elif gate fix/apps/adc/ADCCP-751-project-information-qa --pattern "$uiux" >/dev/null; then
     fail "$declaration did not enforce its explicit branch rule"
   fi
+done
+for declarations in "${both_declarations[@]}"; do
+  printf '%s\n' '# Projects' "- repo [no-mistakes $declarations] - fixture" > "$home/data/projects.md"
+  if gate fix/x >/dev/null; then fail "explicit rule allowed fix/x with repository passages for $declarations"; fi
+  [ "$(gate feature/apps/adc/ADCCP-1-x)" = status=ok ] || fail "explicit rule rejected a conforming name with repository passages for $declarations"
 done
 printf '%s\n' '# Projects' "- repo [no-mistakes branch-rule=\"regex:$uiux\"] - fixture" > "$home/data/projects.md"
 [ "$(gate fix/apps/adc/ADCCP-1-x)" = status=ok ] || fail 'registered machine pattern was not accepted as the record'
