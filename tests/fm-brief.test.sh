@@ -427,6 +427,10 @@ test_no_mistakes_dod_green_detection() {
     "no-mistakes DOD must forbid waiting on a status poll"
   assert_grep "At each gate, drive it with one \`no-mistakes axi run\` or \`no-mistakes axi respond\` call and act on that call's return" "$brief" \
     "no-mistakes DOD must make each run or respond call drive its gate"
+  assert_grep "Immediately before starting the no-mistakes run, continue from the fresh context after Firstmate sends \`/compact\` to this worker in Claude or Codex" "$brief" \
+    "no-mistakes DOD must request a fresh context for Claude and Codex"
+  assert_grep "If your verified tool has no supported compact command, continue without compaction" "$brief" \
+    "no-mistakes DOD must allow an unsupported harness to continue"
   assert_grep "While a drive call is outstanding, do not loop on \`no-mistakes axi status\`, \`no-mistakes axi logs\`, or \`sleep\`" "$brief" \
     "no-mistakes DOD must forbid polling while a drive call is outstanding"
   assert_grep "Before the run reaches its outcome, use status reads only for a stated diagnostic reason, such as investigating a daemon problem" "$brief" \
