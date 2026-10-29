@@ -1,0 +1,21 @@
+bin/fm-classify-lib.sh
+  s_34353c200b1d00::t_e9f668655bae92 2665
+tests/fm-watch-triage.test.sh
+  s_34353c200b1d00::t_56c1fd383b497f 29,518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b0fc28aeb49206dc00dd8a6e5315f9981e8f577",
+  "prompts": {},
+  "sessions": {
+    "s_34353c200b1d00": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1875d-e147-7131-8286-089afb6b59a6",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
