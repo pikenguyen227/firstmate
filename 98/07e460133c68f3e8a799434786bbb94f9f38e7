@@ -1,0 +1,29 @@
+tests/fm-branch-convention.test.sh
+  s_5963ce82536e58::t_11de8e91458571 292-293
+  s_5963ce82536e58::t_1521cbdf1f424d 47
+  s_5963ce82536e58::t_f31bfc1b89ca2d 48-51
+  s_5963ce82536e58::t_cfbf51ea5687c2 42-46,63,105,112-115,118-119,121-131,146-147
+  s_5963ce82536e58::t_476ea01ee60ac7 116-117,120
+bin/fm-branch-convention.py
+  s_5963ce82536e58::t_e119bdbaa9af60 137-138
+  s_5963ce82536e58::t_dbfc70c68712be 110,120-122,124-125,143
+  s_5963ce82536e58::t_b2d1d688c0a057 111,116,127-128,130-132,142
+  s_5963ce82536e58::t_43070def27c139 134
+  s_5963ce82536e58::t_b8cf2884ce6382 135-136,139-141,144-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9807e460133c68f3e8a799434786bbb94f9f38e7",
+  "prompts": {},
+  "sessions": {
+    "s_5963ce82536e58": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18752-a9b7-7040-a413-6589f8e0cadf",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
