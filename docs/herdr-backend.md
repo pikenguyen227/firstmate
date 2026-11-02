@@ -607,8 +607,13 @@ A right-aligned status token on the composer row stays content for every other c
 The poll density bounds the residual possibility of an extremely fast complete turn.
 A missed native transition falls through to the composer verdict rather than reporting a false swallow.
 
-### Capture size
+### Passive reads and capture size
 
+The adapter reads recent pane output with `--format ansi` and converts it to plain text before applying the caller's line bound.
+Herdr 0.8.0 and newer can scroll an idle fullscreen agent while harvesting a text read of recent output.
+The Herdr command wrapper refuses text reads of `recent` and `recent-unwrapped` output, including their default read form, so monitoring cannot trigger that scroll.
+An alternate-screen agent yields its visible viewport; primary-screen terminals retain their recent scrollback.
+If an ANSI read fails, capture reports the failure rather than retrying with a read that could move the pane.
 `pane read --lines N` can return empty output when N is below the viewport height.
 The capture owner requests at least 200 lines from Herdr and trims locally to the caller's bound.
 This generous floor is required for the small bounded reads that remain: peek and watch tails, the rendered busy-footer read, and the shared steering-inbox pending-line read.

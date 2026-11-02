@@ -57,6 +57,25 @@ next=$(( $(cat "$COUNT_FILE" 2>/dev/null || echo 0) + 1 ))
   for a in "$@"; do printf '\x1f%s' "$a"; done
   printf '\n'
 } >> "$LOG"
+if [ -n "${FM_HERDR_SCROLL_POSITION:-}" ] && [ "${1:-}" = pane ] && [ "${2:-}" = read ]; then
+  source=recent format=text previous=
+  for arg in "$@"; do
+    case "$previous" in
+      source) source=$arg ;;
+      format) format=$arg ;;
+    esac
+    previous=
+    case "$arg" in
+      --source) previous=source ;;
+      --format) previous=format ;;
+      --ansi) format=ansi ;;
+    esac
+  done
+  if [ "$format" = text ] && [ "$source" = recent ]; then
+    position=$(cat "$FM_HERDR_SCROLL_POSITION")
+    printf '%s\n' "$((position + 1))" > "$FM_HERDR_SCROLL_POSITION"
+  fi
+fi
 if [ "${1:-}" = status ] && [ "${2:-}" = --json ] && [ "${FM_HERDR_SCRIPT_STATUS:-0}" != 1 ]; then
   printf '{"client":{"version":"0.7.1","protocol":14},"server":{"running":true}}\n'
   exit 0
@@ -3709,9 +3728,57 @@ test_capture_calls_pane_read() {
   out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
     bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_capture default:w1:p2 250' "$ROOT" )
   [ "$out" = $'line one\nline two\nline three' ] || fail "capture did not pass through pane read output, got '$out'"
-  assert_contains "$(cat "$log")" "HERDR_SESSION=default"$'\x1f''pane'$'\x1f''read'$'\x1f''w1:p2'$'\x1f''--source'$'\x1f''recent'$'\x1f''--lines'$'\x1f''250' \
+  assert_contains "$(cat "$log")" "HERDR_SESSION=default"$'\x1f''pane'$'\x1f''read'$'\x1f''w1:p2'$'\x1f''--source'$'\x1f''recent'$'\x1f''--lines'$'\x1f''250'$'\x1f''--format'$'\x1f''ansi' \
     "capture did not call pane read with the right pane id and line bound"
-  pass "fm_backend_herdr_capture: calls 'pane read <pane> --source recent --lines N' with the session set"
+  pass "fm_backend_herdr_capture: calls a passive ANSI recent read with the session set"
+}
+
+test_capture_converts_ansi_to_plain_text() {
+  local dir log resp fb out
+  dir="$TMP_ROOT/capture-ansi"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  printf '\033[1mheader\033[0m  \r\n\r\n\033[38;2;1;2;3mmiddle\033[0m\302\240\r\n\033[2mtail\033[0m \r\n\r\n' > "$resp/1.out"
+  fb=$(make_herdr_fakebin "$dir")
+  out=$( PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_capture default:w1:p2 2' "$ROOT" )
+  [ "$out" = $'middle\ntail' ] || fail "ANSI capture should return the last two plain content rows, got '$out'"
+  pass "fm_backend_herdr_capture: strips ANSI, CRLF, Unicode trailing space, and blank rows before bounding"
+}
+
+test_cli_refuses_harvesting_reads() {
+  local dir log resp fb shape status
+  dir="$TMP_ROOT/capture-guard"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  fb=$(make_herdr_fakebin "$dir")
+  for shape in 'pane read w1:p2' 'pane read w1:p2 --source recent --lines 200' \
+               'pane read w1:p2 --source=recent-unwrapped' 'agent read w1:p2 --format text'; do
+    # The words in these fixed fixtures contain no shell metacharacters.
+    read -r -a args <<< "$shape"
+    status=0
+    PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+      bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_cli default "$@"' "$ROOT" "${args[@]}" >/dev/null 2>&1 || status=$?
+    [ "$status" -eq 2 ] || fail "harvesting read was not refused: $shape (rc=$status)"
+  done
+  [ ! -s "$log" ] || fail "a harvesting read reached Herdr"
+  PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_cli default pane read w1:p2 --source recent --format ansi >/dev/null; fm_backend_herdr_cli default pane read w1:p2 --source visible >/dev/null' "$ROOT" || fail "passive read was refused"
+  [ "$(wc -l < "$log" | tr -d ' ')" -eq 2 ] || fail "passive reads did not reach Herdr"
+  pass "fm_backend_herdr_cli: refuses text recent reads but allows ANSI and visible reads"
+}
+
+test_monitoring_read_preserves_scroll_position() {
+  local dir log resp fb before after
+  dir="$TMP_ROOT/capture-scroll"; mkdir -p "$dir/responses"; log="$dir/log"; resp="$dir/responses"; : > "$log"
+  printf 'line one\nline two\n' > "$resp/1.out"
+  fb=$(make_herdr_fakebin "$dir")
+  # The fake models Herdr's wheel harvest: a text recent read moves this pane's
+  # viewport; an ANSI read leaves it at its starting scroll position.
+  printf '37\n' > "$dir/scroll-position"
+  before=$(cat "$dir/scroll-position")
+  PATH="$fb:$PATH" FM_HERDR_LOG="$log" FM_HERDR_RESPONSES="$resp" FM_HERDR_SCROLL_POSITION="$dir/scroll-position" \
+    bash -c '. "$0/bin/backends/herdr.sh"; fm_backend_herdr_capture default:w1:p2 2 >/dev/null' "$ROOT" || fail "monitoring capture failed"
+  grep -q $'\x1f''read'$'\x1f' "$log" || fail "monitoring capture did not read the pane"
+  after=$(cat "$dir/scroll-position")
+  [ "$after" = "$before" ] || fail "monitoring read moved the pane's scroll position"
+  pass "monitoring capture leaves the pane's scroll position unchanged"
 }
 
 test_capture_works_around_small_lines_bug() {
@@ -5875,6 +5942,9 @@ test_list_live_scoped_to_this_homes_workspace_only
 test_parse_target
 test_normalize_key
 test_capture_calls_pane_read
+test_capture_converts_ansi_to_plain_text
+test_cli_refuses_harvesting_reads
+test_monitoring_read_preserves_scroll_position
 test_capture_works_around_small_lines_bug
 test_capture_preserves_pane_read_failure
 test_send_key_normalizes_and_targets_pane
