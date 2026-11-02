@@ -1,0 +1,1 @@
+error: refusing a text read of recent Herdr output because it can scroll an idle fullscreen agent; use --format ansi or --source visible
