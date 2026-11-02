@@ -388,6 +388,10 @@ fm_backend_herdr_workspace_label() {
 fm_backend_herdr_cli() {  # <session> <herdr-subcommand-and-args...>
   local session=$1 rc=0 err failed_bin selected_bin client_bin=herdr
   shift
+  if fm_backend_herdr_read_harvests "$@"; then
+    echo "error: refusing a text read of recent Herdr output because it can scroll an idle fullscreen agent; use --format ansi or --source visible" >&2
+    return 2
+  fi
   if [ "${FM_BACKEND_HERDR_CLIENT_SESSION:-}" = "$session" ]; then
     client_bin=$(fm_backend_herdr_bin)
   fi
@@ -416,6 +420,31 @@ fm_backend_herdr_cli() {  # <session> <herdr-subcommand-and-args...>
   fi
   [ -z "$err" ] || printf '%s\n' "$err" >&2
   return "$rc"
+}
+
+# Herdr 0.8.0+ can harvest alternate-screen history by sending wheel input to
+# an idle agent. Refuse that read shape before it reaches the CLI. Both pane
+# and agent reads default to text/recent when these options are omitted.
+fm_backend_herdr_read_harvests() {
+  case "${1:-} ${2:-}" in
+    'pane read'|'agent read') ;;
+    *) return 1 ;;
+  esac
+  shift 2
+  local source=recent format=text
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --source) source=${2:-}; [ "$#" -lt 2 ] || shift ;;
+      --source=*) source=${1#--source=} ;;
+      --format) format=${2:-}; [ "$#" -lt 2 ] || shift ;;
+      --format=*) format=${1#--format=} ;;
+      --ansi|--raw) format=ansi ;;
+    esac
+    shift
+  done
+  [ "$format" = text ] || return 1
+  case "$source" in recent|recent-unwrapped|recent_unwrapped) return 0 ;; esac
+  return 1
 }
 
 # --- client selection --------------------------------------------------------
@@ -3141,6 +3170,8 @@ fm_backend_herdr_send_key() {  # <target> <key>
 # fm-peek.sh's/fm-watch.sh's `tmux capture-pane -p -t T -S -N`. --source recent
 # is the closest herdr analogue to tmux's scrollback-bounded capture.
 #
+# ANSI keeps this read passive on Herdr 0.8.0+; a text recent read can scroll
+# an idle fullscreen agent. The wrapper above refuses that unsafe shape.
 # Verified CLI quirk (herdr-verification-p2.md "pane read --lines bug", v0.7.1):
 # `pane read --source recent --lines N` returns COMPLETELY EMPTY output when N
 # is smaller than the pane's current viewport height (observed threshold ~23
@@ -3158,8 +3189,20 @@ fm_backend_herdr_capture() {  # <target> <lines>
   case "$lines" in ''|*[!0-9]*) lines=200 ;; esac
   fetch=$lines
   case "$fetch" in ''|*[!0-9]*) fetch=200 ;; *) [ "$fetch" -ge 200 ] || fetch=200 ;; esac
-  out=$(fm_backend_herdr_cli "$FM_BACKEND_HERDR_SESSION" pane read "$FM_BACKEND_HERDR_PANE" --source recent --lines "$fetch" 2>/dev/null) || return 1
-  printf '%s' "$out" | tail -n "$lines"
+  out=$(fm_backend_herdr_cli "$FM_BACKEND_HERDR_SESSION" pane read "$FM_BACKEND_HERDR_PANE" --source recent --lines "$fetch" --format ansi 2>/dev/null) || return 1
+  printf '%s\n' "$out" | fm_backend_herdr_ansi_to_plain | tail -n "$lines"
+}
+
+# Convert Herdr's styled CRLF rows to the plain, trimmed rows capture callers
+# expect. Trim before bounding so blank viewport cells do not consume lines.
+fm_backend_herdr_ansi_to_plain() {
+  local space trim=(-e 's/[[:space:]][[:space:]]*$//' -e ':trim')
+  for space in "${FM_COMPOSER_UNICODE_SPACES[@]}"; do
+    trim+=(-e "s/[[:space:]]*${space}\$//")
+  done
+  trim+=(-e 't trim')
+  fm_composer_strip_ansi | LC_ALL=C sed "${trim[@]}" \
+    | awk '$0 == "" { blank++; next } { while (blank > 0) { print ""; blank-- } print }'
 }
 
 # fm_backend_herdr_visible_capture: the visible viewport only. `--source
