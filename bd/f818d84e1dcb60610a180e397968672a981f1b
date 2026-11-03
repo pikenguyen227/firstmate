@@ -1,0 +1,24 @@
+bin/fm-dod-lib.sh
+  s_8374f93b7b8539::t_d742ddf2a71098 234,237
+tests/fm-brief.test.sh
+  s_8374f93b7b8539::t_d742ddf2a71098 404,411
+  s_8374f93b7b8539::t_33eb2ffbb1d35d 405
+tests/fm-task-delivery.test.sh
+  s_8374f93b7b8539::t_d742ddf2a71098 678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bdf818d84e1dcb60610a180e397968672a981f1b",
+  "prompts": {},
+  "sessions": {
+    "s_8374f93b7b8539": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bf307f7-c1b1-4a98-b645-354a2c34e5b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
