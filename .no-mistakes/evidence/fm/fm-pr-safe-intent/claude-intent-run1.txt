@@ -1,0 +1,1 @@
+<intent>Make the background worker retry failed jobs up to 3 times, and show a brief summary of retries in the job list page (the job list currently shows a failed job with a red "failed" badge). Keep the `## Captain's intent` heading parser untouched. Log each retry as "retry 2/3 for job <id>". The retry delay must be exponential: 1s, 2s, 4s.</intent>
