@@ -392,6 +392,24 @@ test_no_mistakes_dod_wording() {
     "no-mistakes DOD must require a self-sufficient --intent string"
   assert_grep "write the substance of the referenced items into \`--intent\`" "$brief" \
     "no-mistakes DOD must tell the worker to resolve report, decision, and PR references into substance"
+  # no-mistakes prints --intent into the pull request, so the DOD makes the
+  # passed string PR-safe while the brief keeps the raw record, and names the
+  # leak-marker check the worker runs before starting the pipeline.
+  assert_grep "The \`--intent\` string is public: no-mistakes prints it into the pull request description" "$brief" \
+    "no-mistakes DOD must state that --intent is printed into the PR"
+  assert_grep "Keep the substance and the captain's own phrasing of each requirement, plus any literal example the captain supplied" "$brief" \
+    "no-mistakes DOD must keep the captain's requirements and literal examples"
+  assert_grep "Drop chat scaffolding (round labels, speaker labels, approval-only lines" "$brief" \
+    "no-mistakes DOD must drop chat scaffolding from --intent"
+  assert_grep "fleet terms (captain, firstmate, second mate or 2ndmate, worker, brief, crew), task ids, and Firstmate's internal plan or steer notes" "$brief" \
+    "no-mistakes DOD must drop fleet terms, task ids, and internal plans from --intent"
+  assert_grep "The brief keeps its raw record of the captain's words unchanged" "$brief" \
+    "no-mistakes DOD must leave the brief's raw captain record unchanged"
+  assert_grep "Before starting the no-mistakes run, check that string for the obvious leak markers" "$brief" \
+    "no-mistakes DOD must require the leak-marker check before the run"
+  # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
+  assert_grep '`Round <n>` labels, `[Image #<n>]`, and `/Users/` or home `data/` paths' "$brief" \
+    "no-mistakes DOD leak-marker check must name round labels, image placeholders, and local paths"
 
   # The --yes ban is a fleet-wide prohibition, not a preference, and it must not
   # claim an enforcement the tool does not provide: this is instruction only.

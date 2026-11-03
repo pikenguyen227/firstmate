@@ -77,7 +77,12 @@
 # That selector skips fenced blocks and indented examples like the heading
 # reader, so a quoted `Captain:` sample is never authorized intent.
 # Previously stored speaker labels remain readable for compatibility only.
-# Never scrub literal examples or other content the captain actually supplied.
+# The brief keeps that raw record; never scrub literal examples or other content
+# the captain actually supplied from it. The string passed is public, because
+# no-mistakes prints it into the pull request description, so
+# fm_nm_intent_public_rule (emitted by both the Definition of done and the
+# launch overlay) has the worker build a PR-safe requirement statement from
+# those words and check it for leak markers before starting the run.
 # The string passed must be self-sufficient - it plus the codebase reconstructs
 # roughly the same specification - so a report, decision, or PR the intent
 # refers to is written into it as substance, never left as a pointer.
@@ -219,15 +224,31 @@ fm_brief_marked_captain_words() {  # <task-body>
   '
 }
 
+# The PR-safety half of the --intent contract, written once and emitted by both
+# fm_nm_driving_block and fm_brief_intent_overlay, so a migrated brief whose
+# stored Definition of done predates the rule still receives it at launch.
+fm_nm_intent_public_rule() {
+  cat <<'EOF'
+The `--intent` string is public: no-mistakes prints it into the pull request description, so pass a self-contained requirement statement built from those captain words, not a transcript of the conversation.
+Keep the substance and the captain's own phrasing of each requirement, plus any literal example the captain supplied that matters to the requirement.
+Drop chat scaffolding (round labels, speaker labels, approval-only lines such as "look good" or "create PR", and image placeholders such as `[Image #1]`, whose content you describe in words instead), local or home paths, fleet terms (captain, firstmate, second mate or 2ndmate, worker, brief, crew), task ids, and Firstmate's internal plan or steer notes.
+The brief keeps its raw record of the captain's words unchanged; only the string you pass to `--intent` is rewritten.
+Before starting the no-mistakes run, check that string for the obvious leak markers - `captain`, `firstmate`, `2ndmate` or `second mate`, `Round <n>` labels, `[Image #<n>]`, and `/Users/` or home `data/` paths - and rewrite it until none remain.
+EOF
+}
+
 fm_brief_intent_overlay() {  # <captain-intent>
   cat <<'EOF'
 
 # Current no-mistakes intent contract
 This section supersedes every earlier brief instruction about constructing `--intent`, but not later clarifications actually supplied by the captain.
-Use everything under `## Captain intent authorized for --intent` through the end of this brief, including any nested subheadings but excluding that heading, plus any later words the captain actually supplied as `--intent`; never include Firstmate specification or other mixed Task content.
-Preserve those words without adding speaker labels or direct address.
+Build `--intent` from everything under `## Captain intent authorized for --intent` through the end of this brief, including any nested subheadings but excluding that heading, plus any later words the captain actually supplied; never include Firstmate specification or other mixed Task content.
+Do not add speaker labels or direct address to those words.
 Firstmate-authored constraints, acceptance criteria, implementation details, decisions, and tradeoffs are specification, not captain intent.
 The Definition of done's rule that `--intent` must be self-sufficient still governs the string you pass: resolve any report, decision, or PR the intent below refers to into its substance rather than passing the pointer.
+EOF
+  fm_nm_intent_public_rule
+  cat <<'EOF'
 
 ## Captain intent authorized for --intent
 EOF
@@ -296,13 +317,16 @@ If your verified tool has no supported compact command, continue without compact
 You drive no-mistakes by responding to its gates, not by implementing fixes.
 Follow the guidance no-mistakes itself provides for the mechanics: it loads when you invoke /no-mistakes, and \`no-mistakes axi run --help\` plus the \`help\` lines in each \`axi\` response are authoritative and version-matched to the installed binary.
 When starting no-mistakes, pass \`--intent\` as only this brief's \`## Captain's intent\` subsection body, not its heading, plus any later words the captain actually said.
-Preserve the actual words without adding speaker labels or direct address; the subsection heading supplies provenance outside the pipeline input.
+Do not add speaker labels or direct address to those words; the subsection heading supplies provenance outside the pipeline input.
 For a legacy brief with no such subsection, include only words on lines marked \`[captain] \`, excluding that metadata prefix; never copy its mixed \`# Task\` wholesale.
 If it has no provenance-marked captain words, stop and ask firstmate instead of starting no-mistakes.
 Do not include \`## Firstmate spec\`, later Firstmate build constraints, or your own decisions and tradeoffs.
 The \`--intent\` string you pass must be self-sufficient: that string plus the codebase must let a reader reconstruct roughly the same specification, without depending on a separate report, a PR, or context that lives only in this conversation.
 When the captain's intent refers to a report, decision, or PR ("do items 1, 2, 3, and 7 of the report"), write the substance of the referenced items into \`--intent\` in the captain's terms, not only the pointer; that substance is the captain's ask by reference, while Firstmate's build instructions and your own decisions still stay out.
 This replaces the no-mistakes skill's advice to enrich \`--intent\` with decisions and tradeoffs; that advice does not apply to Firstmate-dispatched work.
+EOF
+  fm_nm_intent_public_rule
+  cat <<EOF
 Do not hand-edit, commit, or fix findings yourself while a run is active - the pipeline applies every fix.
 
 At each gate, drive it with one \`no-mistakes axi run\` or \`no-mistakes axi respond\` call and act on that call's return.
