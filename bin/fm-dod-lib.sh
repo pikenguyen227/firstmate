@@ -231,10 +231,10 @@ fm_nm_intent_public_rule() {
   cat <<'EOF'
 The `--intent` string is public: no-mistakes prints it into the pull request description, so pass a self-contained requirement statement built from those captain words, not a transcript of the conversation.
 Keep the substance and the captain's own phrasing of each requirement, plus any literal example the captain supplied that matters to the requirement.
-Drop chat scaffolding (round labels, speaker labels, approval-only lines such as "look good" or "create PR", and image placeholders such as `[Image #1]`, whose content you describe in words instead), local or home paths, fleet terms (captain, firstmate, second mate or 2ndmate, worker, brief, crew), task ids, and Firstmate's internal plan or steer notes.
+Drop chat scaffolding (round labels, speaker labels, approval-only lines such as "look good" or "create PR", and image placeholders such as `[Image #1]`, whose content you describe in words instead), local or home paths, fleet terms (captain, firstmate, second mate or 2ndmate, plus worker, brief, or crew only where they name the agent team's own roles, never ordinary requirement wording such as "background worker" or "brief summary"), task ids, and Firstmate's internal plan or steer notes.
 A backtick-quoted code span or quoted literal example the requirement is about stays verbatim, even when it holds one of those words, such as a `## Captain's intent` heading or a quoted `[captain] ` line.
 The brief keeps its raw record of the captain's words unchanged; only the string you pass to `--intent` is rewritten.
-Before starting the no-mistakes run, check that string's prose outside those code spans and quoted literal examples for the obvious leak markers - `captain`, `firstmate`, `2ndmate` or `second mate`, `Round <n>` labels, `[Image #<n>]`, and home or absolute paths such as `/Users/`, `~/`, or a home `data/<task-id>/` path, though a repository path such as `src/data/` is not one - and rewrite it until none remain.
+Before starting the no-mistakes run, check that string's prose outside backtick-quoted code spans and quoted literal examples for the obvious leak markers - `captain`, `firstmate`, `2ndmate` or `second mate`, `Round <n>` labels, `[Image #<n>]`, and home or absolute paths such as `/Users/`, `~/`, or a home `data/<task-id>/` path, though a repository path such as `src/data/` is not one - and rewrite it until none remain.
 EOF
 }
 

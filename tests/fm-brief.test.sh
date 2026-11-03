@@ -401,14 +401,14 @@ test_no_mistakes_dod_wording() {
     "no-mistakes DOD must keep the captain's requirements and literal examples"
   assert_grep "Drop chat scaffolding (round labels, speaker labels, approval-only lines" "$brief" \
     "no-mistakes DOD must drop chat scaffolding from --intent"
-  assert_grep "fleet terms (captain, firstmate, second mate or 2ndmate, worker, brief, crew), task ids, and Firstmate's internal plan or steer notes" "$brief" \
-    "no-mistakes DOD must drop fleet terms, task ids, and internal plans from --intent"
+  assert_grep "fleet terms (captain, firstmate, second mate or 2ndmate, plus worker, brief, or crew only where they name the agent team's own roles, never ordinary requirement wording such as \"background worker\" or \"brief summary\"), task ids, and Firstmate's internal plan or steer notes" "$brief" \
+    "no-mistakes DOD must drop fleet role terms, but not ordinary requirement wording, task ids, and internal plans from --intent"
   assert_grep "The brief keeps its raw record of the captain's words unchanged" "$brief" \
     "no-mistakes DOD must leave the brief's raw captain record unchanged"
   # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
   assert_grep 'A backtick-quoted code span or quoted literal example the requirement is about stays verbatim, even when it holds one of those words, such as a `## Captain'"'"'s intent` heading or a quoted `[captain] ` line' "$brief" \
     "no-mistakes DOD must keep literal examples that hold fleet words verbatim"
-  assert_grep "Before starting the no-mistakes run, check that string's prose outside those code spans and quoted literal examples for the obvious leak markers" "$brief" \
+  assert_grep "Before starting the no-mistakes run, check that string's prose outside backtick-quoted code spans and quoted literal examples for the obvious leak markers" "$brief" \
     "no-mistakes DOD must require the leak-marker check on prose outside literal examples before the run"
   # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
   assert_grep '`Round <n>` labels, `[Image #<n>]`, and home or absolute paths such as `/Users/`, `~/`, or a home `data/<task-id>/` path, though a repository path such as `src/data/` is not one' "$brief" \
