@@ -675,7 +675,7 @@ EOF
   assert_grep "The \`--intent\` string is public: no-mistakes prints it into the pull request description" \
     "$home/data/$id/launch-brief.md" \
     "migrated launch contract's overlay did not make its stale DoD's --intent PR-safe"
-  assert_grep "Before starting the no-mistakes run, check that string for the obvious leak markers" \
+  assert_grep "Before starting the no-mistakes run, check that string's prose outside those code spans and quoted literal examples for the obvious leak markers" \
     "$home/data/$id/launch-brief.md" \
     "migrated launch contract's overlay dropped the leak-marker check"
 

@@ -405,11 +405,14 @@ test_no_mistakes_dod_wording() {
     "no-mistakes DOD must drop fleet terms, task ids, and internal plans from --intent"
   assert_grep "The brief keeps its raw record of the captain's words unchanged" "$brief" \
     "no-mistakes DOD must leave the brief's raw captain record unchanged"
-  assert_grep "Before starting the no-mistakes run, check that string for the obvious leak markers" "$brief" \
-    "no-mistakes DOD must require the leak-marker check before the run"
   # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
-  assert_grep '`Round <n>` labels, `[Image #<n>]`, and `/Users/` or home `data/` paths' "$brief" \
-    "no-mistakes DOD leak-marker check must name round labels, image placeholders, and local paths"
+  assert_grep 'A backtick-quoted code span or quoted literal example the requirement is about stays verbatim, even when it holds one of those words, such as a `## Captain'"'"'s intent` heading or a quoted `[captain] ` line' "$brief" \
+    "no-mistakes DOD must keep literal examples that hold fleet words verbatim"
+  assert_grep "Before starting the no-mistakes run, check that string's prose outside those code spans and quoted literal examples for the obvious leak markers" "$brief" \
+    "no-mistakes DOD must require the leak-marker check on prose outside literal examples before the run"
+  # shellcheck disable=SC2016  # single quotes are deliberate: the backticks must stay literal
+  assert_grep '`Round <n>` labels, `[Image #<n>]`, and home or absolute paths such as `/Users/`, `~/`, or a home `data/<task-id>/` path, though a repository path such as `src/data/` is not one' "$brief" \
+    "no-mistakes DOD leak-marker check must name round labels, image placeholders, and only home or absolute paths"
 
   # The --yes ban is a fleet-wide prohibition, not a preference, and it must not
   # claim an enforcement the tool does not provide: this is instruction only.
