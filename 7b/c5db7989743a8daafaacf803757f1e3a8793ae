@@ -1,0 +1,19 @@
+bin/fm-watch.sh
+  s_89ae06282f963c::t_3b0758407d6b98 1113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7bc5db7989743a8daafaacf803757f1e3a8793ae",
+  "prompts": {},
+  "sessions": {
+    "s_89ae06282f963c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24afe35c-7956-409a-8d27-6839b90a534b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
