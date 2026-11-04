@@ -123,7 +123,7 @@
 #                          FM_SECONDMATE_PARKED_GATE_SECS; one wake per episode,
 #                          re-alerting only after a further interval, except
 #                          once only when the mate's log holds an open
-#                          needs-decision for the task. Running
+#                          nm-<run>-<step> needs-decision for the gate's run. Running
 #                          validation, paused or captain-held work, and a gate
 #                          the mate already answered read as other states and
 #                          never alert. Read-only toward the mate's home.
@@ -1078,13 +1078,13 @@ EOF
 # FM_SECONDMATE_PARKED_GATE_POLL_SECS; no read starts once the tick has spent
 # FM_SECONDMATE_PARKED_GATE_BUDGET_SECS, each read is bounded, and the workers
 # left unread keep their episodes and are read first on the next scan. Per worker
-# the marker "<first-seen> <gate> <last-alert|-> <escalated-keys|->" lives in the parent's state: a
+# the marker "<first-seen> <gate> <last-alert|-> <escalated-run|->" lives in the parent's state: a
 # changed gate starts a new episode, the alert fires when the episode is
 # FM_SECONDMATE_PARKED_GATE_SECS old, and a still-parked gate re-alerts only after
 # a further interval, unless the mate's own status log holds an open
-# needs-decision for the task (the gate is already escalated to the captain):
-# that alerts once and stays quiet until the gate or the set of open keys
-# changes. A verified captain hold reads as paused and clears the episode.
+# needs-decision keyed nm-<run>-<step> for the parked gate's own run (the gate is
+# already escalated): that alerts once and stays quiet until the gate or the
+# escalated run changes; an open decision under any other key does not count. A verified captain hold reads as paused and clears the episode.
 # Nothing in the mate's home is written.
 secondmate_parked_gate_tick() {
   local tick_marker="$STATE/.secondmate-parked-gate-tick" cursor_file="$STATE/.secondmate-parked-gate-cursor"
@@ -1093,7 +1093,7 @@ secondmate_parked_gate_tick() {
   local now=$(( $(date +%s) )) threshold=$SECONDMATE_PARKED_GATE_SECS started=$SECONDS
   local meta task kind remote_host home cmeta ctask ckind line gate marker key cursor entry
   local first_seen seen_gate last_alert idle notify_key reason queued tmp first_reason=''
-  local keep_markers='' n i start_at=0 scanned=0 log_verb esc seen_esc okey overb onote odecs
+  local keep_markers='' n i start_at=0 scanned=0 log_verb esc seen_esc run
   local -a entries=()
   for meta in "$STATE"/*.meta; do
     [ -e "$meta" ] || continue
@@ -1158,16 +1158,13 @@ secondmate_parked_gate_tick() {
         gate=$(printf '%s' "$gate" | tr -c 'A-Za-z0-9._:()+ -' '_' | cut -c1-80)
         case "$line" in *'ask-user: authority decision'*) gate="$gate, ask-user decision" ;; esac
         [ -n "$gate" ] || gate=gate
-        # The mate's own open needs-decision keys say the gate is already
-        # escalated to the captain; a changed set starts a fresh episode.
+        # The mate's own open nm-<run>-<step> needs-decision for this gate's run
+        # says the gate is already escalated; a changed run starts a fresh episode.
         esc=''
-        odecs=$(status_open_decisions "$home/state/$ctask.status" "$ckind" 2>/dev/null) || odecs=''
-        while IFS=$(printf '\t') read -r okey overb onote; do
-          [ "$overb" = needs-decision ] || continue
-          esc="$esc,$(printf '%s' "$okey" | tr -c 'A-Za-z0-9._:-' '_')"
-        done <<PARKED_GATE_DECISIONS
-$odecs
-PARKED_GATE_DECISIONS
+        case "$line" in *' · run: '?*) run=${line#*' · run: '}; run=${run%% · *} ;; *) run='' ;; esac
+        if [ -n "$run" ] && status_has_open_needs_decision "$home/state/$ctask.status" "$run"; then
+          esc=$(printf '%s' "$run" | tr -c 'A-Za-z0-9._:-' '_')
+        fi
         first_seen=''; seen_gate=''; last_alert=''; seen_esc=''
         if [ -f "$marker" ] && [ ! -L "$marker" ]; then
           IFS=$(printf '\t') read -r first_seen seen_gate last_alert seen_esc < "$marker" || true

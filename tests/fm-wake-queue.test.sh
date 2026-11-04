@@ -415,7 +415,7 @@ else
 fi
 SH
   chmod +x "$fakebin/date"
-  printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision\n' > "$dir/crew/job"
+  printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision · run: r1\n' > "$dir/crew/job"
 
   # Unescalated gate keeps re-alerting every interval.
   parked_gate_watch_leg "$dir" u-first 2000 0
@@ -424,6 +424,19 @@ SH
   parked_gate_watch_leg "$dir" u-realert 2200
   grep -F 'mate=mate task=job gate=' "$dir/watch-u-realert.out" >/dev/null || fail "an unescalated parked gate stopped re-alerting"
   rm -f "$state/.secondmate-parked-gate-mate--job"
+
+  # Open decisions that are not this gate's escalation never quiet it: an
+  # unrelated key, another run's gate key, and a gate key the worker's own
+  # failed: line closed (a later non-ship meta must not change that fold).
+  printf 'window=x:z\nkind=reviewer\nharness=claude\nbackend=tmux\n' > "$sub/state/zz.meta"
+  printf 'needs-decision [at=1500] [key=nm-r1-ci]: ask-user findings=old\nfailed [at=1600]: run died\nneeds-decision [at=1700] [key=scope-q]: which scope\nneeds-decision [at=1800] [key=nm-r0-ci]: earlier run\n' > "$sub/state/job.status"
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" x-first 2300 0
+  parked_gate_watch_leg "$dir" x-alert 2400
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" x-realert 2500
+  grep -F 'mate=mate task=job gate=' "$dir/watch-x-realert.out" >/dev/null || fail "an open decision for something else quieted an unescalated parked gate"
+  rm -f "$state/.secondmate-parked-gate-mate--job" "$sub/state/zz.meta"
 
   # The mate's log holds an open needs-decision: one alert, then silence across intervals.
   printf 'needs-decision [at=1990] [key=nm-r1-ci]: ask-user findings=a\n' > "$sub/state/job.status"
@@ -439,6 +452,7 @@ SH
 
   # A new escalation on the same task starts a fresh episode and alerts once more.
   printf 'resolved [at=3550] [key=nm-r1-ci]: answered\nneeds-decision [at=3560] [key=nm-r2-ci]: ask-user findings=b\n' >> "$sub/state/job.status"
+  printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision · run: r2\n' > "$dir/crew/job"
   parked_gate_watch_leg "$dir" n-first 3600 0
   [ ! -s "$state/.wake-queue" ] || fail "a new escalation alerted before its own threshold"
   parked_gate_watch_leg "$dir" n-alert 3700
@@ -451,7 +465,7 @@ SH
   printf 'state: working · source: run-step · validating (fixing)\n' > "$dir/crew/job"
   parked_gate_watch_leg "$dir" answered 4000 0
   [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "an answered escalated gate kept its episode"
-  pass "an escalated parked gate alerts once, a new escalation starts fresh, and unescalated gates still re-alert"
+  pass "a parked gate escalated under its own run key alerts once, a new escalation starts fresh, and unescalated or otherwise-keyed gates still re-alert"
 }
 
 test_secondmate_parked_gate_budget_carries_over_and_skips_done() {
