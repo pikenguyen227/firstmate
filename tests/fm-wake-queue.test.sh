@@ -388,6 +388,72 @@ SH
   pass "a worker parked on an undecided gate in a secondmate home alerts once per episode and only past the threshold"
 }
 
+test_secondmate_parked_gate_escalated_alerts_once() {
+  local dir state sub fakebin real_date now
+  dir=$(make_case secondmate-parked-gate-escalated)
+  state="$dir/state"
+  sub="$dir/secondmate"
+  mkdir -p "$sub/state" "$sub/data" "$dir/root" "$dir/crew"
+  cp -R "$ROOT/bin" "$dir/root/bin"
+  cat > "$dir/root/bin/fm-crew-state.sh" <<'SH'
+#!/usr/bin/env bash
+cat "${FM_FAKE_CREW_DIR:?}/$1" 2>/dev/null || echo 'state: unknown · source: none · no record'
+SH
+  chmod +x "$dir/root/bin/fm-crew-state.sh"
+  printf 'mate\n' > "$sub/.fm-secondmate-home"
+  printf '# Firstmate\n' > "$sub/AGENTS.md"
+  printf 'window=firstmate:fm-mate\nkind=secondmate\nharness=claude\nbackend=tmux\nhome=%s\n' "$sub" > "$state/mate.meta"
+  printf 'window=x:y\nkind=ship\nharness=claude\nbackend=tmux\n' > "$sub/state/job.meta"
+  fakebin="$dir/fakebin"
+  real_date=$(command -v date)
+  cat > "$fakebin/date" <<SH
+#!/usr/bin/env bash
+if [ "\${1:-}" = +%s ]; then
+  cat "\${FM_FAKE_NOW_FILE:?}"
+else
+  exec "$real_date" "\$@"
+fi
+SH
+  chmod +x "$fakebin/date"
+  printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision\n' > "$dir/crew/job"
+
+  # Unescalated gate keeps re-alerting every interval.
+  parked_gate_watch_leg "$dir" u-first 2000 0
+  parked_gate_watch_leg "$dir" u-alert 2100
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" u-realert 2200
+  grep -F 'mate=mate task=job gate=' "$dir/watch-u-realert.out" >/dev/null || fail "an unescalated parked gate stopped re-alerting"
+  rm -f "$state/.secondmate-parked-gate-mate--job"
+
+  # The mate's log holds an open needs-decision: one alert, then silence across intervals.
+  printf 'needs-decision [at=1990] [key=nm-r1-ci]: ask-user findings=a\n' > "$sub/state/job.status"
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" e-first 3000 0
+  parked_gate_watch_leg "$dir" e-alert 3100
+  grep -F 'mate=mate task=job gate=' "$dir/watch-e-alert.out" >/dev/null || fail "an escalated parked gate never alerted once"
+  : > "$state/.wake-queue"
+  for now in 3200 3300 3400 3500; do
+    parked_gate_watch_leg "$dir" "e-quiet-$now" "$now" 0
+    [ ! -s "$state/.wake-queue" ] || fail "an escalated parked gate re-alerted at scan $now"
+  done
+
+  # A new escalation on the same task starts a fresh episode and alerts once more.
+  printf 'resolved [at=3550] [key=nm-r1-ci]: answered\nneeds-decision [at=3560] [key=nm-r2-ci]: ask-user findings=b\n' >> "$sub/state/job.status"
+  parked_gate_watch_leg "$dir" n-first 3600 0
+  [ ! -s "$state/.wake-queue" ] || fail "a new escalation alerted before its own threshold"
+  parked_gate_watch_leg "$dir" n-alert 3700
+  grep -F 'mate=mate task=job gate=' "$dir/watch-n-alert.out" >/dev/null || fail "a new escalation did not start a fresh episode"
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" n-quiet 3800 0
+  [ ! -s "$state/.wake-queue" ] || fail "the new escalation re-alerted"
+
+  # Answering clears the episode.
+  printf 'state: working · source: run-step · validating (fixing)\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" answered 4000 0
+  [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "an answered escalated gate kept its episode"
+  pass "an escalated parked gate alerts once, a new escalation starts fresh, and unescalated gates still re-alert"
+}
+
 test_secondmate_parked_gate_budget_carries_over_and_skips_done() {
   local dir state sub reads
   dir=$(make_case secondmate-parked-gate-budget)
@@ -3603,4 +3669,5 @@ test_secondmate_liveness_tick_unqueued_outcome_is_an_error_not_a_wake
 test_secondmate_liveness_tick_skips_mate_whose_lock_is_held
 test_secondmate_liveness_tick_preserves_unreachable_remote
 test_secondmate_parked_gate_alerts_once_per_episode
+test_secondmate_parked_gate_escalated_alerts_once
 test_secondmate_parked_gate_budget_carries_over_and_skips_done
