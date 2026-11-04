@@ -121,8 +121,8 @@
 #                          validation gate (bin/fm-crew-state.sh, run with that
 #                          home, reports state: parked) for
 #                          FM_SECONDMATE_PARKED_GATE_SECS; one wake per episode,
-#                          re-alerting only after a further interval, except
-#                          once only when the mate's log holds an open
+#                          re-alerting only after a further interval, and never
+#                          re-alerting while the mate's log holds an open
 #                          nm-<run>-<step> needs-decision for that gate. Running
 #                          validation, paused or captain-held work, and a gate
 #                          the mate already answered read as other states and
