@@ -303,7 +303,7 @@ parked_gate_watch_leg() {  # <dir> <leg> <now> [wait-for-wake]
 }
 
 test_secondmate_parked_gate_alerts_once_per_episode() {
-  local dir state sub fakebin real_date count before
+  local dir state sub fakebin real_date count before model now
   dir=$(make_case secondmate-parked-gate)
   state="$dir/state"
   sub="$dir/secondmate"
@@ -329,13 +329,23 @@ else
 fi
 SH
   chmod +x "$fakebin/date"
+  for model in claude codex gemini cursor-agent kimi agy; do
+    cat > "$fakebin/$model" <<SH
+#!/usr/bin/env bash
+printf '%s\\n' "\$0 \$*" >> "$dir/model-calls"
+exit 1
+SH
+    chmod +x "$fakebin/$model"
+  done
   before=$(cksum "$sub/state/job.meta")
 
-  # Healthy running validation never starts an episode.
+  # Healthy running validation never starts an episode, however many scans pass.
   printf 'state: working · source: run-step · validating (running)\n' > "$dir/crew/job"
-  parked_gate_watch_leg "$dir" running 1000 0
-  [ ! -s "$state/.wake-queue" ] || fail "running validation alerted"
-  [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "running validation left an episode marker"
+  for now in 1000 1500 1900; do
+    parked_gate_watch_leg "$dir" "running-$now" "$now" 0
+    [ ! -s "$state/.wake-queue" ] || fail "running validation alerted at scan $now"
+    [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "running validation left an episode marker at scan $now"
+  done
 
   # First sight of a parked gate starts the episode without alerting.
   printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision\n' > "$dir/crew/job"
@@ -372,6 +382,7 @@ SH
   parked_gate_watch_leg "$dir" paused 9000 0
   [ ! -s "$state/.wake-queue" ] || fail "a paused or captain-held worker alerted"
 
+  [ ! -e "$dir/model-calls" ] || fail "the parked-gate scan invoked a model or agent CLI: $(cat "$dir/model-calls")"
   [ "$before" = "$(cksum "$sub/state/job.meta")" ] || fail "the check wrote to the secondmate home"
   [ "$(find "$sub/state" -mindepth 1 | wc -l | tr -d ' ')" = 1 ] || fail "the check left files in the secondmate home"
   pass "a worker parked on an undecided gate in a secondmate home alerts once per episode and only past the threshold"

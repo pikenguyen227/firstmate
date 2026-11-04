@@ -1141,7 +1141,7 @@ secondmate_parked_gate_tick() {
     scanned=$((scanned + 1))
     cursor=$key
     line=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_CREW_STATE_NO_FORGE=1 \
-      fm_run_timed 5 "$SCRIPT_DIR/fm-crew-state.sh" "$ctask" 2>/dev/null </dev/null) || line=''
+      fm_run_timed 10 "$SCRIPT_DIR/fm-crew-state.sh" "$ctask" 2>/dev/null </dev/null) || line=''
     case "$line" in
       'state: parked'*)
         keep_markers="$keep_markers $marker"
