@@ -1,0 +1,20 @@
+# Live lab run: real bin/fm-watch.sh + real bin/fm-crew-state.sh, disposable FM_HOME (fm-lab-home.sh create)
+# Note: tmux is not installed on this host; a 10-line tmux stand-in on PATH answers 'pane exists, agent=claude, idle prompt'.
+
+## Mate worker state as read by the real fm-crew-state.sh (mate home)
+job: (status log tail) needs-decision: parked at ci: 2 finding(s) · ask-user: authority decision
+healthy: (status log tail) working: validating PR
+fin: (status log tail) done: shipped and merged
+
+## Scenario: parked > threshold (8s) -> one wake
+watcher stdout (wake reason delivered to primary):
+check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=8s
+
+## Fresh episode, threshold 20s
+check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=21s
+wake queue (durable):
+1793763998	3	check	secondmate-parked-gate-mate-job-1793763975-1	check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=21s
+
+## Same episode, threshold 60s, 15s supervision with 4 scans: stdout=[], parked rows still 1
+## Answered gate (status log 'working:' + busy hook) -> episode marker removed, no new parked row
+## healthy (busy, validating) and fin (done:) workers: never got a marker, never alerted
