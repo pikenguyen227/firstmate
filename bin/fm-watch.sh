@@ -1110,7 +1110,7 @@ secondmate_parked_gate_tick() {
       ctask=${ctask%.meta}
       case "$ctask" in ''|*[!A-Za-z0-9._-]*) continue ;; esac
       status_line_verb "$(status_current_line "$home/state/$ctask.status" "${ckind:-ship}")" log_verb
-      [ "$log_verb" != done ] || continue
+      [ "$log_verb" != "done" ] || continue
       entries+=("$task"$'\t'"$home"$'\t'"$ctask")
     done
   done
