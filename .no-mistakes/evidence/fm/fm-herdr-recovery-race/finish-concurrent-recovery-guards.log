@@ -1,0 +1,11 @@
+== status 0 (winner)
+ACCEPTED
+== documented lock refusal, pane unchanged -> retry
+ACCEPTED
+retry-called
+== unrelated error must fail
+FAIL: concurrent recovery id failed unexpectedly: error: something else broke
+== lock refusal but pane changed must fail
+FAIL: concurrent recovery id refused under session-lock contention but still changed its recorded pane
+== lock refusal, retry also fails must fail
+FAIL: concurrent recovery id retry failed after session-lock contention cleared: 
