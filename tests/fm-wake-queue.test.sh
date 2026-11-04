@@ -270,6 +270,112 @@ foreign_stall_watch_leg() {  # <dir> <leg> <now> [observation]
   fi
 }
 
+# One watcher leg of the parked-gate case at fake time <now>. The watcher runs
+# from a copy of bin/ whose fm-crew-state.sh is a stub printing the line staged
+# in <dir>/crew/<task>, so the check is driven by the reader's documented
+# `state:` vocabulary instead of a live validation run.
+parked_gate_watch_leg() {  # <dir> <leg> <now> [wait-for-wake]
+  local dir=$1 leg=$2 now=$3 wait=${4-1} pid i=0
+  printf '%s\n' "$now" > "$dir/now"
+  PATH="$dir/fakebin:$PATH" FM_FAKE_NOW_FILE="$dir/now" FM_HOME="$dir" FM_ROOT_OVERRIDE="$dir/root" \
+    FM_STATE_OVERRIDE="$dir/state" FM_FAKE_CREW_DIR="$dir/crew" FM_FAKE_TMUX_WINDOW='firstmate:fm-mate' \
+    FM_SECONDMATE_PARKED_GATE_SECS=100 FM_SECONDMATE_PARKED_GATE_POLL_SECS=1 \
+    FM_SECONDMATE_WAKE_STALL_SECS=99999999 FM_SECONDMATE_LIVENESS_SECS=99999999 \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    "$dir/root/bin/fm-watch.sh" > "$dir/watch-$leg.out" 2> "$dir/watch-$leg.err" &
+  pid=$!
+  if [ "$wait" = 1 ]; then
+    wait_for_exit "$pid" 600 || { kill -KILL "$pid" 2>/dev/null || true; fail "parked-gate leg $leg never woke"; }
+  else
+    # No wake is expected: let the tick run (its tick marker is the proof), then stop the fixture.
+    rm -f "$dir/state/.secondmate-parked-gate-tick"
+    while [ "$i" -lt 100 ] && is_live_non_zombie "$pid" && [ ! -e "$dir/state/.secondmate-parked-gate-tick" ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    # The tick stamps its cadence marker first; give it time to finish its reads and writes.
+    sleep 1
+    ! is_live_non_zombie "$pid" || kill -KILL "$pid" 2>/dev/null || true
+    wait_for_exit "$pid" 600 || true
+    rm -rf -- "$dir/state/.watch.lock" "$dir/state/.watcher-down"
+  fi
+}
+
+test_secondmate_parked_gate_alerts_once_per_episode() {
+  local dir state sub fakebin real_date count before
+  dir=$(make_case secondmate-parked-gate)
+  state="$dir/state"
+  sub="$dir/secondmate"
+  mkdir -p "$sub/state" "$sub/data" "$dir/root" "$dir/crew"
+  cp -R "$ROOT/bin" "$dir/root/bin"
+  cat > "$dir/root/bin/fm-crew-state.sh" <<'SH'
+#!/usr/bin/env bash
+cat "${FM_FAKE_CREW_DIR:?}/$1" 2>/dev/null || echo 'state: unknown · source: none · no record'
+SH
+  chmod +x "$dir/root/bin/fm-crew-state.sh"
+  printf 'mate\n' > "$sub/.fm-secondmate-home"
+  printf '# Firstmate\n' > "$sub/AGENTS.md"
+  printf 'window=firstmate:fm-mate\nkind=secondmate\nharness=claude\nbackend=tmux\nhome=%s\n' "$sub" > "$state/mate.meta"
+  printf 'window=x:y\nkind=ship\nharness=claude\nbackend=tmux\n' > "$sub/state/job.meta"
+  fakebin="$dir/fakebin"
+  real_date=$(command -v date)
+  cat > "$fakebin/date" <<SH
+#!/usr/bin/env bash
+if [ "\${1:-}" = +%s ]; then
+  cat "\${FM_FAKE_NOW_FILE:?}"
+else
+  exec "$real_date" "\$@"
+fi
+SH
+  chmod +x "$fakebin/date"
+  before=$(cksum "$sub/state/job.meta")
+
+  # Healthy running validation never starts an episode.
+  printf 'state: working · source: run-step · validating (running)\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" running 1000 0
+  [ ! -s "$state/.wake-queue" ] || fail "running validation alerted"
+  [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "running validation left an episode marker"
+
+  # First sight of a parked gate starts the episode without alerting.
+  printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" first 2000 0
+  [ ! -s "$state/.wake-queue" ] || fail "first sight of a parked gate alerted"
+  [ -s "$state/.secondmate-parked-gate-mate--job" ] || fail "parked gate episode was not recorded"
+
+  # Still under the threshold: silent.
+  parked_gate_watch_leg "$dir" under 2050 0
+  [ ! -s "$state/.wake-queue" ] || fail "a parked gate alerted before the threshold"
+
+  # Past the threshold: one actionable wake naming mate, task and gate.
+  parked_gate_watch_leg "$dir" alert 2100
+  grep -F 'check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=100s' "$dir/watch-alert.out" >/dev/null \
+    || fail "parked gate did not alert with mate, task and gate: $(cat "$dir/watch-alert.out" "$dir/watch-alert.err")"
+  count=$(grep -c 'secondmate-parked-gate-mate-job-' "$state/.wake-queue" || true)
+  [ "$count" -eq 1 ] || fail "expected one queued parked-gate wake, got $count"
+
+  # Same episode, within a further interval: no second wake.
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" dedupe 2150 0
+  [ ! -s "$state/.wake-queue" ] || fail "the same parked episode alerted twice inside one interval"
+
+  # A further interval re-alerts.
+  parked_gate_watch_leg "$dir" realert 2200
+  grep -F 'mate=mate task=job gate=' "$dir/watch-realert.out" >/dev/null || fail "a still-parked gate did not re-alert after a further interval"
+
+  # Answered (running again), then a paused hold: episode clears, no alert ever.
+  : > "$state/.wake-queue"
+  printf 'state: working · source: run-step · validating (fixing)\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" answered 5000 0
+  [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "an answered gate kept its episode"
+  printf 'state: paused · source: status-log · waiting on captain hold\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" paused 9000 0
+  [ ! -s "$state/.wake-queue" ] || fail "a paused or captain-held worker alerted"
+
+  [ "$before" = "$(cksum "$sub/state/job.meta")" ] || fail "the check wrote to the secondmate home"
+  [ -z "$(ls -A "$sub/state" | grep -v '^job.meta$' || true)" ] || fail "the check left files in the secondmate home"
+  pass "a worker parked on an undecided gate in a secondmate home alerts once per episode and only past the threshold"
+}
+
 test_secondmate_foreign_queue_stall_tracks_progress_and_alerts_once() {
   local dir state sub fakebin out row_before row_after stall_count real_date
   dir=$(make_case secondmate-foreign-stall)
@@ -3436,3 +3542,4 @@ test_secondmate_liveness_tick_error_keeps_scanning_and_wakes
 test_secondmate_liveness_tick_unqueued_outcome_is_an_error_not_a_wake
 test_secondmate_liveness_tick_skips_mate_whose_lock_is_held
 test_secondmate_liveness_tick_preserves_unreachable_remote
+test_secondmate_parked_gate_alerts_once_per_episode
