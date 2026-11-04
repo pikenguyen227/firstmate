@@ -372,7 +372,7 @@ SH
   [ ! -s "$state/.wake-queue" ] || fail "a paused or captain-held worker alerted"
 
   [ "$before" = "$(cksum "$sub/state/job.meta")" ] || fail "the check wrote to the secondmate home"
-  [ -z "$(ls -A "$sub/state" | grep -v '^job.meta$' || true)" ] || fail "the check left files in the secondmate home"
+  [ "$(find "$sub/state" -mindepth 1 | wc -l | tr -d ' ')" = 1 ] || fail "the check left files in the secondmate home"
   pass "a worker parked on an undecided gate in a secondmate home alerts once per episode and only past the threshold"
 }
 
