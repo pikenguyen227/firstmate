@@ -270,6 +270,172 @@ foreign_stall_watch_leg() {  # <dir> <leg> <now> [observation]
   fi
 }
 
+# One watcher leg of the parked-gate case at fake time <now>. The watcher runs
+# from a copy of bin/ whose fm-crew-state.sh is a stub printing the line staged
+# in <dir>/crew/<task>, so the check is driven by the reader's documented
+# `state:` vocabulary instead of a live validation run.
+parked_gate_watch_leg() {  # <dir> <leg> <now> [wait-for-wake]
+  local dir=$1 leg=$2 now=$3 wait=${4-1} pid i=0
+  printf '%s\n' "$now" > "$dir/now"
+  PATH="$dir/fakebin:$PATH" FM_FAKE_NOW_FILE="$dir/now" FM_HOME="$dir" FM_ROOT_OVERRIDE="$dir/root" \
+    FM_STATE_OVERRIDE="$dir/state" FM_FAKE_CREW_DIR="$dir/crew" FM_FAKE_TMUX_WINDOW='firstmate:fm-mate' \
+    FM_SECONDMATE_PARKED_GATE_SECS=100 FM_SECONDMATE_PARKED_GATE_POLL_SECS="${PARKED_GATE_POLL:-1}" \
+    FM_SECONDMATE_PARKED_GATE_BUDGET_SECS="${PARKED_GATE_BUDGET:-20}" \
+    FM_SECONDMATE_WAKE_STALL_SECS=99999999 FM_SECONDMATE_LIVENESS_SECS=99999999 \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    "$dir/root/bin/fm-watch.sh" > "$dir/watch-$leg.out" 2> "$dir/watch-$leg.err" &
+  pid=$!
+  if [ "$wait" = 1 ]; then
+    wait_for_exit "$pid" 600 || { kill -KILL "$pid" 2>/dev/null || true; fail "parked-gate leg $leg never woke"; }
+  else
+    # No wake is expected: let the tick run (its tick marker is the proof), then stop the fixture.
+    rm -f "$dir/state/.secondmate-parked-gate-tick"
+    while [ "$i" -lt 100 ] && is_live_non_zombie "$pid" && [ ! -e "$dir/state/.secondmate-parked-gate-tick" ]; do
+      sleep 0.1
+      i=$((i + 1))
+    done
+    # The tick stamps its cadence marker first; give it time to finish its reads and writes.
+    sleep "${PARKED_GATE_SETTLE:-1}"
+    ! is_live_non_zombie "$pid" || kill -KILL "$pid" 2>/dev/null || true
+    wait_for_exit "$pid" 600 || true
+    rm -rf -- "$dir/state/.watch.lock" "$dir/state/.watcher-down"
+  fi
+}
+
+test_secondmate_parked_gate_alerts_once_per_episode() {
+  local dir state sub fakebin real_date count before model now
+  dir=$(make_case secondmate-parked-gate)
+  state="$dir/state"
+  sub="$dir/secondmate"
+  mkdir -p "$sub/state" "$sub/data" "$dir/root" "$dir/crew"
+  cp -R "$ROOT/bin" "$dir/root/bin"
+  cat > "$dir/root/bin/fm-crew-state.sh" <<'SH'
+#!/usr/bin/env bash
+cat "${FM_FAKE_CREW_DIR:?}/$1" 2>/dev/null || echo 'state: unknown · source: none · no record'
+SH
+  chmod +x "$dir/root/bin/fm-crew-state.sh"
+  printf 'mate\n' > "$sub/.fm-secondmate-home"
+  printf '# Firstmate\n' > "$sub/AGENTS.md"
+  printf 'window=firstmate:fm-mate\nkind=secondmate\nharness=claude\nbackend=tmux\nhome=%s\n' "$sub" > "$state/mate.meta"
+  printf 'window=x:y\nkind=ship\nharness=claude\nbackend=tmux\n' > "$sub/state/job.meta"
+  fakebin="$dir/fakebin"
+  real_date=$(command -v date)
+  cat > "$fakebin/date" <<SH
+#!/usr/bin/env bash
+if [ "\${1:-}" = +%s ]; then
+  cat "\${FM_FAKE_NOW_FILE:?}"
+else
+  exec "$real_date" "\$@"
+fi
+SH
+  chmod +x "$fakebin/date"
+  for model in claude codex gemini cursor-agent kimi agy; do
+    cat > "$fakebin/$model" <<SH
+#!/usr/bin/env bash
+printf '%s\\n' "\$0 \$*" >> "$dir/model-calls"
+exit 1
+SH
+    chmod +x "$fakebin/$model"
+  done
+  before=$(cksum "$sub/state/job.meta")
+
+  # Healthy running validation never starts an episode, however many scans pass.
+  printf 'state: working · source: run-step · validating (running)\n' > "$dir/crew/job"
+  for now in 1000 1500 1900; do
+    parked_gate_watch_leg "$dir" "running-$now" "$now" 0
+    [ ! -s "$state/.wake-queue" ] || fail "running validation alerted at scan $now"
+    [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "running validation left an episode marker at scan $now"
+  done
+
+  # First sight of a parked gate starts the episode without alerting.
+  printf 'state: parked · source: run-step · parked at ci: 2 finding(s) · ask-user: authority decision\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" first 2000 0
+  [ ! -s "$state/.wake-queue" ] || fail "first sight of a parked gate alerted"
+  [ -s "$state/.secondmate-parked-gate-mate--job" ] || fail "parked gate episode was not recorded"
+
+  # Still under the threshold: silent.
+  parked_gate_watch_leg "$dir" under 2050 0
+  [ ! -s "$state/.wake-queue" ] || fail "a parked gate alerted before the threshold"
+
+  # Past the threshold: one actionable wake naming mate, task and gate.
+  parked_gate_watch_leg "$dir" alert 2100
+  grep -F 'check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=100s' "$dir/watch-alert.out" >/dev/null \
+    || fail "parked gate did not alert with mate, task and gate: $(cat "$dir/watch-alert.out" "$dir/watch-alert.err")"
+  count=$(grep -c 'secondmate-parked-gate-mate-job-' "$state/.wake-queue" || true)
+  [ "$count" -eq 1 ] || fail "expected one queued parked-gate wake, got $count"
+
+  # Same episode, within a further interval: no second wake.
+  : > "$state/.wake-queue"
+  parked_gate_watch_leg "$dir" dedupe 2150 0
+  [ ! -s "$state/.wake-queue" ] || fail "the same parked episode alerted twice inside one interval"
+
+  # A further interval re-alerts.
+  parked_gate_watch_leg "$dir" realert 2200
+  grep -F 'mate=mate task=job gate=' "$dir/watch-realert.out" >/dev/null || fail "a still-parked gate did not re-alert after a further interval"
+
+  # Answered (running again), then a paused hold: episode clears, no alert ever.
+  : > "$state/.wake-queue"
+  printf 'state: working · source: run-step · validating (fixing)\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" answered 5000 0
+  [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "an answered gate kept its episode"
+  printf 'state: paused · source: status-log · waiting on captain hold\n' > "$dir/crew/job"
+  parked_gate_watch_leg "$dir" paused 9000 0
+  [ ! -s "$state/.wake-queue" ] || fail "a paused or captain-held worker alerted"
+
+  [ ! -e "$dir/model-calls" ] || fail "the parked-gate scan invoked a model or agent CLI: $(cat "$dir/model-calls")"
+  [ "$before" = "$(cksum "$sub/state/job.meta")" ] || fail "the check wrote to the secondmate home"
+  [ "$(find "$sub/state" -mindepth 1 | wc -l | tr -d ' ')" = 1 ] || fail "the check left files in the secondmate home"
+  pass "a worker parked on an undecided gate in a secondmate home alerts once per episode and only past the threshold"
+}
+
+test_secondmate_parked_gate_budget_carries_over_and_skips_done() {
+  local dir state sub reads
+  dir=$(make_case secondmate-parked-gate-budget)
+  state="$dir/state"
+  sub="$dir/secondmate"
+  mkdir -p "$sub/state" "$sub/data" "$dir/root" "$dir/crew" "$dir/fakebin"
+  cp -R "$ROOT/bin" "$dir/root/bin"
+  cat > "$dir/root/bin/fm-crew-state.sh" <<'SH'
+#!/usr/bin/env bash
+case "${FM_STATE_OVERRIDE:-}" in
+  */secondmate/state) ;;
+  *) echo 'state: unknown · source: none · no record'; exit 0 ;;
+esac
+printf '%s\n' "$1" >> "${FM_FAKE_CREW_DIR:?}/reads"
+sleep 1.5
+cat "${FM_FAKE_CREW_DIR:?}/$1" 2>/dev/null || true
+SH
+  chmod +x "$dir/root/bin/fm-crew-state.sh"
+  printf 'mate\n' > "$sub/.fm-secondmate-home"
+  printf '# Firstmate\n' > "$sub/AGENTS.md"
+  printf 'window=firstmate:fm-mate\nkind=secondmate\nharness=claude\nbackend=tmux\nhome=%s\n' "$sub" > "$state/mate.meta"
+  printf 'window=x:a\nkind=ship\nharness=claude\nbackend=tmux\n' > "$sub/state/a.meta"
+  printf 'window=x:b\nkind=scout\nharness=claude\nbackend=tmux\n' > "$sub/state/b.meta"
+  printf 'window=x:c\nkind=ship\nharness=claude\nbackend=tmux\n' > "$sub/state/c.meta"
+  printf 'done: shipped and merged\n' > "$sub/state/c.status"
+  printf 'state: working · source: run-step · validating (running)\n' > "$dir/crew/b"
+  printf 'state: parked · source: run-step · parked at ci: 1 finding(s)\n' > "$dir/crew/c"
+  # a prints nothing (a failed read); b would read as working if it were read.
+  printf '900\tci: 1 finding(s)\t\n' > "$state/.secondmate-parked-gate-mate--a"
+  printf '900\tci: 1 finding(s)\t\n' > "$state/.secondmate-parked-gate-mate--b"
+  printf '900\tci: 1 finding(s)\t\n' > "$state/.secondmate-parked-gate-mate--c"
+  reads="$dir/crew/reads"
+
+  PARKED_GATE_POLL=99999 PARKED_GATE_BUDGET=1 PARKED_GATE_SETTLE=3 parked_gate_watch_leg "$dir" budget1 1000 0
+  [ "$(cat "$reads")" = a ] || fail "one budgeted scan should read only the first live worker, read: $(tr '\n' ' ' < "$reads")"
+  [ -e "$state/.secondmate-parked-gate-mate--a" ] || fail "a failed or empty read cleared the parked episode"
+  [ -e "$state/.secondmate-parked-gate-mate--b" ] || fail "a worker left unread by the budget lost its parked episode"
+  [ ! -e "$state/.secondmate-parked-gate-mate--c" ] || fail "a worker recorded done kept a parked episode"
+
+  : > "$reads"
+  PARKED_GATE_POLL=99999 PARKED_GATE_BUDGET=1 PARKED_GATE_SETTLE=3 parked_gate_watch_leg "$dir" budget2 1010 0
+  [ "$(cat "$reads")" = b ] || fail "the next scan did not resume with the worker left unread, read: $(tr '\n' ' ' < "$reads")"
+  [ ! -e "$state/.secondmate-parked-gate-mate--b" ] || fail "a worker read as working kept its parked episode"
+  [ -e "$state/.secondmate-parked-gate-mate--a" ] || fail "an unread worker lost its parked episode on the carried-over scan"
+  [ ! -s "$state/.wake-queue" ] || fail "the budgeted scans alerted"
+  pass "the parked-gate scan stops at its budget, carries unread workers over with their episodes, keeps episodes on failed reads, and never reads done workers"
+}
+
 test_secondmate_foreign_queue_stall_tracks_progress_and_alerts_once() {
   local dir state sub fakebin out row_before row_after stall_count real_date
   dir=$(make_case secondmate-foreign-stall)
@@ -3436,3 +3602,5 @@ test_secondmate_liveness_tick_error_keeps_scanning_and_wakes
 test_secondmate_liveness_tick_unqueued_outcome_is_an_error_not_a_wake
 test_secondmate_liveness_tick_skips_mate_whose_lock_is_held
 test_secondmate_liveness_tick_preserves_unreachable_remote
+test_secondmate_parked_gate_alerts_once_per_episode
+test_secondmate_parked_gate_budget_carries_over_and_skips_done
