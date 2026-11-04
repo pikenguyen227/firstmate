@@ -1,0 +1,24 @@
+docs/configuration.md
+  s_ab61daba5a73f1::t_76296cf14d4af1 2638
+tests/fm-wake-queue.test.sh
+  s_ab61daba5a73f1::t_76296cf14d4af1 427-434,440,476
+  s_ab61daba5a73f1::t_232ea7a505a6be 426
+bin/fm-watch.sh
+  s_ab61daba5a73f1::t_76296cf14d4af1 126,1081,1085-1088,1097,1159,1163-1164,1167-1169,1171-1172,1174,1178,1180,1197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1addf87316d8accef207a1c200d25c901d0eb15f",
+  "prompts": {},
+  "sessions": {
+    "s_ab61daba5a73f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca15b375-2092-4a30-a653-af4e062fa8df",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
