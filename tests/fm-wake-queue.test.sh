@@ -423,13 +423,21 @@ SH
   : > "$state/.wake-queue"
   parked_gate_watch_leg "$dir" u-realert 2200
   grep -F 'mate=mate task=job gate=' "$dir/watch-u-realert.out" >/dev/null || fail "an unescalated parked gate stopped re-alerting"
-  rm -f "$state/.secondmate-parked-gate-mate--job"
+
+  # Escalating the same gate after it alerted keeps the episode and stays quiet.
+  printf 'needs-decision [at=2250] [key=nm-r1-ci]: ask-user findings=a\n' > "$sub/state/job.status"
+  : > "$state/.wake-queue"
+  for now in 2300 2400 2500; do
+    parked_gate_watch_leg "$dir" "l-quiet-$now" "$now" 0
+    [ ! -s "$state/.wake-queue" ] || fail "escalating an already-alerted parked gate alerted again at scan $now"
+  done
+  rm -f "$state/.secondmate-parked-gate-mate--job" "$sub/state/job.status"
 
   # Open decisions that are not this gate's escalation never quiet it: an
   # unrelated key, another run's gate key, and a gate key the worker's own
   # failed: line closed (a later non-ship meta must not change that fold).
   printf 'window=x:z\nkind=reviewer\nharness=claude\nbackend=tmux\n' > "$sub/state/zz.meta"
-  printf 'needs-decision [at=1500] [key=nm-r1-ci]: ask-user findings=old\nfailed [at=1600]: run died\nneeds-decision [at=1700] [key=scope-q]: which scope\nneeds-decision [at=1800] [key=nm-r0-ci]: earlier run\n' > "$sub/state/job.status"
+  printf 'needs-decision [at=1500] [key=nm-r1-ci]: ask-user findings=old\nfailed [at=1600]: run died\nneeds-decision [at=1700] [key=scope-q]: which scope\nneeds-decision [at=1800] [key=nm-r0-ci]: earlier run\nneeds-decision [at=1900] [key=nm-r1-review]: other step\n' > "$sub/state/job.status"
   : > "$state/.wake-queue"
   parked_gate_watch_leg "$dir" x-first 2300 0
   parked_gate_watch_leg "$dir" x-alert 2400
@@ -465,7 +473,7 @@ SH
   printf 'state: working · source: run-step · validating (fixing)\n' > "$dir/crew/job"
   parked_gate_watch_leg "$dir" answered 4000 0
   [ ! -e "$state/.secondmate-parked-gate-mate--job" ] || fail "an answered escalated gate kept its episode"
-  pass "a parked gate escalated under its own run key alerts once, a new escalation starts fresh, and unescalated or otherwise-keyed gates still re-alert"
+  pass "a parked gate escalated under its own run key alerts once, a new escalation starts fresh, and unescalated or otherwise-keyed gates still re-alert, and a late escalation stays quiet"
 }
 
 test_secondmate_parked_gate_budget_carries_over_and_skips_done() {
