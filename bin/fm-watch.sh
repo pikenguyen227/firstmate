@@ -387,7 +387,9 @@ case "$SECONDMATE_WAKE_STALL_SECS" in ''|*[!0-9]*|0) SECONDMATE_WAKE_STALL_SECS=
 SECONDMATE_PARKED_GATE_SECS=${FM_SECONDMATE_PARKED_GATE_SECS:-}
 case "$SECONDMATE_PARKED_GATE_SECS" in ''|*[!0-9]*|0) SECONDMATE_PARKED_GATE_SECS=1200 ;; esac
 SECONDMATE_PARKED_GATE_POLL_SECS=${FM_SECONDMATE_PARKED_GATE_POLL_SECS:-}
-case "$SECONDMATE_PARKED_GATE_POLL_SECS" in ''|*[!0-9]*|0) SECONDMATE_PARKED_GATE_POLL_SECS=60 ;; esac
+case "$SECONDMATE_PARKED_GATE_POLL_SECS" in ''|*[!0-9]*|0) SECONDMATE_PARKED_GATE_POLL_SECS=300 ;; esac
+SECONDMATE_PARKED_GATE_BUDGET_SECS=${FM_SECONDMATE_PARKED_GATE_BUDGET_SECS:-}
+case "$SECONDMATE_PARKED_GATE_BUDGET_SECS" in ''|*[!0-9]*|0) SECONDMATE_PARKED_GATE_BUDGET_SECS=20 ;; esac
 # Secondmate ENDPOINT liveness (distinct from the wake-loop stall observation
 # above): on this cadence the watcher probes each registered mate's recorded
 # endpoint through fm-secondmate-liveness-lib.sh and relaunches only on the
@@ -1068,18 +1070,25 @@ EOF
 # skipped); only `state: parked` counts, which is exactly a no-mistakes run
 # stopped at a gate or an open needs-decision. Working validation, paused and
 # captain-held work, a gate the mate already answered, and gone workers clear
-# the episode. Per worker the marker "<first-seen> <gate> <last-alert>" lives in
-# the parent's state: a changed gate starts a new episode, the alert fires when
-# the episode is FM_SECONDMATE_PARKED_GATE_SECS old, and a still-parked gate
-# re-alerts only after a further interval. Nothing in the mate's home is written.
+# the episode, as does a worker gone or recorded `done:` in the mate's status
+# log (only live ship and scout workers are read). A failed, timed-out or empty
+# read is no evidence either way and keeps the episode. The scan runs once per
+# FM_SECONDMATE_PARKED_GATE_POLL_SECS; no read starts once the tick has spent
+# FM_SECONDMATE_PARKED_GATE_BUDGET_SECS, each read is bounded, and the workers
+# left unread keep their episodes and are read first on the next scan. Per worker
+# the marker "<first-seen> <gate> <last-alert>" lives in the parent's state: a
+# changed gate starts a new episode, the alert fires when the episode is
+# FM_SECONDMATE_PARKED_GATE_SECS old, and a still-parked gate re-alerts only after
+# a further interval. Nothing in the mate's home is written.
 secondmate_parked_gate_tick() {
-  local tick_marker="$STATE/.secondmate-parked-gate-tick"
+  local tick_marker="$STATE/.secondmate-parked-gate-tick" cursor_file="$STATE/.secondmate-parked-gate-cursor"
   [ "$(age_of "$tick_marker")" -ge "$SECONDMATE_PARKED_GATE_POLL_SECS" ] || return 0
   touch "$tick_marker" || return 1
-  local now=$(( $(date +%s) )) threshold=$SECONDMATE_PARKED_GATE_SECS
-  local meta task kind remote_host home cmeta ctask ckind line gate marker
+  local now=$(( $(date +%s) )) threshold=$SECONDMATE_PARKED_GATE_SECS started=$SECONDS
+  local meta task kind remote_host home cmeta ctask ckind line gate marker key cursor entry
   local first_seen seen_gate last_alert idle notify_key reason queued tmp first_reason=''
-  local seen_markers=''
+  local keep_markers='' n i start_at=0 scanned=0 log_verb
+  local -a entries=()
   for meta in "$STATE"/*.meta; do
     [ -e "$meta" ] || continue
     kind=$(fm_meta_get "$meta" kind)
@@ -1096,63 +1105,92 @@ secondmate_parked_gate_tick() {
     for cmeta in "$home"/state/*.meta; do
       [ -e "$cmeta" ] || continue
       ckind=$(fm_meta_get "$cmeta" kind)
-      [ "$ckind" != secondmate ] || continue
+      case "${ckind:-ship}" in ship|scout) ;; *) continue ;; esac
       ctask=${cmeta##*/}
       ctask=${ctask%.meta}
       case "$ctask" in ''|*[!A-Za-z0-9._-]*) continue ;; esac
-      marker="$STATE/.secondmate-parked-gate-$task--$ctask"
-      line=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_CREW_STATE_NO_FORGE=1 \
-        fm_run_timed 30 "$SCRIPT_DIR/fm-crew-state.sh" "$ctask" 2>/dev/null </dev/null) || line=''
-      case "$line" in
-        'state: unknown'*)
-          # An unreadable verdict is no evidence either way; keep the episode.
-          seen_markers="$seen_markers $marker"
-          ;;
-        'state: parked'*)
-          seen_markers="$seen_markers $marker"
-          gate=${line#*' · source: '}
-          gate=${gate#* · }
-          gate=${gate%% · *}
-          gate=${gate#parked at }
-          gate=$(printf '%s' "$gate" | tr -c 'A-Za-z0-9._:()+ -' '_' | cut -c1-80)
-          case "$line" in *'ask-user: authority decision'*) gate="$gate, ask-user decision" ;; esac
-          [ -n "$gate" ] || gate=gate
-          first_seen=''; seen_gate=''; last_alert=''
-          if [ -f "$marker" ] && [ ! -L "$marker" ]; then
-            IFS=$(printf '\t') read -r first_seen seen_gate last_alert < "$marker" || true
-          fi
-          case "$first_seen" in ''|*[!0-9]*) first_seen='' ;; esac
-          case "$last_alert" in *[!0-9]*) last_alert='' ;; esac
-          if [ -z "$first_seen" ] || [ "$now" -lt "$first_seen" ] || [ "$seen_gate" != "$gate" ]; then
-            first_seen=$now; last_alert=''
-          fi
-          idle=$((now - first_seen))
-          if [ "$idle" -ge "$threshold" ] \
-            && { [ -z "$last_alert" ] || [ $((now - last_alert)) -ge "$threshold" ]; }; then
-            notify_key="secondmate-parked-gate-$task-$ctask-$now"
-            reason="check: secondmate worker parked: mate=$task task=$ctask gate=$gate idle=${idle}s"
-            queued=$(fm_wake_queued_keys check)
-            if ! printf '%s\n' "$queued" | grep -Fx "$notify_key" >/dev/null 2>&1; then
-              fm_wake_append check "$notify_key" "$reason" || return 1
-            fi
-            last_alert=$now
-            [ -n "$first_reason" ] || first_reason=$reason
-          fi
-          tmp=$(mktemp "$STATE/.secondmate-parked-gate.XXXXXX") || return 1
-          if ! printf '%s\t%s\t%s\n' "$first_seen" "$gate" "$last_alert" > "$tmp" \
-            || ! chmod 0600 "$tmp" || ! mv -f -- "$tmp" "$marker"; then
-            rm -f -- "$tmp"
-            return 1
-          fi
-          ;;
-      esac
+      status_line_verb "$(status_current_line "$home/state/$ctask.status" "${ckind:-ship}")" log_verb
+      [ "$log_verb" != done ] || continue
+      entries+=("$task"$'\t'"$home"$'\t'"$ctask")
     done
   done
+  n=${#entries[@]}
+  cursor=$(cat "$cursor_file" 2>/dev/null || true)
+  if [ -n "$cursor" ]; then
+    for ((i = 0; i < n; i++)); do
+      entry=${entries[i]}
+      [ "${entry%%$'\t'*}--${entry##*$'\t'}" = "$cursor" ] || continue
+      start_at=$(( (i + 1) % n ))
+      break
+    done
+  fi
+  rm -f -- "$cursor_file"
+  for ((i = 0; i < n; i++)); do
+    entry=${entries[(start_at + i) % n]}
+    task=${entry%%$'\t'*}
+    ctask=${entry##*$'\t'}
+    home=${entry#*$'\t'}
+    home=${home%$'\t'*}
+    key="$task--$ctask"
+    marker="$STATE/.secondmate-parked-gate-$key"
+    if [ "$scanned" -gt 0 ] && [ $((SECONDS - started)) -ge "$SECONDMATE_PARKED_GATE_BUDGET_SECS" ]; then
+      keep_markers="$keep_markers $marker"
+      [ -s "$cursor_file" ] || printf '%s\n' "$cursor" > "$cursor_file" || return 1
+      continue
+    fi
+    scanned=$((scanned + 1))
+    cursor=$key
+    line=$(FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" FM_CREW_STATE_NO_FORGE=1 \
+      fm_run_timed 5 "$SCRIPT_DIR/fm-crew-state.sh" "$ctask" 2>/dev/null </dev/null) || line=''
+    case "$line" in
+      'state: parked'*)
+        keep_markers="$keep_markers $marker"
+        gate=${line#*' · source: '}
+        gate=${gate#* · }
+        gate=${gate%% · *}
+        gate=${gate#parked at }
+        gate=$(printf '%s' "$gate" | tr -c 'A-Za-z0-9._:()+ -' '_' | cut -c1-80)
+        case "$line" in *'ask-user: authority decision'*) gate="$gate, ask-user decision" ;; esac
+        [ -n "$gate" ] || gate=gate
+        first_seen=''; seen_gate=''; last_alert=''
+        if [ -f "$marker" ] && [ ! -L "$marker" ]; then
+          IFS=$(printf '\t') read -r first_seen seen_gate last_alert < "$marker" || true
+        fi
+        case "$first_seen" in ''|*[!0-9]*) first_seen='' ;; esac
+        case "$last_alert" in *[!0-9]*) last_alert='' ;; esac
+        if [ -z "$first_seen" ] || [ "$now" -lt "$first_seen" ] || [ "$seen_gate" != "$gate" ]; then
+          first_seen=$now; last_alert=''
+        fi
+        idle=$((now - first_seen))
+        if [ "$idle" -ge "$threshold" ] \
+          && { [ -z "$last_alert" ] || [ $((now - last_alert)) -ge "$threshold" ]; }; then
+          notify_key="secondmate-parked-gate-$task-$ctask-$first_seen-$((idle / threshold))"
+          reason="check: secondmate worker parked: mate=$task task=$ctask gate=$gate idle=${idle}s"
+          queued=$(fm_wake_queued_keys check)
+          if ! printf '%s\n' "$queued" | grep -Fx "$notify_key" >/dev/null 2>&1; then
+            fm_wake_append check "$notify_key" "$reason" || return 1
+          fi
+          last_alert=$now
+          [ -n "$first_reason" ] || first_reason=$reason
+        fi
+        tmp=$(mktemp "$STATE/.secondmate-parked-gate.XXXXXX") || return 1
+        if ! printf '%s\t%s\t%s\n' "$first_seen" "$gate" "$last_alert" > "$tmp" \
+          || ! chmod 0600 "$tmp" || ! mv -f -- "$tmp" "$marker"; then
+          rm -f -- "$tmp"
+          return 1
+        fi
+        ;;
+      'state: working'*|'state: done'*|'state: blocked'*|'state: paused'*|'state: failed'*) ;;
+      *)
+        keep_markers="$keep_markers $marker"
+        ;;
+    esac
+  done
   # Clear episodes whose worker is no longer parked (resumed, answered, paused,
-  # held, or gone) so the next stop is a fresh episode.
+  # held, done, or gone) so the next stop is a fresh episode.
   for marker in "$STATE"/.secondmate-parked-gate-*--*; do
     [ -e "$marker" ] || continue
-    case " $seen_markers " in *" $marker "*) continue ;; esac
+    case " $keep_markers " in *" $marker "*) continue ;; esac
     rm -f -- "$marker"
   done
   if [ -n "$first_reason" ]; then
