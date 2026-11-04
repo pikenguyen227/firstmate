@@ -1,0 +1,6 @@
+scenario=unrelated watcher=fm-watch.base.sh threshold=4s duration=26s
+t=12s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=5s
+t=17s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=10s
+t=23s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=15s
+marker: 1793783572	ci: 2 finding(s), ask-user decision	1793783587
+TOTAL parent wakes for scenario=unrelated: 3

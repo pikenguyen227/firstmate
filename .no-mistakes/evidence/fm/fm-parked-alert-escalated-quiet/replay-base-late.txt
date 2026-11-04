@@ -1,0 +1,9 @@
+scenario=late watcher=fm-watch.base.sh threshold=4s duration=26s
+t=7s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=5s
+t=7s worker escalates nm-r1-ci after the first alert
+t=12s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=10s
+t=17s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=15s
+t=21s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=20s
+t=26s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=25s
+marker: 1793783621	ci: 2 finding(s), ask-user decision	1793783646
+TOTAL parent wakes for scenario=late: 5

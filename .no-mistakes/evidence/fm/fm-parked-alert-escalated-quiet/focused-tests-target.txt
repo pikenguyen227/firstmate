@@ -1,0 +1,3 @@
+ok - a worker parked on an undecided gate in a secondmate home alerts once per episode and only past the threshold
+ok - a parked gate escalated under its own run key alerts once, a new escalation starts fresh, and unescalated or otherwise-keyed gates still re-alert, and a late escalation stays quiet
+ok - the parked-gate scan stops at its budget, carries unread workers over with their episodes, keeps episodes on failed reads, and never reads done workers

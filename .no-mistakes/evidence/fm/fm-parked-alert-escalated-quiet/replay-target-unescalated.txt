@@ -1,0 +1,8 @@
+scenario=unescalated watcher=fm-watch.sh threshold=4s duration=26s
+t=4s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=4s
+t=11s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=10s
+t=14s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=14s
+t=19s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=19s
+t=24s WAKE: check: secondmate worker parked: mate=mate task=job gate=ci: 2 finding(s), ask-user decision idle=23s
+marker: 1793783478	ci: 2 finding(s), ask-user decision	1793783501	r1
+TOTAL parent wakes for scenario=unescalated: 5
