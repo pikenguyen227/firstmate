@@ -1,0 +1,37 @@
+bin/fm-classify-lib.sh
+  s_bee49ca0efa576::t_a4ea9e5f765437 774,914
+  s_bee49ca0efa576::t_50f765c91524c4 775-777,1125-1126
+  s_a0dd1e6a93e08d::t_2da0d8661d51c3 2091,2101-2107,2110-2129,2134-2144
+.agents/skills/operational-home-layout/SKILL.md
+  s_bee49ca0efa576::t_50f765c91524c4 111
+bin/fm-crew-state.sh
+  s_bee49ca0efa576::t_a4ea9e5f765437 168-171
+tests/fm-bearings-snapshot.test.sh
+  s_a0dd1e6a93e08d::t_30c1113c931a2e 3504-3527,3530
+bin/fm-fleet-snapshot.sh
+  s_bee49ca0efa576::t_a4ea9e5f765437 891-892
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "857131e0ca8de99ebb25f166346280a5e2df05f6",
+  "prompts": {},
+  "sessions": {
+    "s_a0dd1e6a93e08d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad71-4484-7e50-80c2-0ddae92cc491",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    },
+    "s_bee49ca0efa576": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad7f-4669-7141-a5e8-8b74bab999c3",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
