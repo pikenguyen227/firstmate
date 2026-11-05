@@ -1,0 +1,86 @@
+{
+  "schema": "fm-fleet-snapshot.v1",
+  "generated": "2026-11-05T20:42:46Z",
+  "fm_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT",
+  "roots": {
+    "fm_root": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H",
+    "state": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/state",
+    "data": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/data",
+    "config": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/config",
+    "projects": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/projects"
+  },
+  "backlog": {
+    "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/data/backlog.md",
+    "present": false,
+    "records": []
+  },
+  "tasks": [],
+  "main_inventory": {
+    "valid": true,
+    "reason": null,
+    "orphan_in_flight": [],
+    "unstructured_current_count": 0
+  },
+  "contributions": {
+    "known": 0,
+    "checked": 0,
+    "counts": {
+      "captain": 0,
+      "fleet": 0,
+      "maintainer": 0,
+      "nobody": 0
+    },
+    "unmeasured": 0,
+    "complete": false,
+    "proven_clear": false,
+    "stale_verdicts": 0,
+    "missing_verdicts": 0,
+    "unreadable_records": 1,
+    "valid_until": 900,
+    "captain": [],
+    "captain_omitted": 0
+  },
+  "scout_reports": [],
+  "secondmate_current": {
+    "registry": {
+      "present": false,
+      "available": true,
+      "complete": true,
+      "reason": null,
+      "provenance": "registered-table",
+      "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/data/secondmates.md",
+      "freshness": {
+        "status": "fresh",
+        "observed_at": "2026-11-05T20:42:46Z"
+      },
+      "records": [],
+      "input_truncated": false,
+      "records_truncated": false,
+      "reasons": [],
+      "lines_in_window": 0,
+      "records_in_window": 0
+    },
+    "records": [],
+    "total_registered": 0,
+    "total": 0,
+    "shown": 0,
+    "truncated": 0
+  },
+  "secondmate_landed": {
+    "records": [],
+    "truncated": [],
+    "unreadable": [],
+    "partial": []
+  },
+  "lifecycle": {
+    "schema": "fm-lifecycle.v1",
+    "id": null,
+    "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-live.TiSeNT/data/lifecycle/events.v1.jsonl",
+    "present": false,
+    "head_seq": null,
+    "homes": []
+  },
+  "secondmate_guidance": {
+    "note": "For kind=secondmate, bearings selects validated structured state from that registered home; parent events and bounded terminal evidence are fallback-only supplements and never current-state authority."
+  }
+}

@@ -1,0 +1,5 @@
+{"mode":"absent","pending":true,"open_decisions":[{"key":"default","verb":"needs-decision","summary":"choose the route (via-helper)"}],"cursor_unchanged":true,"status_unchanged":true}
+{"mode":"valid","pending":true,"open_decisions":[{"key":"default","verb":"needs-decision","summary":"choose the route (via-helper)"}],"cursor_unchanged":true,"status_unchanged":true}
+{"mode":"wrong-version","pending":true,"open_decisions":[{"key":"default","verb":"needs-decision","summary":"choose the route (via-helper)"}],"cursor_unchanged":true,"status_unchanged":true}
+{"mode":"wrong-identity","pending":true,"open_decisions":[{"key":"default","verb":"needs-decision","summary":"choose the route (via-helper)"}],"cursor_unchanged":true,"status_unchanged":true}
+{"mode":"ahead","pending":true,"open_decisions":[{"key":"default","verb":"needs-decision","summary":"choose the route (via-helper)"}],"cursor_unchanged":true,"status_unchanged":true}

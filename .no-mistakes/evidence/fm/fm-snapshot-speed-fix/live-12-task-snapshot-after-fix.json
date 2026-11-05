@@ -1,0 +1,2130 @@
+{
+  "schema": "fm-fleet-snapshot.v1",
+  "generated": "2026-11-05T20:50:12Z",
+  "fm_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa",
+  "roots": {
+    "fm_root": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H",
+    "state": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state",
+    "data": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data",
+    "config": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/config",
+    "projects": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/projects"
+  },
+  "backlog": {
+    "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/backlog.md",
+    "present": false,
+    "records": []
+  },
+  "tasks": [
+    {
+      "id": "mate-1",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1",
+      "spawn_gen": "load-1",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-1.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-1.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 1 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000001] [at=1793911803]: load decision 1 (via-helper)",
+            "age_seconds": 9,
+            "offset": 49101,
+            "stream": "load-1",
+            "lifecycle_key": "status/mate-1/load-1/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-1/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-1",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 1 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000001] [at=1793911803]: load decision 1 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-1 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-10",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10",
+      "spawn_gen": "load-10",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-10.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-10.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 10 (via-helper)",
+            "raw": "needs-decision [corr=000000000000000a] [at=1793911804]: load decision 10 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-10",
+            "lifecycle_key": "status/mate-10/load-10/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-10/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-10",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 10 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=000000000000000a] [at=1793911804]: load decision 10 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-10 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-11",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11",
+      "spawn_gen": "load-11",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-11.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-11.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 11 (via-helper)",
+            "raw": "needs-decision [corr=000000000000000b] [at=1793911804]: load decision 11 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-11",
+            "lifecycle_key": "status/mate-11/load-11/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-11/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-11",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 11 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=000000000000000b] [at=1793911804]: load decision 11 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-11 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-12",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12",
+      "spawn_gen": "load-12",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-12.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-12.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 12 (via-helper)",
+            "raw": "needs-decision [corr=000000000000000c] [at=1793911805]: load decision 12 (via-helper)",
+            "age_seconds": 7,
+            "offset": 49101,
+            "stream": "load-12",
+            "lifecycle_key": "status/mate-12/load-12/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-12/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-12",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 12 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=000000000000000c] [at=1793911805]: load decision 12 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-12 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-2",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2",
+      "spawn_gen": "load-2",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-2.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-2.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 2 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000002] [at=1793911803]: load decision 2 (via-helper)",
+            "age_seconds": 9,
+            "offset": 49101,
+            "stream": "load-2",
+            "lifecycle_key": "status/mate-2/load-2/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-2/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-2",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 2 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000002] [at=1793911803]: load decision 2 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-2 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-3",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3",
+      "spawn_gen": "load-3",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-3.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-3.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 3 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000003] [at=1793911803]: load decision 3 (via-helper)",
+            "age_seconds": 9,
+            "offset": 49101,
+            "stream": "load-3",
+            "lifecycle_key": "status/mate-3/load-3/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-3/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-3",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 3 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000003] [at=1793911803]: load decision 3 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-3 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-4",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4",
+      "spawn_gen": "load-4",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-4.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-4.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 4 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000004] [at=1793911804]: load decision 4 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-4",
+            "lifecycle_key": "status/mate-4/load-4/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-4/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-4",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 4 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000004] [at=1793911804]: load decision 4 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-4 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-5",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5",
+      "spawn_gen": "load-5",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-5.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-5.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 5 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000005] [at=1793911804]: load decision 5 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-5",
+            "lifecycle_key": "status/mate-5/load-5/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-5/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-5",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 5 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000005] [at=1793911804]: load decision 5 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-5 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-6",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6",
+      "spawn_gen": "load-6",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-6.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-6.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 6 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000006] [at=1793911804]: load decision 6 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-6",
+            "lifecycle_key": "status/mate-6/load-6/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-6/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-6",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 6 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000006] [at=1793911804]: load decision 6 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-6 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-7",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7",
+      "spawn_gen": "load-7",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-7.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-7.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 7 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000007] [at=1793911804]: load decision 7 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-7",
+            "lifecycle_key": "status/mate-7/load-7/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-7/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-7",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 7 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000007] [at=1793911804]: load decision 7 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-7 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-8",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8",
+      "spawn_gen": "load-8",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-8.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-8.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 8 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000008] [at=1793911804]: load decision 8 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-8",
+            "lifecycle_key": "status/mate-8/load-8/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-8/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-8",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 8 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000008] [at=1793911804]: load decision 8 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-8 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "mate-9",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9",
+      "spawn_gen": "load-9",
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-9.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/state/mate-9.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "load decision 9 (via-helper)",
+            "raw": "needs-decision [corr=0000000000000009] [at=1793911804]: load decision 9 (via-helper)",
+            "age_seconds": 8,
+            "offset": 49101,
+            "stream": "load-9",
+            "lifecycle_key": "status/mate-9/load-9/@49101"
+          }
+        },
+        "worktree": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9",
+          "present": true
+        },
+        "home": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9",
+          "present": true
+        },
+        "report": {
+          "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/mate-9/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "fm-lab-snapshot:fm-mate-9",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T20:50:12Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "default",
+            "verb": "needs-decision",
+            "summary": "load decision 9 (via-helper)"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [corr=0000000000000009] [at=1793911804]: load decision 9 (via-helper)"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-mate-9 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    }
+  ],
+  "main_inventory": {
+    "valid": true,
+    "reason": null,
+    "orphan_in_flight": [],
+    "unstructured_current_count": 0
+  },
+  "contributions": {
+    "known": 0,
+    "checked": 0,
+    "counts": {
+      "captain": 0,
+      "fleet": 0,
+      "maintainer": 0,
+      "nobody": 0
+    },
+    "unmeasured": 0,
+    "complete": false,
+    "proven_clear": false,
+    "stale_verdicts": 0,
+    "missing_verdicts": 0,
+    "unreadable_records": 1,
+    "valid_until": 900,
+    "captain": [],
+    "captain_omitted": 0
+  },
+  "scout_reports": [],
+  "secondmate_current": {
+    "registry": {
+      "present": false,
+      "available": true,
+      "complete": true,
+      "reason": null,
+      "provenance": "registered-table",
+      "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/secondmates.md",
+      "freshness": {
+        "status": "fresh",
+        "observed_at": "2026-11-05T20:50:12Z"
+      },
+      "records": [],
+      "input_truncated": false,
+      "records_truncated": false,
+      "reasons": [],
+      "lines_in_window": 0,
+      "records_in_window": 0
+    },
+    "records": [
+      {
+        "id": "mate-1",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-1",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 9
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000001] [at=1793911803]: load decision 1 (via-helper)",
+          "note": "load decision 1 (via-helper)",
+          "age_seconds": 9,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 1 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-10",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-10",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=000000000000000a] [at=1793911804]: load decision 10 (via-helper)",
+          "note": "load decision 10 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 10 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-11",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-11",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=000000000000000b] [at=1793911804]: load decision 11 (via-helper)",
+          "note": "load decision 11 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 11 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-12",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-12",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 7
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=000000000000000c] [at=1793911805]: load decision 12 (via-helper)",
+          "note": "load decision 12 (via-helper)",
+          "age_seconds": 7,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 12 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-2",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-2",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 9
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000002] [at=1793911803]: load decision 2 (via-helper)",
+          "note": "load decision 2 (via-helper)",
+          "age_seconds": 9,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 2 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-3",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-3",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 9
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000003] [at=1793911803]: load decision 3 (via-helper)",
+          "note": "load decision 3 (via-helper)",
+          "age_seconds": 9,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 3 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-4",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-4",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000004] [at=1793911804]: load decision 4 (via-helper)",
+          "note": "load decision 4 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 4 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-5",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-5",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000005] [at=1793911804]: load decision 5 (via-helper)",
+          "note": "load decision 5 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 5 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-6",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-6",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000006] [at=1793911804]: load decision 6 (via-helper)",
+          "note": "load decision 6 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 6 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-7",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-7",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000007] [at=1793911804]: load decision 7 (via-helper)",
+          "note": "load decision 7 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 7 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-8",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-8",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000008] [at=1793911804]: load decision 8 (via-helper)",
+          "note": "load decision 8 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 8 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "mate-9",
+        "home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": "load-9",
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T20:50:12Z",
+          "age_seconds": 8
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [corr=0000000000000009] [at=1793911804]: load decision 9 (via-helper)",
+          "note": "load decision 9 (via-helper)",
+          "age_seconds": 8,
+          "open_activities": [],
+          "open_decisions": [
+            {
+              "key": "default",
+              "verb": "needs-decision",
+              "summary": "load decision 9 (via-helper)"
+            }
+          ],
+          "activity_scan": {
+            "records": [],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 0
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T20:50:12Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      }
+    ],
+    "total_registered": 0,
+    "total": 12,
+    "shown": 12,
+    "truncated": 0
+  },
+  "secondmate_landed": {
+    "records": [],
+    "truncated": [],
+    "unreadable": [
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8",
+      "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9"
+    ],
+    "partial": []
+  },
+  "lifecycle": {
+    "schema": "fm-lifecycle.v1",
+    "id": null,
+    "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/data/lifecycle/events.v1.jsonl",
+    "present": false,
+    "head_seq": null,
+    "homes": [
+      {
+        "id": null,
+        "task": "mate-1",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-1/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-10",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-10/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-11",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-11/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-12",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-12/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-2",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-2/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-3",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-3/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-4",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-4/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-5",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-5/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-6",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-6/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-7",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-7/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-8",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-8/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "mate-9",
+        "path": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PNY3HQG2AKEBKG455M5B9H/.fm-snapshot-load.dzTpKa/mate-9/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      }
+    ]
+  },
+  "secondmate_guidance": {
+    "note": "For kind=secondmate, bearings selects validated structured state from that registered home; parent events and bounded terminal evidence are fallback-only supplements and never current-state authority."
+  }
+}
