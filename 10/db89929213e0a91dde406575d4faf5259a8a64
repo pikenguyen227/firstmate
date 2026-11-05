@@ -1,0 +1,26 @@
+bin/fm-fleet-snapshot.sh
+  s_54786bee58fb51::t_8e092af54d2591 352-353,737
+  s_54786bee58fb51::t_571fbffab1c9c0 752,762-763
+  s_54786bee58fb51::t_10b048de8f8697 363,726-729,908-911
+tests/fm-fleet-snapshot-view.test.sh
+  s_54786bee58fb51::t_f24d33e499e12f 1211,1213-1257
+  s_54786bee58fb51::t_fa148e9914907f 1212
+bin/fm-crew-state.sh
+  s_54786bee58fb51::t_10b048de8f8697 281-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10db89929213e0a91dde406575d4faf5259a8a64",
+  "prompts": {},
+  "sessions": {
+    "s_54786bee58fb51": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad64-218b-77a1-90b2-d9a6ff9670c8",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
