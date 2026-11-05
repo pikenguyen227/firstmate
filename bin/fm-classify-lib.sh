@@ -771,10 +771,10 @@ EOF
 # Fold ONE status line into an existing "<key>\t<verb>\t<note>\n"-per-line open
 # set, applying the same needs-decision/blocked-opens, resolved/captain-held-closes
 # rule status_open_decisions documents above. Pure text transform, no file I/O.
-# This is the ONE place the per-line open/resolved rule is written; both the
-# whole-file fold (status_open_decisions) and the incremental cursor-backed fold
-# (status_open_decisions_incremental) below call this instead of re-deriving the
-# rule, so the two consumption strategies can never drift apart on semantics.
+# This is the ONE place the per-line open/resolved rule is written; the
+# whole-file fold (status_open_decisions), incremental cursor-backed fold
+# (status_open_decisions_incremental), and read-only cursor replay call this
+# instead of re-deriving the rule, so their semantics cannot drift apart.
 # Reserved decision-key namespaces, and the rule that makes them mean something.
 #
 # A key like `pending-reply-<id>` names a decision that one library raises and is
@@ -909,14 +909,58 @@ status_open_decisions() {  # <status-file> [<kind>]
   printf '%s' "$open"
 }
 
+# Replay a persisted cursor against an immutable observation without changing
+# the live cursor. The identity must have been sampled with that observation.
+# A missing or stale cursor falls back to folding the whole observed file.
+status_open_decisions_cursor_ro() {  # <observed-file> <live-file> <kind> <captured-ident>
+  local observed=$1 live=$2 kind=$3 captured_ident=$4 cf data version offset ident open='' rest line size resolve held chunk
+  [ -f "$observed" ] && [ -r "$observed" ] && [ ! -L "$observed" ] || return 0
+  [ -n "$captured_ident" ] || { status_open_decisions "$observed" "$kind"; return; }
+  cf=$(_fm_open_decisions_cursor_path "$live")
+  [ -f "$cf" ] && [ -r "$cf" ] && [ ! -L "$cf" ] || { status_open_decisions "$observed" "$kind"; return; }
+  data=$(LC_ALL=C command cat "$cf" 2>/dev/null && printf x) || data=''
+  data=${data%x}
+  case "$data" in *$'\n'*$'\n'*$'\n'*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  version=${data%%$'\n'*}
+  rest=${data#*$'\n'}
+  offset=${rest%%$'\n'*}
+  rest=${rest#*$'\n'}
+  ident=${rest%%$'\n'*}
+  open=${rest#*$'\n'}
+  case "$version" in version=*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  case "$offset" in offset=*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  case "$ident" in ident=*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  version=${version#version=}
+  offset=${offset#offset=}
+  ident=${ident#ident=}
+  size=$(_fm_status_file_size "$observed") || { status_open_decisions "$observed" "$kind"; return; }
+  case "$offset:$size" in *[!0-9:]*|:*|*:) status_open_decisions "$observed" "$kind"; return ;; esac
+  if [ "$version" != "$FM_OPEN_DECISIONS_FOLD_VERSION:$kind" ] ||
+     [ "$ident" != "$captured_ident" ] || ! [ "$offset" -le "$size" ] 2>/dev/null; then
+    status_open_decisions "$observed" "$kind"
+    return
+  fi
+  if [ "$offset" -lt "$size" ]; then
+    chunk=$(_fm_status_read_span "$observed" "$offset" "$((size - offset))") || { status_open_decisions "$observed" "$kind"; return; }
+    resolve=${FM_CLASSIFY_RESOLVE_VERB:-$FM_CLASSIFY_RESOLVE_VERB_DEFAULT}
+    held=${FM_CLASSIFY_CAPTAIN_HELD_VERB:-$FM_CLASSIFY_CAPTAIN_HELD_VERB_DEFAULT}
+    while IFS= read -r line || [ -n "$line" ]; do
+      open=$(_fm_decision_fold_line "$open" "$line" "$resolve" "$held" "$kind")
+    done <<EOF
+$chunk
+EOF
+  fi
+  printf '%s' "$open"
+}
+
 # Resolve the log's current declaration at one boundary for crew-state consumers.
 # Any decision the fold still holds open wins over unrelated events, and the
 # fold's most recently opened record supplies it; a standing declared wait, then
 # the latest recognized event, stands when nothing is open.
 # Actual run/pane evidence is still reconciled by fm-crew-state.sh.
-status_current_line() {  # <status-file> <kind>
+status_current_line() {  # <status-file> <kind> [<precomputed-open-set>]
   local open key verb note current=''
-  open=$(status_open_decisions "$1" "$2")
+  if [ "$#" -ge 3 ]; then open=$3; else open=$(status_open_decisions "$1" "$2"); fi
   while IFS=$'\t' read -r key verb note; do
     case "$verb" in ?*) current="$verb [key=$key]: $note" ;; esac
   done <<EOF
@@ -1078,8 +1122,8 @@ EOF
 # reads only the bytes appended to a status file since its own last call (a
 # persisted per-file byte cursor) and folds just those new lines into a
 # persisted running open-set, via the exact same _fm_decision_fold_line rule
-# status_open_decisions uses - so the two strategies can never disagree on what
-# is open. Cost is bounded by NEW appends since the last drain, not by the
+# status_open_decisions uses - so the folds cannot disagree on what is open.
+# Cost is bounded by NEW appends since the last drain, not by the
 # status file's total lifetime size.
 #
 # Correctness invariant (unchanged from the whole-file fold): cursor advancement,
@@ -2044,7 +2088,7 @@ EOF
 }
 
 _fm_status_open_activities_stream() {
-  local line verb key note resolve held open='' pause
+  local line verb key note resolve held open='' pause unstamped entry retained
   resolve=${FM_CLASSIFY_RESOLVE_VERB:-$FM_CLASSIFY_RESOLVE_VERB_DEFAULT}
   held=${FM_CLASSIFY_CAPTAIN_HELD_VERB:-$FM_CLASSIFY_CAPTAIN_HELD_VERB_DEFAULT}
   pause=${FM_CLASSIFY_PAUSED_VERB:-$FM_CLASSIFY_PAUSED_VERB_DEFAULT}
@@ -2054,18 +2098,50 @@ _fm_status_open_activities_stream() {
       *[![:space:]]*) ;;
       *) continue ;;
     esac
-    verb=$(status_line_verb "$line")
-    key=$(_fm_decision_key "$line" "$_FM_CLASSIFY_KEYLESS_PHASE") || continue
+    status_line_verb "$line" verb
+    # Most parent logs have no key tag. Avoid a subshell for each of those
+    # lines; keep the shared parser for lines that do declare a key.
+    case "$line" in
+      *\[key=*) key=$(_fm_decision_key "$line" "$_FM_CLASSIFY_KEYLESS_PHASE") || continue ;;
+      *) key=$_FM_CLASSIFY_KEYLESS_PHASE ;;
+    esac
     case "$verb" in
       working|"$pause")
-        note=$(status_line_note "$line")
-        open=$(_fm_decision_drop "$open" "$key")
+        case "$line" in
+          *\[key=*) note=$(status_line_note "$line") ;;
+          *)
+            _fm_status_unstamped "$line" unstamped
+            case "$unstamped" in
+              *:*) note=${unstamped#*:}; note=${note#"${note%%[![:space:]]*}"} ;;
+              *) note=$unstamped ;;
+            esac
+            ;;
+        esac
+        retained=''
+        while IFS= read -r entry; do
+          [ -n "$entry" ] || continue
+          case "$entry" in "$key"$'\t'*) continue ;; esac
+          [ -n "$retained" ] && retained="${retained}"$'\n'
+          retained="${retained}${entry}"
+        done <<EOF
+$open
+EOF
+        open=$retained
         [ -n "$open" ] && open="${open}"$'\n'
         open="${open}${key}"$'\t'"${verb}"$'\t'"${note}"$'\n'
         ;;
       done|failed|needs-decision|blocked|"$resolve"|"$held")
-        open=$(_fm_decision_drop "$open" "$key")
-        [ -n "$open" ] && open="${open}"$'\n'
+        retained=''
+        while IFS= read -r entry; do
+          [ -n "$entry" ] || continue
+          case "$entry" in "$key"$'\t'*) continue ;; esac
+          [ -n "$retained" ] && retained="${retained}"$'\n'
+          retained="${retained}${entry}"
+        done <<EOF
+$open
+EOF
+        open=$retained
+        [ -z "$open" ] || open="${open}"$'\n'
         ;;
     esac
   done

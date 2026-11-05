@@ -1152,6 +1152,111 @@ EOF
   pass "home-summary excludes kind=secondmate from unowned_current and terminal_in_flight"
 }
 
+
+# Match the investigated fleet's nine history lengths (4,220 lines) without
+# reading a real home. Compare every JSON field, not just decision counts.
+test_realistic_history_snapshot_equivalence() {
+  local home fakebin id lines i j status child padding start cold_ms warm_ms before after
+  home=$(make_home realistic-history)
+  fakebin=$(make_fakebin "$home")
+  padding=$(printf '%0350d' 0)
+  i=0
+  for lines in 971 854 763 423 282 245 262 273 147; do
+    i=$((i + 1)); id="history-$i"
+    child=$(make_home "realistic-history/domain $i")
+    fm_write_meta "$home/state/$id.meta" \
+      "window=fixture:fm-$id" "worktree=$child" "home=$child" \
+      "project=$child" "kind=secondmate" "harness=claude" "spawn_gen=history-$i"
+    status="$home/state/$id.status"
+    for ((j=1; j<lines; j++)); do
+      case $((j % 5)) in
+        0) printf 'working: background task %s %s\n' "$j" "$padding" ;;
+        1) printf 'needs-decision [key=history]: choose option %s %s\n' "$j" "$padding" ;;
+        2) printf 'resolved [key=history]: selected %s\n' "$padding" ;;
+        3) printf 'blocked [key=access]: waiting %s\n' "$padding" ;;
+        4) printf 'captain-held [key=access]: filed %s\n' "$padding" ;;
+      esac
+    done > "$status"
+    printf 'needs-decision [key=latest]: preserve tabs\tand \\slashes "quotes"\n' >> "$status"
+  done
+  before=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+  start=$(date +%s)
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_SNAPSHOT_CREW_STATE_TIMEOUT=120 \
+    FM_SNAPSHOT_NOW=2026-07-11T18:00:00Z FM_SNAPSHOT_NOW_EPOCH=1783792800 \
+    "$SNAPSHOT" --json > "$home/cold.json" || fail 'cursor-less realistic snapshot failed'
+  cold_ms=$(( ($(date +%s) - start) * 1000 ))
+  after=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+  [ "$before" = "$after" ] || fail 'cursor-less snapshot mutated fixture state'
+  # Only the fixture builder writes cursors. Both snapshot reads must be pure.
+  bash -c '. "$1"; for log in "$2"/*.status; do status_open_decisions_incremental "$log" >/dev/null; done' \
+    _ "$ROOT/bin/fm-classify-lib.sh" "$home/state" || fail 'fixture cursor setup failed'
+  before=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+  start=$(date +%s)
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_SNAPSHOT_CREW_STATE_TIMEOUT=120 \
+    FM_SNAPSHOT_NOW=2026-07-11T18:00:00Z FM_SNAPSHOT_NOW_EPOCH=1783792800 \
+    "$SNAPSHOT" --json > "$home/warm.json" || fail 'warm realistic snapshot failed'
+  warm_ms=$(( ($(date +%s) - start) * 1000 ))
+  after=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+  [ "$before" = "$after" ] || fail 'warm snapshot mutated fixture state or cursors'
+  jq -S . "$home/cold.json" > "$home/cold.sorted"
+  jq -S . "$home/warm.json" > "$home/warm.sorted"
+  cmp -s "$home/cold.sorted" "$home/warm.sorted" || fail 'warm snapshot differs from whole-fold snapshot JSON'
+  jq -e '(.tasks | length) == 9 and all(.tasks[];
+    .hints.pending_decision and any(.hints.open_decisions[]; .key == "latest"))
+    and all(.secondmate_current.records[]; .parent_event.activity_scan.available)' \
+    "$home/warm.json" >/dev/null || fail 'realistic snapshot lost decisions or activity evidence'
+  pass "4,220-line snapshot is read-only and equivalent: cold=${cold_ms}ms warm=${warm_ms}ms"
+}
+
+test_decisions_survive_crew_state_timeout() {
+  local home fakebin status cursor mode out before after i
+  home=$(make_home crew-state-timeout)
+  mkdir -p "$home/projects/task"
+  fm_write_meta "$home/state/task.meta" \
+    "window=fixture:fm-task" "worktree=$home/projects/task" \
+    "project=fixture" "kind=ship" "harness=claude" "spawn_gen=timeout-task"
+  status="$home/state/task.status"
+  {
+    printf 'needs-decision [key=route]: choose the route\n'
+    for ((i=0; i<100; i++)); do printf 'working: prior event %s\n' "$i"; done
+    printf 'note: latest observation\n'
+  } > "$status"
+  fakebin=$(make_fakebin "$home")
+  cat > "$fakebin/tmux" <<'SH'
+#!/usr/bin/env bash
+case "${1:-}" in
+  capture-pane) sleep 3 ;;
+  display-message) printf '%%1\n' ;;
+esac
+SH
+  chmod +x "$fakebin/tmux"
+  cursor="$home/state/.task.open-decisions-cursor"
+  for mode in absent ahead; do
+    if [ "$mode" = ahead ]; then
+      bash -c '. "$1"; status_open_decisions_incremental "$2" >/dev/null' \
+        _ "$ROOT/bin/fm-classify-lib.sh" "$status" || fail 'cursor setup failed'
+      sed '2s/offset=.*/offset=999999/' "$cursor" > "$home/ahead-cursor"
+      mv "$home/ahead-cursor" "$cursor"
+    fi
+    before=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+    out=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_SNAPSHOT_CREW_STATE_TIMEOUT=1 \
+      "$SNAPSHOT" --json) || fail "$mode snapshot failed after crew-state timeout"
+    after=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+    [ "$before" = "$after" ] || fail "$mode timeout snapshot changed live state"
+    printf '%s' "$out" | jq -e '
+      (.tasks | length) == 1
+        and .tasks[0].current_state.state == "unknown"
+        and .tasks[0].hints.pending_decision
+        and .tasks[0].hints.open_decisions == [{key:"route",verb:"needs-decision",summary:"choose the route"}]
+        and .tasks[0].paths.status_log.last_event.raw == "note: latest observation"
+    ' >/dev/null || fail "$mode timeout snapshot lost captured decision or status"
+  done
+  pass 'timeout snapshots preserve cursorless and ahead-of-copy decisions'
+}
+
+test_decisions_survive_crew_state_timeout
+test_realistic_history_snapshot_equivalence
+
 test_empty_fleet_json
 test_fixture_snapshot_json
 test_home_summary_excludes_secondmate_from_child_inventory

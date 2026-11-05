@@ -408,6 +408,103 @@ test_kind_changes_invalidate_folded_decisions() {
   pass "folded decisions are rebuilt when task-kind evidence changes"
 }
 
+
+# Snapshot readers must reuse a drain cursor without advancing it or pairing an
+# old observation with the identity of a replacement live stream.
+test_read_only_cursor_replay_and_fallbacks() (
+  # shellcheck source=bin/fm-classify-lib.sh
+  . "$ROOT/bin/fm-classify-lib.sh"
+  local dir status observed cursor ident expected actual mode kind saved span_reader
+  dir=$(make_case readonly-cursor)
+  status="$dir/state/task.status"
+  observed="$dir/observed.status"
+  cursor="$dir/state/.task.open-decisions-cursor"
+  for kind in ship scout secondmate; do
+    printf 'kind=%s\n' "$kind" > "$dir/state/task.meta"
+    printf 'blocked [key=old]: initial\nneeds-decision [key=keep]: tabs\tand \\escapes\n' > "$status"
+    status_open_decisions_incremental "$status" >/dev/null
+    ident=$(_fm_open_decisions_file_ident "$status")
+    cp "$status" "$observed"
+    expected=$(status_open_decisions "$observed" "$kind")
+    actual=$(status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
+    [ "$actual" = "$expected" ] || fail "$kind fresh read-only cursor differs from whole fold"
+    cp "$cursor" "$dir/good-cursor"
+    printf 'resolved [key=old]: closed\ndone: delivered\nneeds-decision [key=new]: reopened\n' >> "$status"
+    cp "$status" "$observed"
+    expected=$(status_open_decisions "$observed" "$kind")
+    actual=$(status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
+    [ "$actual" = "$expected" ] || fail "$kind suffix replay differs from whole fold"
+    cmp -s "$cursor" "$dir/good-cursor" || fail 'read-only replay changed the drain cursor'
+    for mode in absent version identity ahead header offset oversized-offset symlink capture-missing read-failure; do
+      cp "$dir/good-cursor" "$cursor"
+      saved=$ident
+      span_reader=''
+      case "$mode" in
+        absent) rm "$cursor" ;;
+        version) sed '1s/version=.*/version=0:unknown/' "$dir/good-cursor" > "$cursor" ;;
+        identity) ident=replaced-stream ;;
+        ahead) printf 'version=%s:%s\noffset=999999\nident=%s\n' "$FM_OPEN_DECISIONS_FOLD_VERSION" "$kind" "$ident" > "$cursor" ;;
+        header) sed '2s/offset=//' "$dir/good-cursor" > "$cursor" ;;
+        offset) sed '2s/offset=.*/offset=bad/' "$dir/good-cursor" > "$cursor" ;;
+        oversized-offset) sed '2s/offset=.*/offset=999999999999999999999999999999/' "$dir/good-cursor" > "$cursor" ;;
+        symlink) rm "$cursor"; ln -s "$dir/good-cursor" "$cursor" ;;
+        capture-missing) ident='' ;;
+        read-failure) span_reader=false ;;
+      esac
+      actual=$(FM_STATUS_SPAN_READER="$span_reader" status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
+      [ "$actual" = "$expected" ] || fail "$kind $mode fallback differs from whole fold"
+      ident=$saved
+      rm -f "$cursor"
+    done
+    # A cursor advanced after the copy must not retire a decision in that copy.
+    status_open_decisions_incremental "$status" >/dev/null
+    printf 'resolved [key=new]: later answer\n' >> "$status"
+    status_open_decisions_incremental "$status" >/dev/null
+    actual=$(status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
+    [ "$actual" = "$expected" ] || fail 'advanced cursor crossed the observation boundary'
+    # Replacing the live file and cursor after capture cannot change old evidence.
+    rm "$status"
+    printf 'working: replacement\n' > "$status"
+    status_open_decisions_incremental "$status" >/dev/null
+    actual=$(status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
+    [ "$actual" = "$expected" ] || fail 'replacement cursor contaminated old observation'
+  done
+  pass 'read-only cursors match whole folds for all kinds and invalidation paths'
+)
+
+test_read_only_long_history_cost_is_bounded() (
+  # shellcheck source=bin/fm-classify-lib.sh
+  . "$ROOT/bin/fm-classify-lib.sh"
+  local dir status observed ident expected actual i start whole_ms replay_ms
+  dir=$(make_case readonly-long-history)
+  status="$dir/state/task.status"; observed="$dir/observed.status"
+  printf 'kind=secondmate\n' > "$dir/state/task.meta"
+  for ((i=0; i<500; i++)); do
+    printf 'needs-decision [key=history]: historical question %s\nresolved [key=history]: answered\n' "$i"
+  done > "$status"
+  printf 'blocked [key=buried]: retain this concern\n' >> "$status"
+  status_open_decisions_incremental "$status" >/dev/null
+  ident=$(_fm_open_decisions_file_ident "$status")
+  printf 'needs-decision [key=latest]: new question\n' >> "$status"
+  cp "$status" "$observed"
+  cp "$dir/state/.task.open-decisions-cursor" "$dir/cursor-before"
+  start=$(perl -MTime::HiRes=time -e 'printf "%.0f", time*1000')
+  expected=$(status_open_decisions "$observed" secondmate)
+  whole_ms=$(( $(perl -MTime::HiRes=time -e 'printf "%.0f", time*1000') - start ))
+  start=$(perl -MTime::HiRes=time -e 'printf "%.0f", time*1000')
+  actual=$(status_open_decisions_cursor_ro "$observed" "$status" secondmate "$ident")
+  replay_ms=$(( $(perl -MTime::HiRes=time -e 'printf "%.0f", time*1000') - start ))
+  [ "$actual" = "$expected" ] || fail 'long-history cursor replay changed the old fold output'
+  cmp -s "$dir/state/.task.open-decisions-cursor" "$dir/cursor-before" || fail 'read-only replay wrote its cursor'
+  # Relative bound tolerates loaded hosts while catching a whole-history replay.
+  [ "$((replay_ms * 2))" -lt "$whole_ms" ] \
+    || fail "warm cursor lost its history bound: whole=${whole_ms}ms replay=${replay_ms}ms"
+  pass "long-history fold equivalence and timing bound: whole=${whole_ms}ms replay=${replay_ms}ms"
+)
+
+test_read_only_cursor_replay_and_fallbacks
+test_read_only_long_history_cost_is_bounded
+
 test_terminal_supersession_reaches_cached_drains
 test_kind_changes_invalidate_folded_decisions
 test_truncated_log_falls_back_to_a_full_refold_not_a_dropped_decision

@@ -165,6 +165,10 @@
 # nm_publish_attributed_run owns them); otherwise it is left untouched. The
 # state line never depends on it.
 #
+# FM_CREW_STATE_OPEN_IN=<file> lets snapshot callers reuse the open set folded
+# during prefetch. Without it, FM_CREW_STATE_STATUS_LIVE and
+# FM_CREW_STATE_STATUS_IDENT allow read-only cursor replay against
+# FM_CREW_STATE_STATUS_OVERRIDE using the identity captured with that copy.
 # Read-only and side-effect free apart from that opt-in file. Always exits 0 on
 # a successful read regardless of state; exit 2 only on a usage error (no id).
 set -u
@@ -272,7 +276,14 @@ map_log_state() {  # <line>
   esac
 }
 
-LOG_LINE=$(status_current_line "$LOG" "$KIND")
+if [ -n "${FM_CREW_STATE_OPEN_IN:-}" ]; then
+  OPEN_DECISIONS=$(<"$FM_CREW_STATE_OPEN_IN")
+elif [ -n "${FM_CREW_STATE_STATUS_LIVE:-}" ] && [ -n "${FM_CREW_STATE_STATUS_IDENT:-}" ]; then
+  OPEN_DECISIONS=$(status_open_decisions_cursor_ro "$LOG" "$FM_CREW_STATE_STATUS_LIVE" "$KIND" "$FM_CREW_STATE_STATUS_IDENT")
+else
+  OPEN_DECISIONS=$(status_open_decisions "$LOG" "$KIND")
+fi
+LOG_LINE=$(status_current_line "$LOG" "$KIND" "$OPEN_DECISIONS")
 LOG_VERB=$(status_line_verb "$LOG_LINE")
 
 # --- remote secondmate: the true source is the remote endpoint ---------------
