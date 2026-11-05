@@ -1,0 +1,43 @@
+{
+  "schema": "fm-fleet-snapshot.v1",
+  "task": {
+    "id": "active",
+    "current_state": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "backend unreachable (tmux endpoint state: unreadable)",
+      "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+      "observed_at": "2026-11-05T19:14:13Z",
+      "freshness": "fresh"
+    },
+    "hints": {
+      "pending_decision": true,
+      "blocked_event": false,
+      "open_decisions": [
+        {
+          "key": "route",
+          "verb": "needs-decision",
+          "summary": "choose route"
+        }
+      ],
+      "scout_report_present": false,
+      "last_event_text": "working: current active work"
+    },
+    "paths": {
+      "status_log": {
+        "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.kbzlOz/state/active.status",
+        "present": true,
+        "kind": "event_history",
+        "last_event": {
+          "state": "working",
+          "note": "current active work",
+          "raw": "working: current active work",
+          "age_seconds": null,
+          "offset": 12441,
+          "stream": "lab-generation",
+          "lifecycle_key": "status/active/lab-generation/@12441"
+        }
+      }
+    }
+  }
+}

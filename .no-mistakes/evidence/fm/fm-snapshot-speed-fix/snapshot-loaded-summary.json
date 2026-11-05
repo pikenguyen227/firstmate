@@ -1,0 +1,33 @@
+{
+  "elapsed_seconds": 5,
+  "schema": "fm-fleet-snapshot.v1",
+  "task_count": 12,
+  "unknown_count": 12,
+  "pending_ids": [
+    "load-02",
+    "load-03",
+    "load-04",
+    "load-05",
+    "load-06",
+    "load-07",
+    "load-08",
+    "load-09",
+    "load-10",
+    "load-11",
+    "load-12"
+  ],
+  "secondmate_scans": [
+    {
+      "id": "load-01",
+      "activity_available": true
+    },
+    {
+      "id": "load-02",
+      "activity_available": true
+    },
+    {
+      "id": "load-03",
+      "activity_available": true
+    }
+  ]
+}

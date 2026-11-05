@@ -1,0 +1,1408 @@
+{
+  "schema": "fm-fleet-snapshot.v1",
+  "generated": "2026-11-05T19:13:08Z",
+  "fm_home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd",
+  "roots": {
+    "fm_root": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+    "state": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state",
+    "data": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data",
+    "config": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/config",
+    "projects": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/projects"
+  },
+  "backlog": {
+    "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/backlog.md",
+    "present": false,
+    "records": []
+  },
+  "tasks": [
+    {
+      "id": "load-01",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-01.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-01.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "resolved",
+            "note": "route selected",
+            "raw": "resolved [key=choice]: route selected",
+            "age_seconds": null,
+            "offset": 12442,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-01/unknown/@12442"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-01",
+          "present": true
+        },
+        "home": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-01",
+          "present": true
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-01/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-01",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": false,
+        "blocked_event": false,
+        "open_decisions": [],
+        "scout_report_present": false,
+        "last_event_text": "resolved [key=choice]: route selected"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-load-01 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-02",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-02.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-02.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "needs-decision",
+            "note": "approve rollout",
+            "raw": "needs-decision [key=followup]: approve rollout",
+            "age_seconds": null,
+            "offset": 12442,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-02/unknown/@12442"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-02",
+          "present": true
+        },
+        "home": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-02",
+          "present": true
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-02/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-02",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          },
+          {
+            "key": "followup",
+            "verb": "needs-decision",
+            "summary": "approve rollout"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "needs-decision [key=followup]: approve rollout"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-load-02 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-03",
+      "kind": "secondmate",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-03.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-03.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-03/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-03",
+          "present": true
+        },
+        "home": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-03",
+          "present": true
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-03/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-03",
+        "exists": false,
+        "agent_alive": "unknown",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "send": "bin/fm-send.sh fm-load-03 '<request>'",
+        "watch": "read status/doc return channel; do not routinely fm-peek a secondmate for answers",
+        "return_channel_note": "Secondmate answers come back through status/doc paths after a marked fm-send request."
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-04",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-04.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-04.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-04/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-04",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-04/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-04",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-04",
+        "steer": "bin/fm-send.sh fm-load-04 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-05",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-05.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-05.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-05/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-05",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-05/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-05",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-05",
+        "steer": "bin/fm-send.sh fm-load-05 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-06",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-06.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-06.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-06/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-06",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-06/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-06",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-06",
+        "steer": "bin/fm-send.sh fm-load-06 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-07",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-07.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-07.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-07/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-07",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-07/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-07",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-07",
+        "steer": "bin/fm-send.sh fm-load-07 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-08",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-08.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-08.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-08/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-08",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-08/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-08",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-08",
+        "steer": "bin/fm-send.sh fm-load-08 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-09",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-09.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-09.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-09/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-09",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-09/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-09",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-09",
+        "steer": "bin/fm-send.sh fm-load-09 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-10",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-10.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-10.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-10/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-10",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-10/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-10",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-10",
+        "steer": "bin/fm-send.sh fm-load-10 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-11",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-11.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-11.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-11/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-11",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-11/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-11",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-11",
+        "steer": "bin/fm-send.sh fm-load-11 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    },
+    {
+      "id": "load-12",
+      "kind": "ship",
+      "harness": "claude",
+      "mode": "local-only",
+      "yolo": "",
+      "branch": null,
+      "project": "/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6PH0MEBPWZHEXNNHZG6WPNH",
+      "spawn_gen": null,
+      "backend": "tmux",
+      "remote": null,
+      "paths": {
+        "meta": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-12.meta",
+          "present": true
+        },
+        "status_log": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/state/load-12.status",
+          "present": true,
+          "kind": "event_history",
+          "last_event": {
+            "state": "working",
+            "note": "retained history 0399",
+            "raw": "working: retained history 0399",
+            "age_seconds": null,
+            "offset": 12411,
+            "stream": "unknown",
+            "lifecycle_key": "status/load-12/unknown/@12411"
+          }
+        },
+        "worktree": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-12",
+          "present": true
+        },
+        "home": {
+          "path": null,
+          "present": false
+        },
+        "report": {
+          "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/load-12/report.md",
+          "present": false
+        }
+      },
+      "secondmate_projects": [],
+      "current_state": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "backend unreachable (tmux endpoint state: unreadable)",
+        "raw": "state: unknown · source: none · backend unreachable (tmux endpoint state: unreadable)",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "validation_run": null,
+      "endpoint": {
+        "target": "lab:load-12",
+        "exists": false,
+        "agent_alive": "not_checked",
+        "status": "absent",
+        "observed_at": "2026-11-05T19:13:08Z",
+        "freshness": "fresh"
+      },
+      "pr": {
+        "url": null,
+        "source": "absent",
+        "head": null
+      },
+      "hints": {
+        "pending_decision": true,
+        "blocked_event": false,
+        "open_decisions": [
+          {
+            "key": "choice",
+            "verb": "needs-decision",
+            "summary": "choose route"
+          }
+        ],
+        "scout_report_present": false,
+        "last_event_text": "working: retained history 0399"
+      },
+      "actions": {
+        "watch": "bin/fm-peek.sh fm-load-12",
+        "steer": "bin/fm-send.sh fm-load-12 '<instruction>'",
+        "return_channel_note": null
+      },
+      "backlog": null
+    }
+  ],
+  "main_inventory": {
+    "valid": true,
+    "reason": null,
+    "orphan_in_flight": [],
+    "unstructured_current_count": 0
+  },
+  "contributions": {
+    "known": 0,
+    "checked": 0,
+    "counts": {
+      "captain": 0,
+      "fleet": 0,
+      "maintainer": 0,
+      "nobody": 0
+    },
+    "unmeasured": 0,
+    "complete": false,
+    "proven_clear": false,
+    "stale_verdicts": 0,
+    "missing_verdicts": 0,
+    "unreadable_records": 1,
+    "valid_until": 900,
+    "captain": [],
+    "captain_omitted": 0
+  },
+  "scout_reports": [],
+  "secondmate_current": {
+    "registry": {
+      "present": false,
+      "available": true,
+      "complete": true,
+      "reason": null,
+      "provenance": "registered-table",
+      "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/secondmates.md",
+      "freshness": {
+        "status": "fresh",
+        "observed_at": "2026-11-05T19:13:08Z"
+      },
+      "records": [],
+      "input_truncated": false,
+      "records_truncated": false,
+      "reasons": [],
+      "lines_in_window": 0,
+      "records_in_window": 0
+    },
+    "records": [
+      {
+        "id": "load-01",
+        "home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-01",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": null,
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-01",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T19:13:08Z",
+          "age_seconds": 0
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "resolved [key=choice]: route selected",
+          "note": "route selected",
+          "age_seconds": null,
+          "open_activities": [
+            {
+              "key": "default",
+              "verb": "working",
+              "summary": "retained history 0399"
+            }
+          ],
+          "open_decisions": [],
+          "activity_scan": {
+            "records": [
+              {
+                "key": "default",
+                "verb": "working",
+                "summary": "retained history 0399"
+              }
+            ],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 1
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T19:13:08Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "load-02",
+        "home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-02",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": null,
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-02",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T19:13:08Z",
+          "age_seconds": 0
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "needs-decision [key=followup]: approve rollout",
+          "note": "approve rollout",
+          "age_seconds": null,
+          "open_activities": [
+            {
+              "key": "default",
+              "verb": "working",
+              "summary": "retained history 0399"
+            }
+          ],
+          "open_decisions": [
+            {
+              "key": "choice",
+              "verb": "needs-decision",
+              "summary": "choose route"
+            },
+            {
+              "key": "followup",
+              "verb": "needs-decision",
+              "summary": "approve rollout"
+            }
+          ],
+          "activity_scan": {
+            "records": [
+              {
+                "key": "default",
+                "verb": "working",
+                "summary": "retained history 0399"
+              }
+            ],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 1
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T19:13:08Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      },
+      {
+        "id": "load-03",
+        "home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-03",
+        "host": null,
+        "remote": false,
+        "registered": false,
+        "spawn_gen": null,
+        "current": {
+          "state": "unknown",
+          "reason": "secondmate metadata is not registered"
+        },
+        "invalidity": null,
+        "reconcile_inventory": null,
+        "provenance": {
+          "selected": "parent-event-fallback",
+          "structured_home": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-03",
+          "parent_event_role": "fallback-only-not-current"
+        },
+        "freshness": {
+          "status": "historical-event",
+          "observed_at": "2026-11-05T19:13:08Z",
+          "age_seconds": 5
+        },
+        "active_children": [],
+        "decisions_open": [],
+        "holds": [],
+        "queued": [],
+        "landed": [],
+        "endpoints": [],
+        "counts": {
+          "active_children": 0,
+          "decisions_open": 0,
+          "holds": 0,
+          "queued": 0,
+          "landed": 0,
+          "endpoints": 0
+        },
+        "omitted": [],
+        "parent_event": {
+          "raw": "working: retained history 0399",
+          "note": "retained history 0399",
+          "age_seconds": null,
+          "open_activities": [
+            {
+              "key": "default",
+              "verb": "working",
+              "summary": "retained history 0399"
+            }
+          ],
+          "open_decisions": [
+            {
+              "key": "choice",
+              "verb": "needs-decision",
+              "summary": "choose route"
+            }
+          ],
+          "activity_scan": {
+            "records": [
+              {
+                "key": "default",
+                "verb": "working",
+                "summary": "retained history 0399"
+              }
+            ],
+            "available": true,
+            "input_truncated": true,
+            "retained_truncated": false,
+            "reasons": [
+              "line_limit"
+            ],
+            "lines_in_window": 256,
+            "records_in_window": 1
+          }
+        },
+        "terminal_evidence": {
+          "provenance": "parent-direct-report-terminal",
+          "trust": "untrusted-supplement",
+          "captured": false,
+          "observed_at": "2026-11-05T19:13:08Z",
+          "freshness": "unknown",
+          "reason": "terminal capture unavailable",
+          "lines": 0,
+          "bytes": 0,
+          "event_note_seen": false,
+          "contradiction": false
+        },
+        "contradiction": false
+      }
+    ],
+    "total_registered": 0,
+    "total": 3,
+    "shown": 3,
+    "truncated": 0
+  },
+  "secondmate_landed": {
+    "records": [],
+    "truncated": [],
+    "unreadable": [
+      "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-01",
+      "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-02",
+      "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-03"
+    ],
+    "partial": []
+  },
+  "lifecycle": {
+    "schema": "fm-lifecycle.v1",
+    "id": null,
+    "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.DQBcrd/data/lifecycle/events.v1.jsonl",
+    "present": false,
+    "head_seq": null,
+    "homes": [
+      {
+        "id": null,
+        "task": "load-01",
+        "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-01/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "load-02",
+        "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-02/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      },
+      {
+        "id": null,
+        "task": "load-03",
+        "path": "/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.DQBcrd/projects/load-03/data/lifecycle/events.v1.jsonl",
+        "head_seq": null,
+        "remote": false
+      }
+    ]
+  },
+  "secondmate_guidance": {
+    "note": "For kind=secondmate, bearings selects validated structured state from that registered home; parent events and bounded terminal evidence are fallback-only supplements and never current-state authority."
+  }
+}
