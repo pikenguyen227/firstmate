@@ -1,0 +1,19 @@
+bin/fm-crew-state.sh
+  s_54786bee58fb51::t_ebe383b1f53235 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f12a1a60ec7019ac88de1257ba68bb4fc189068",
+  "prompts": {},
+  "sessions": {
+    "s_54786bee58fb51": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad64-218b-77a1-90b2-d9a6ff9670c8",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
