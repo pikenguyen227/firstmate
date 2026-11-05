@@ -1804,7 +1804,7 @@ secondmate_current_json() {  # <parent-tasks-json-file> <output-file>
   local row id home host remote registered registry_error task sampled_spawn_gen status_file status_observation_file event_raw event_note event_age observed_epoch observed_age
   local activity_scan activities decisions reconciliation provenance freshness reason summary_file summary_sampled summary_valid summary_invalidity state terminal terminal_contradiction contradiction
   local summary_source summary_age summary_observed summary_freshness cache_path collection_status collection_slot summary_index=0
-  local seen_homes='' scan_index=0 scan_id scan_status scan_pid
+  local seen_homes='' scan_index=0 scan_pid
   local -a activity_pids=()
   registry_file="$JSON_TRANSPORT_DIR/secondmate-registry.json"
   union_file="$JSON_TRANSPORT_DIR/secondmate-union.json"
@@ -1842,29 +1842,34 @@ secondmate_current_json() {  # <parent-tasks-json-file> <output-file>
   # These bounded status reads are independent of the home summaries below.
   while IFS= read -r row; do
     [ -n "$row" ] || continue
-    scan_id=$(printf '%s' "$row" | jq -r '.id')
-    scan_status=$(printf '%s' "$row" | jq -r '.parent_task.paths.status_log.path // ""')
     scan_index=$((scan_index + 1))
-    if [ -n "$scan_status" ]; then scan_status="$SNAPSHOT_TASK_DIR/$scan_id.status"; fi
-    bounded_parent_activities_json "$scan_status" > "$SNAPSHOT_COLLECT_DIR/activity-$scan_index.json" &
+    printf '%s' "$row" | jq -j '[.id, (.parent_task.paths.status_log.path // ""),
+      (.home // ""), (.host // ""), (.remote // false), .registered,
+      (.registry_error // ""), (.parent_task // {} | tojson),
+      (.parent_task.spawn_gen // ""),
+      (.parent_task.paths.status_log.last_event.raw // ""),
+      (.parent_task.paths.status_log.last_event.note // ""),
+      (.parent_task.hints.open_decisions // [] | tojson),
+      (.parent_task.paths.status_log.last_event.age_seconds // null)]
+      | map(tostring + "\u0000") | add' > "$SNAPSHOT_COLLECT_DIR/row-$scan_index.fields" || return 1
+    exec 3< "$SNAPSHOT_COLLECT_DIR/row-$scan_index.fields"
+    IFS= read -r -d '' id <&3
+    IFS= read -r -d '' status_file <&3
+    exec 3<&-
+    status_observation_file=
+    if [ -n "$status_file" ]; then status_observation_file="$SNAPSHOT_TASK_DIR/$id.status"; fi
+    bounded_parent_activities_json "$status_observation_file" > "$SNAPSHOT_COLLECT_DIR/activity-$scan_index.json" &
     activity_pids[scan_index]=$!
   done <<EOF
 $rows
 EOF
   scan_index=0
 
-  while IFS= read -r row; do
-    [ -n "$row" ] || continue
-    exec 3< <(printf '%s' "$row" | jq -j '[.id, (.home // ""), (.host // ""),
-      (.remote // false), .registered, (.registry_error // ""),
-      (.parent_task // {} | tojson), (.parent_task.spawn_gen // ""),
-      (.parent_task.paths.status_log.path // ""),
-      (.parent_task.paths.status_log.last_event.raw // ""),
-      (.parent_task.paths.status_log.last_event.note // ""),
-      (.parent_task.hints.open_decisions // [] | tojson),
-      (.parent_task.paths.status_log.last_event.age_seconds // null)]
-      | map(tostring + "\u0000") | add')
+  while [ "$scan_index" -lt "$shown" ]; do
+    scan_index=$((scan_index + 1))
+    exec 3< "$SNAPSHOT_COLLECT_DIR/row-$scan_index.fields"
     IFS= read -r -d '' id <&3
+    IFS= read -r -d '' status_file <&3
     IFS= read -r -d '' home <&3
     IFS= read -r -d '' host <&3
     IFS= read -r -d '' remote <&3
@@ -1872,7 +1877,6 @@ EOF
     IFS= read -r -d '' registry_error <&3
     IFS= read -r -d '' task <&3
     IFS= read -r -d '' sampled_spawn_gen <&3
-    IFS= read -r -d '' status_file <&3
     IFS= read -r -d '' event_raw <&3
     IFS= read -r -d '' event_note <&3
     IFS= read -r -d '' decisions <&3
@@ -1880,7 +1884,6 @@ EOF
     exec 3<&-
     status_observation_file=
     if [ -n "$status_file" ]; then status_observation_file="$SNAPSHOT_TASK_DIR/$id.status"; fi
-    scan_index=$((scan_index + 1))
     scan_pid=${activity_pids[scan_index]}
     wait "$scan_pid" || return 1
     activity_scan=$(<"$SNAPSHOT_COLLECT_DIR/activity-$scan_index.json")
@@ -2036,9 +2039,7 @@ EOF
          parent_event:{raw:$event_raw,note:$event_note,age_seconds:$event_age,open_activities:$activities,open_decisions:$decisions,activity_scan:$activity_scan},
          terminal_evidence:$terminal,contradiction:false}' >> "$records_file" || return 1
     fi
-  done <<EOF
-$rows
-EOF
+  done
   snapshot_collection_cleanup
   jq -s \
     --slurpfile registry "$registry_file" \
