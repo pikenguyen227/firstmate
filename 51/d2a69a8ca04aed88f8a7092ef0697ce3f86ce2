@@ -1,0 +1,22 @@
+bin/fm-fleet-snapshot.sh
+  s_a6265d977360e3::t_97d9aa3349817c 67-70
+  s_a6265d977360e3::t_ef57d48812d679 289-290,769-771
+docs/architecture.md
+  s_a6265d977360e3::t_ef57d48812d679 206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "51d2a69a8ca04aed88f8a7092ef0697ce3f86ce2",
+  "prompts": {},
+  "sessions": {
+    "s_a6265d977360e3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad28-0f1c-7f53-aee6-1a6f72c37638",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
