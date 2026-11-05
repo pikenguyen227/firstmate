@@ -278,7 +278,9 @@ map_log_state() {  # <line>
   esac
 }
 
-if [ -n "${FM_CREW_STATE_STATUS_LIVE:-}" ] && [ -n "${FM_CREW_STATE_STATUS_IDENT:-}" ]; then
+if [ -n "${FM_CREW_STATE_OPEN_IN:-}" ]; then
+  OPEN_DECISIONS=$(<"$FM_CREW_STATE_OPEN_IN")
+elif [ -n "${FM_CREW_STATE_STATUS_LIVE:-}" ] && [ -n "${FM_CREW_STATE_STATUS_IDENT:-}" ]; then
   OPEN_DECISIONS=$(status_open_decisions_cursor_ro "$LOG" "$FM_CREW_STATE_STATUS_LIVE" "$KIND" "$FM_CREW_STATE_STATUS_IDENT")
 else
   OPEN_DECISIONS=$(status_open_decisions "$LOG" "$KIND")

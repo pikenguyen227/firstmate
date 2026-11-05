@@ -349,8 +349,8 @@ status_stream_sample() {  # <id> <captured-meta>
 # A local crew-state read is bounded so one slow child cannot extend this
 # snapshot without limit. Remote secondmate endpoint liveness is never read here.
 # A local read that hits the bound folds to state unknown.
-crew_state_json() {  # <id> [<captured-meta>] [<captured-status>] [<run-out>] [<captured-ident>]
-  local id=$1 captured_meta=${2:-} captured_status=${3:-} run_out=${4:-} captured_ident=${5:-} raw rest state source detail sep
+crew_state_json() {  # <id> [<captured-meta>] [<captured-status>] [<run-out>] [<captured-ident>] [<open-set>]
+  local id=$1 captured_meta=${2:-} captured_status=${3:-} run_out=${4:-} captured_ident=${5:-} open_set=${6:-} raw rest state source detail sep
   raw=$(
     fm_run_timed "$FM_SNAPSHOT_CREW_STATE_TIMEOUT" \
       env FM_ROOT_OVERRIDE="$FM_ROOT" \
@@ -360,7 +360,7 @@ crew_state_json() {  # <id> [<captured-meta>] [<captured-status>] [<run-out>] [<
       FM_CREW_STATE_STATUS_OVERRIDE="$captured_status" \
       FM_CREW_STATE_STATUS_LIVE="$STATE/$id.status" \
       FM_CREW_STATE_STATUS_IDENT="$captured_ident" \
-      FM_CREW_STATE_OPEN_OUT="$SNAPSHOT_TASK_DIR/$id.open" \
+      FM_CREW_STATE_OPEN_IN="$open_set" \
       FM_CREW_STATE_RUN_OUT="$run_out" \
       FM_DATA_OVERRIDE="$DATA" \
       FM_PROJECTS_OVERRIDE="$PROJECTS" \
@@ -718,12 +718,15 @@ prefetch_task_observations() {  # <meta> <id>
     if [ -n "$ident_before" ] && [ "$ident_before" = "$ident_after" ] &&
        [ -n "$stream_before" ] && [ "$stream_before" = "$stream_after" ]; then
       captured_ident=$ident_before
-      printf '%s' "$captured_ident" > "$SNAPSHOT_TASK_DIR/$id.status-ident"
     fi
     if [ -n "$stream_before" ] && [ "$stream_before" = "$stream_after" ] && [ -f "$status_capture" ]; then
       printf '%s\n' "${stream_before#*$'\t'}" > "$SNAPSHOT_TASK_DIR/$id.status-stream" 2>/dev/null || true
     fi
     snapshot_mark_optional_present "$report_path" "$report_capture" || current_rc=1
+    kind=$(meta_value "$meta" kind)
+    [ -n "$kind" ] || kind=ship
+    status_open_decisions_cursor_ro "$status_capture" "$status_log" "$kind" "$captured_ident" \
+      > "$SNAPSHOT_TASK_DIR/$id.open" || current_rc=1
   fi
 
   if [ -n "$remote_host" ]; then
@@ -731,9 +734,8 @@ prefetch_task_observations() {  # <meta> <id>
       > "$current_file" || current_rc=1
     agent_alive=unknown
   elif [ "$generation_current" = 1 ]; then
-    crew_state_json "$id" "$meta" "$status_capture" "$SNAPSHOT_TASK_DIR/$id.run" "$captured_ident" > "$current_file" &
+    crew_state_json "$id" "$meta" "$status_capture" "$SNAPSHOT_TASK_DIR/$id.run" "$captured_ident" "$SNAPSHOT_TASK_DIR/$id.open" > "$current_file" &
     current_pid=$!
-    kind=$(meta_value "$meta" kind)
     backend=$(fm_backend_of_meta "$meta")
     target=$(fm_backend_target_of_meta "$meta")
     if [ -n "$target" ]; then
@@ -747,6 +749,7 @@ prefetch_task_observations() {  # <meta> <id>
       fi
     fi
   else
+    : > "$SNAPSHOT_TASK_DIR/$id.open" || current_rc=1
     jq -n '{state:"unknown",source:"none",detail:"task generation changed during snapshot",raw:""}' \
       > "$current_file" || current_rc=1
     agent_alive=unknown
@@ -756,7 +759,8 @@ prefetch_task_observations() {  # <meta> <id>
   # All mutable observations must belong to the metadata generation captured in
   # the manifest. If teardown/relaunch raced any read, discard the whole sample.
   if ! snapshot_task_generation_is_current "$meta" "$id"; then
-    rm -f -- "$status_capture" "$report_capture" "$SNAPSHOT_TASK_DIR/$id.status-stream" "$SNAPSHOT_TASK_DIR/$id.status-ident" "$SNAPSHOT_TASK_DIR/$id.open" "$SNAPSHOT_TASK_DIR/$id.run"
+    rm -f -- "$status_capture" "$report_capture" "$SNAPSHOT_TASK_DIR/$id.status-stream" "$SNAPSHOT_TASK_DIR/$id.run"
+    : > "$SNAPSHOT_TASK_DIR/$id.open" || current_rc=1
     jq -n '{state:"unknown",source:"none",detail:"task generation changed during snapshot",raw:""}' \
       > "$current_file" || current_rc=1
     endpoint_exists=null
@@ -901,11 +905,10 @@ task_json_lines() {
     # never clear another concern's keyed decision. A parked/blocked state, or a
     # non-authoritative status-log/none read on a still-live task, keeps the fold's
     # open decision surfacing.
-    if [ -f "$SNAPSHOT_TASK_DIR/$id.open" ]; then
-      open_decisions_tsv=$(<"$SNAPSHOT_TASK_DIR/$id.open")
-    else
-      open_decisions_tsv=$(status_open_decisions_cursor_ro "$status_log" "$STATE/$id.status" "$kind" "$(cat "$SNAPSHOT_TASK_DIR/$id.status-ident" 2>/dev/null || true)")
-    fi
+    open_decisions_tsv=$(<"$SNAPSHOT_TASK_DIR/$id.open") || {
+      snapshot_task_cleanup
+      return 1
+    }
     if [ "$kind" != secondmate ] && \
        { { { [ "$current_source" = run-step ] || [ "$current_source" = pane ]; } \
            && [ "$current_state" != parked ] && [ "$current_state" != blocked ]; } \

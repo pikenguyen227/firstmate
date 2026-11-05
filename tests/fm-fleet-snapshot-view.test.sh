@@ -1208,6 +1208,53 @@ test_realistic_history_snapshot_equivalence() {
   pass "4,220-line snapshot is read-only and equivalent: cold=${cold_ms}ms warm=${warm_ms}ms"
 }
 
+test_decisions_survive_crew_state_timeout() {
+  local home fakebin status cursor mode out before after i
+  home=$(make_home crew-state-timeout)
+  mkdir -p "$home/projects/task"
+  fm_write_meta "$home/state/task.meta" \
+    "window=fixture:fm-task" "worktree=$home/projects/task" \
+    "project=fixture" "kind=ship" "harness=claude" "spawn_gen=timeout-task"
+  status="$home/state/task.status"
+  {
+    printf 'needs-decision [key=route]: choose the route\n'
+    for ((i=0; i<100; i++)); do printf 'working: prior event %s\n' "$i"; done
+    printf 'note: latest observation\n'
+  } > "$status"
+  fakebin=$(make_fakebin "$home")
+  cat > "$fakebin/tmux" <<'SH'
+#!/usr/bin/env bash
+case "${1:-}" in
+  capture-pane) sleep 3 ;;
+  display-message) printf '%%1\n' ;;
+esac
+SH
+  chmod +x "$fakebin/tmux"
+  cursor="$home/state/.task.open-decisions-cursor"
+  for mode in absent ahead; do
+    if [ "$mode" = ahead ]; then
+      bash -c '. "$1"; status_open_decisions_incremental "$2" >/dev/null' \
+        _ "$ROOT/bin/fm-classify-lib.sh" "$status" || fail 'cursor setup failed'
+      sed '2s/offset=.*/offset=999999/' "$cursor" > "$home/ahead-cursor"
+      mv "$home/ahead-cursor" "$cursor"
+    fi
+    before=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+    out=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_SNAPSHOT_CREW_STATE_TIMEOUT=1 \
+      "$SNAPSHOT" --json) || fail "$mode snapshot failed after crew-state timeout"
+    after=$(find "$home/state" -type f -exec cksum {} \; | LC_ALL=C sort)
+    [ "$before" = "$after" ] || fail "$mode timeout snapshot changed live state"
+    printf '%s' "$out" | jq -e '
+      (.tasks | length) == 1
+        and .tasks[0].current_state.state == "unknown"
+        and .tasks[0].hints.pending_decision
+        and .tasks[0].hints.open_decisions == [{key:"route",verb:"needs-decision",summary:"choose the route"}]
+        and .tasks[0].paths.status_log.last_event.raw == "note: latest observation"
+    ' >/dev/null || fail "$mode timeout snapshot lost captured decision or status"
+  done
+  pass 'timeout snapshots preserve cursorless and ahead-of-copy decisions'
+}
+
+test_decisions_survive_crew_state_timeout
 test_realistic_history_snapshot_equivalence
 
 test_empty_fleet_json
