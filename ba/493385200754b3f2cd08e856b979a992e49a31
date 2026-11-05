@@ -1,0 +1,19 @@
+bin/fm-fleet-snapshot.sh
+  s_5ae29559328c74::t_e1129294fefabc 1807,1846-1861,1868-1870,1872,2042
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba493385200754b3f2cd08e856b979a992e49a31",
+  "prompts": {},
+  "sessions": {
+    "s_5ae29559328c74": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad16-201b-7fb0-a1c5-08c407e3310d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
