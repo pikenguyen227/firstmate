@@ -64,10 +64,10 @@
 #     the fm-lifecycle.v1 feed, or null when it could not be established; the
 #     stream comes from bin/fm-lifecycle-lib.sh's fm_lifecycle_status_stream and
 #     docs/configuration.md "Lifecycle event feed" owns their meaning.
-#     hints.open_decisions is the keyed open-decision set returned by
-#     fm-classify-lib.sh's authoritative status_open_decisions fold and reconciled
-#     against current_state; hints.pending_decision and hints.blocked_event are
-#     booleans derived from that set.
+#     hints.open_decisions is the keyed open-decision set following
+#     fm-classify-lib.sh's authoritative status_open_decisions fold semantics and
+#     reconciled against current_state; hints.pending_decision and
+#     hints.blocked_event are booleans derived from that set.
 #     validation_run is the no-mistakes run fm-crew-state.sh attributed to the
 #     task during the same current-state read, or null when none is attributed;
 #     docs/configuration.md "Attributed validation run" owns its fields.
@@ -286,7 +286,8 @@ FM_SNAPSHOT_TERMINAL_LINES, FM_SNAPSHOT_TERMINAL_BYTES, and
 FM_SNAPSHOT_TERMINAL_TIMEOUT and never becomes canonical current state.
 Parent activity evidence uses FM_SNAPSHOT_PARENT_ACTIVITY_LINES,
 FM_SNAPSHOT_PARENT_ACTIVITY_BYTES, FM_SNAPSHOT_PARENT_ACTIVITIES, and
-FM_SNAPSHOT_PARENT_ACTIVITY_TIMEOUT, with truncation disclosed in the result.
+FM_SNAPSHOT_PARENT_ACTIVITY_TIMEOUT (default 5 seconds per concurrent scan),
+with truncation disclosed in the result.
 The registered secondmate table uses FM_SNAPSHOT_REGISTRY_LINES,
 FM_SNAPSHOT_REGISTRY_BYTES, FM_SNAPSHOT_REGISTRY_RECORDS, and
 FM_SNAPSHOT_REGISTRY_TIMEOUT, with unavailability and truncation disclosed.
@@ -765,10 +766,9 @@ prefetch_task_observations() {  # <meta> <id>
   return "$current_rc"
 }
 
-# Current-state and endpoint reads are independent observations. Start each
-# task's pair together so five local workers pay one slow no-mistakes response
-# window rather than five in series, while every command bound remains owned by
-# fm-timeout-lib.sh.
+# Current-state and endpoint reads are independent observations. Keep the
+# bounded pool full when a task finishes, even if an earlier read is still
+# waiting; fm-timeout-lib.sh owns each command bound.
 prefetch_task_current_states() {
   local meta captured_meta id active=0 index=0 rc=0 slot pid finished
   local -a pids=()
