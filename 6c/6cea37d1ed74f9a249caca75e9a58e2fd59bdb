@@ -1,0 +1,19 @@
+tests/fm-wake-drain-open-decisions-cursor.test.sh
+  s_6944934f8484d4::t_4c213ba3fc8e30 417,441,452,454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6c6cea37d1ed74f9a249caca75e9a58e2fd59bdb",
+  "prompts": {},
+  "sessions": {
+    "s_6944934f8484d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ad42-cb59-7d71-9371-f29afd875d17",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
