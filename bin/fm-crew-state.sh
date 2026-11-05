@@ -168,10 +168,7 @@
 # FM_CREW_STATE_STATUS_LIVE and FM_CREW_STATE_STATUS_IDENT let snapshot callers
 # replay a read-only decision cursor against FM_CREW_STATE_STATUS_OVERRIDE,
 # using the live status identity captured alongside that immutable copy.
-# FM_CREW_STATE_OPEN_OUT=<file> atomically publishes the computed decision set
-# for reuse by the snapshot, including an empty set; it never changes the cursor.
-#
-# Read-only and side-effect free apart from those opt-in files. Always exits 0 on
+# Read-only and side-effect free apart from that opt-in file. Always exits 0 on
 # a successful read regardless of state; exit 2 only on a usage error (no id).
 set -u
 
@@ -284,10 +281,6 @@ elif [ -n "${FM_CREW_STATE_STATUS_LIVE:-}" ] && [ -n "${FM_CREW_STATE_STATUS_IDE
   OPEN_DECISIONS=$(status_open_decisions_cursor_ro "$LOG" "$FM_CREW_STATE_STATUS_LIVE" "$KIND" "$FM_CREW_STATE_STATUS_IDENT")
 else
   OPEN_DECISIONS=$(status_open_decisions "$LOG" "$KIND")
-fi
-if [ -n "${FM_CREW_STATE_OPEN_OUT:-}" ]; then
-  printf '%s' "$OPEN_DECISIONS" > "$FM_CREW_STATE_OPEN_OUT.tmp.$$" &&
-    mv -f -- "$FM_CREW_STATE_OPEN_OUT.tmp.$$" "$FM_CREW_STATE_OPEN_OUT"
 fi
 LOG_LINE=$(status_current_line "$LOG" "$KIND" "$OPEN_DECISIONS")
 LOG_VERB=$(status_line_verb "$LOG_LINE")
