@@ -414,7 +414,7 @@ test_kind_changes_invalidate_folded_decisions() {
 test_read_only_cursor_replay_and_fallbacks() (
   # shellcheck source=bin/fm-classify-lib.sh
   . "$ROOT/bin/fm-classify-lib.sh"
-  local dir status observed cursor ident expected actual mode kind saved
+  local dir status observed cursor ident expected actual mode kind saved span_reader
   dir=$(make_case readonly-cursor)
   status="$dir/state/task.status"
   observed="$dir/observed.status"
@@ -438,6 +438,7 @@ test_read_only_cursor_replay_and_fallbacks() (
     for mode in absent version identity ahead header offset oversized-offset symlink capture-missing read-failure; do
       cp "$dir/good-cursor" "$cursor"
       saved=$ident
+      span_reader=''
       case "$mode" in
         absent) rm "$cursor" ;;
         version) sed '1s/version=.*/version=0:unknown/' "$dir/good-cursor" > "$cursor" ;;
@@ -448,12 +449,11 @@ test_read_only_cursor_replay_and_fallbacks() (
         oversized-offset) sed '2s/offset=.*/offset=999999999999999999999999999999/' "$dir/good-cursor" > "$cursor" ;;
         symlink) rm "$cursor"; ln -s "$dir/good-cursor" "$cursor" ;;
         capture-missing) ident='' ;;
-        read-failure) FM_STATUS_SPAN_READER=false ;;
+        read-failure) span_reader=false ;;
       esac
-      actual=$(status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
+      actual=$(FM_STATUS_SPAN_READER="$span_reader" status_open_decisions_cursor_ro "$observed" "$status" "$kind" "$ident")
       [ "$actual" = "$expected" ] || fail "$kind $mode fallback differs from whole fold"
       ident=$saved
-      unset FM_STATUS_SPAN_READER
       rm -f "$cursor"
     done
     # A cursor advanced after the copy must not retire a decision in that copy.
