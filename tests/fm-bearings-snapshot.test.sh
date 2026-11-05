@@ -3501,8 +3501,33 @@ SH
   pass 'parent activity scans overlap and retain all evidence'
 }
 
+test_parent_activity_scans_retain_evidence_at_load() {
+  local home fakebin id n json
+  home=$(make_home loaded-parent-activities)
+  fakebin=$(make_fakebin "$home")
+  for id in $(seq 1 12); do
+    mkdir -p "$home/domain-$id"
+    fm_write_meta "$home/state/mate-$id.meta" "window=fixture:mate-$id" \
+      "worktree=$home/domain-$id" "home=$home/domain-$id" \
+      'harness=claude' 'kind=secondmate'
+    {
+      for n in $(seq 1 349); do printf 'working: historical event %s\n' "$n"; done
+      printf 'working [key=activity]: current domain %s\n' "$id"
+    } > "$home/state/mate-$id.status"
+  done
+  json=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_ROOT_OVERRIDE="$FM_ROOT_OVERRIDE" \
+    "$ROOT/bin/fm-fleet-snapshot.sh" --json) || fail 'loaded parent activity snapshot failed'
+  printf '%s' "$json" | jq -e '(.secondmate_current.records | length) == 12
+    and all(.secondmate_current.records[];
+      .parent_event.activity_scan.available
+      and any(.parent_event.open_activities[]; .key == "activity"))' >/dev/null \
+    || fail 'loaded parent activity scans timed out or lost current evidence'
+  pass '12 concurrent parent activity scans retain evidence within the default bound'
+}
+
 test_local_prefetch_reuses_a_finished_slot
 test_parent_activity_scans_overlap
+test_parent_activity_scans_retain_evidence_at_load
 
 test_task_teardown_during_metadata_capture_does_not_abort_snapshot
 test_current_state_uses_captured_status_observation

@@ -165,9 +165,10 @@
 # nm_publish_attributed_run owns them); otherwise it is left untouched. The
 # state line never depends on it.
 #
-# FM_CREW_STATE_STATUS_LIVE and FM_CREW_STATE_STATUS_IDENT let snapshot callers
-# replay a read-only decision cursor against FM_CREW_STATE_STATUS_OVERRIDE,
-# using the live status identity captured alongside that immutable copy.
+# FM_CREW_STATE_OPEN_IN=<file> lets snapshot callers reuse the open set folded
+# during prefetch. Without it, FM_CREW_STATE_STATUS_LIVE and
+# FM_CREW_STATE_STATUS_IDENT allow read-only cursor replay against
+# FM_CREW_STATE_STATUS_OVERRIDE using the identity captured with that copy.
 # Read-only and side-effect free apart from that opt-in file. Always exits 0 on
 # a successful read regardless of state; exit 2 only on a usage error (no id).
 set -u

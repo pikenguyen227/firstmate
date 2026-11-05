@@ -888,8 +888,8 @@ task_json_lines() {
       printf '%s' "$current_json" | jq -r '[.state // "", .source // ""] | @tsv'
     )
 
-    # Durable keyed open-decision set: reuse the captured fold, or replay its
-    # read-only cursor (falling back to the whole stream), so an unrelated event can
+    # Durable keyed open-decision set: reuse the set prefetched by read-only
+    # cursor replay or a whole-stream fold, so an unrelated event can
     # never mask a still-open captain decision. The set is derived purely from the
     # keyed fold - never from report bodies or decision-like prose - and then
     # reconciled against the crew LIFECYCLE, which only clears a stale decision the
