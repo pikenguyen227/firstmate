@@ -909,14 +909,57 @@ status_open_decisions() {  # <status-file> [<kind>]
   printf '%s' "$open"
 }
 
+# Replay a persisted cursor against an immutable observation without changing
+# the live cursor. The identity must have been sampled with that observation.
+status_open_decisions_cursor_ro() {  # <observed-file> <live-file> <kind> <captured-ident>
+  local observed=$1 live=$2 kind=$3 captured_ident=$4 cf data version offset ident open='' rest line size resolve held chunk
+  [ -f "$observed" ] && [ -r "$observed" ] && [ ! -L "$observed" ] || return 0
+  [ -n "$captured_ident" ] || { status_open_decisions "$observed" "$kind"; return; }
+  cf=$(_fm_open_decisions_cursor_path "$live")
+  [ -f "$cf" ] && [ -r "$cf" ] && [ ! -L "$cf" ] || { status_open_decisions "$observed" "$kind"; return; }
+  data=$(LC_ALL=C command cat "$cf" 2>/dev/null && printf x) || data=''
+  data=${data%x}
+  case "$data" in *$'\n'*$'\n'*$'\n'*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  version=${data%%$'\n'*}
+  rest=${data#*$'\n'}
+  offset=${rest%%$'\n'*}
+  rest=${rest#*$'\n'}
+  ident=${rest%%$'\n'*}
+  open=${rest#*$'\n'}
+  case "$version" in version=*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  case "$offset" in offset=*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  case "$ident" in ident=*) ;; *) status_open_decisions "$observed" "$kind"; return ;; esac
+  version=${version#version=}
+  offset=${offset#offset=}
+  ident=${ident#ident=}
+  size=$(_fm_status_file_size "$observed") || { status_open_decisions "$observed" "$kind"; return; }
+  case "$offset:$size" in *[!0-9:]*|:*|*:) status_open_decisions "$observed" "$kind"; return ;; esac
+  if [ "$version" != "$FM_OPEN_DECISIONS_FOLD_VERSION:$kind" ] ||
+     [ "$ident" != "$captured_ident" ] || ! [ "$offset" -le "$size" ] 2>/dev/null; then
+    status_open_decisions "$observed" "$kind"
+    return
+  fi
+  if [ "$offset" -lt "$size" ]; then
+    chunk=$(_fm_status_read_span "$observed" "$offset" "$((size - offset))") || { status_open_decisions "$observed" "$kind"; return; }
+    resolve=${FM_CLASSIFY_RESOLVE_VERB:-$FM_CLASSIFY_RESOLVE_VERB_DEFAULT}
+    held=${FM_CLASSIFY_CAPTAIN_HELD_VERB:-$FM_CLASSIFY_CAPTAIN_HELD_VERB_DEFAULT}
+    while IFS= read -r line || [ -n "$line" ]; do
+      open=$(_fm_decision_fold_line "$open" "$line" "$resolve" "$held" "$kind")
+    done <<EOF
+$chunk
+EOF
+  fi
+  printf '%s' "$open"
+}
+
 # Resolve the log's current declaration at one boundary for crew-state consumers.
 # Any decision the fold still holds open wins over unrelated events, and the
 # fold's most recently opened record supplies it; a standing declared wait, then
 # the latest recognized event, stands when nothing is open.
 # Actual run/pane evidence is still reconciled by fm-crew-state.sh.
-status_current_line() {  # <status-file> <kind>
+status_current_line() {  # <status-file> <kind> [<precomputed-open-set>]
   local open key verb note current=''
-  open=$(status_open_decisions "$1" "$2")
+  if [ "$#" -ge 3 ]; then open=$3; else open=$(status_open_decisions "$1" "$2"); fi
   while IFS=$'\t' read -r key verb note; do
     case "$verb" in ?*) current="$verb [key=$key]: $note" ;; esac
   done <<EOF

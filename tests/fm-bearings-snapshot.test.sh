@@ -3420,6 +3420,90 @@ test_a_remote_home_without_any_ledger_is_explicitly_unreadable_without_remote_co
   pass "a missing remote ledger stays explicitly unreadable without remote summary computation"
 }
 
+
+# A later read must occupy the slot freed by a quick sibling while the first
+# read is still waiting. A batch barrier cannot satisfy this rendezvous.
+test_local_prefetch_reuses_a_finished_slot() {
+  local home fakebin id worktree json
+  home=$(make_home rolling-prefetch)
+  fakebin=$(make_fakebin "$home")
+  for id in a b c; do
+    worktree="$home/projects/$id"
+    fm_git_init_commit "$worktree"
+    git -C "$worktree" checkout -qb "fm/rolling-$id"
+    fm_write_meta "$home/state/$id.meta" "window=fixture:$id" "worktree=$worktree" \
+      'project=firstmate' 'harness=claude' 'kind=ship' 'mode=no-mistakes'
+    printf 'working: fixture\n' > "$home/state/$id.status"
+  done
+  cat > "$fakebin/no-mistakes" <<'SH'
+#!/usr/bin/env bash
+if [ "$*" = 'axi status' ]; then
+  case "${PWD##*/}" in
+    a)
+      : > "$RENDEZVOUS/a-started"
+      for ((i=0; i<400; i++)); do
+        [ ! -e "$RENDEZVOUS/c-started" ] || exit 0
+        sleep 0.05
+      done
+      : > "$RENDEZVOUS/batch-barrier"
+      ;;
+    c) : > "$RENDEZVOUS/c-started" ;;
+  esac
+fi
+exit 0
+SH
+  json=$(RENDEZVOUS="$home" FM_SNAPSHOT_LOCAL_READ_CONCURRENCY=2 \
+    FM_SNAPSHOT_CREW_STATE_TIMEOUT=60 FM_CREW_STATE_NM_TIMEOUT=60 \
+    run "$home" "$fakebin" --json) || fail 'rolling-pool snapshot failed'
+  [ -f "$home/a-started" ] && [ -f "$home/c-started" ] || fail 'rolling-pool fixture did not exercise both reads'
+  [ ! -e "$home/batch-barrier" ] || fail 'prefetch waited for a whole batch before filling its free slot'
+  printf '%s' "$json" | jq -e '.schema == "fm-bearings.v1"' >/dev/null || fail 'rolling-pool output is invalid'
+  pass 'local prefetch fills a freed slot while an earlier read is still running'
+}
+
+test_parent_activity_scans_overlap() {
+  local home fakebin id real_bash json
+  home=$(make_home parallel-parent-activities)
+  fakebin=$(make_fakebin "$home")
+  real_bash=$(command -v bash)
+  for id in a b c; do
+    mkdir -p "$home/domain-$id"
+    fm_write_meta "$home/state/$id.meta" "window=fixture:$id" "worktree=$home/domain-$id" \
+      "home=$home/domain-$id" 'harness=claude' 'kind=secondmate'
+    printf 'working [key=activity]: fixture\n' > "$home/state/$id.status"
+  done
+  cat > "$fakebin/bash" <<'SH'
+#!/bin/bash
+if [ "${3:-}" = fm-parent-activities ]; then
+  case "${5##*/}" in
+    a.status)
+      : > "$RENDEZVOUS/a-started"
+      for ((i=0; i<400; i++)); do
+        [ ! -e "$RENDEZVOUS/c-started" ] || break
+        sleep 0.05
+      done
+      [ -e "$RENDEZVOUS/c-started" ] || : > "$RENDEZVOUS/serial-scans"
+      ;;
+    c.status) : > "$RENDEZVOUS/c-started" ;;
+  esac
+fi
+exec "$REAL_BASH" "$@"
+SH
+  chmod +x "$fakebin/bash"
+  json=$(PATH="$fakebin:$PATH" FM_HOME="$home" FM_ROOT_OVERRIDE="$FM_ROOT_OVERRIDE" \
+    RENDEZVOUS="$home" REAL_BASH="$real_bash" FM_SNAPSHOT_PARENT_ACTIVITY_TIMEOUT=60 \
+    "$ROOT/bin/fm-fleet-snapshot.sh" --json) || fail 'parallel activity snapshot failed'
+  [ -f "$home/a-started" ] && [ -f "$home/c-started" ] || fail 'activity fixture did not exercise both scans'
+  [ ! -e "$home/serial-scans" ] || fail 'parent activity scans ran serially'
+  printf '%s' "$json" | jq -e '(.secondmate_current.records | length) == 3
+    and all(.secondmate_current.records[]; .parent_event.activity_scan.available)' >/dev/null \
+    || fail 'parallel activity scans lost evidence'
+  pass 'parent activity scans overlap and retain all evidence'
+}
+
+test_local_prefetch_reuses_a_finished_slot
+test_parent_activity_scans_overlap
+
 test_task_teardown_during_metadata_capture_does_not_abort_snapshot
 test_current_state_uses_captured_status_observation
 test_validation_run_is_published_per_task
