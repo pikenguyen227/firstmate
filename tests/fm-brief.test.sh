@@ -540,6 +540,25 @@ test_ship_project_memory_wording() {
   pass "fm-brief.sh: ship project-memory wording carries the AGENTS.md authoring bar"
 }
 
+# Every ship brief carries the harness-neutral coding guidelines as scaffold
+# text, whatever the delivery mode; a scout brief does not.
+test_coding_guidelines_section() {
+  local home mode brief
+  home="$TMP_ROOT/guidelines-home"
+  mkdir -p "$home/data"
+  for mode in no-mistakes direct-PR local-only; do
+    FM_HOME="$home" "$ROOT/bin/fm-brief.sh" "brief-guide-$mode" some-proj --mode "$mode" >/dev/null 2>&1
+    brief="$home/data/brief-guide-$mode/brief.md"
+    grep -qx '# Coding guidelines' "$brief" || fail "$mode brief lacks the coding guidelines section"
+    assert_grep 'andrej-karpathy-skills' "$brief" "$mode brief does not credit the source"
+    assert_grep 'Surgical changes' "$brief" "$mode brief lost a guideline rule"
+    assert_grep 'raise it with a needs-decision line' "$brief" "$mode brief does not route ambiguity through the status mechanism"
+  done
+  FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-guide-scout some-proj --scout >/dev/null 2>&1
+  assert_no_grep '# Coding guidelines' "$home/data/brief-guide-scout/brief.md" "scout brief should not carry coding guidelines"
+  pass "fm-brief.sh: ship briefs carry the coding guidelines in every mode"
+}
+
 # Ship and scout briefs point the worker at the project-vault convention and
 # name an absolute raw-note location in this home's long-lived clone, never the
 # disposable worker copy the brief is read from.
@@ -1438,6 +1457,7 @@ test_no_mistakes_dod_green_detection
 test_pr_based_dod_requires_non_draft
 test_ask_user_escalation_format
 test_ship_project_memory_wording
+test_coding_guidelines_section
 test_project_vault_guidance
 test_herdr_lab_contract_is_explicit_and_complete
 test_herdr_lab_contract_quotes_foreign_firstmate_path
