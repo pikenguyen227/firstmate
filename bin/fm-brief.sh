@@ -101,8 +101,8 @@
 # Every scaffold also carries the steering-inbox receive-and-ack section:
 # process state/<id>.inbox/*.msg in order and acknowledge each by moving it to
 # handled/ (record, doorbell, and ladder owned by bin/fm-task-inbox-lib.sh).
-# Ship briefs also carry a short coding-guidelines section (adapted from
-# multica-ai/andrej-karpathy-skills, MIT) in the scaffold text, so every harness gets it.
+# Ship briefs also carry a short coding-guidelines section, owned by
+# bin/fm-dod-lib.sh, in the scaffold text, so every harness gets it.
 # Ship and scout tasks include a project-knowledge section pointing the worker
 # at .agents/skills/project-vault/SKILL.md, the single owner of the vault
 # convention: consult the project's vault first, compile one from the task's own
@@ -544,22 +544,6 @@ IFS= read -r -d '' TASK_SECTION <<'EOF' || true
 EOF
 TASK_SECTION=${TASK_SECTION%$'\n'}
 
-# Coding guidelines adapted from https://github.com/multica-ai/andrej-karpathy-skills
-# (MIT licensed). Ship briefs carry them as plain contract text so every harness
-# receives them, with no plugin or per-harness skill. "Ask" is translated to the
-# worker contract: a worker never addresses the captain, and raises only genuine
-# ambiguity as needs-decision. Scope, definition of done, and validation stay
-# owned by the sections around it.
-IFS= read -r -d '' CODING_GUIDELINES <<'EOF' || true
-# Coding guidelines
-Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
-1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
-2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
-3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
-4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
-EOF
-CODING_GUIDELINES=${CODING_GUIDELINES%$'\n'}
-
 # One shared string keeps the ship and scout infrastructure rule identical.
 # Rule 2 governs file edits, so it does not prohibit pool administration.
 # The secondmate charter deliberately omits this rule because a secondmate
@@ -714,7 +698,7 @@ $ASK_USER_BLOCK
    Firstmate's reply normally writes that closing line at answer time; when a blocker or wait clears WITHOUT a firstmate reply, append \`resolved [at=<epoch>]: {how it cleared}\` yourself (same \`[key=<slug>]\` if you opened it with one) as you resume.
 $SHARED_INFRA_RULE
 
-$CODING_GUIDELINES
+$(fm_coding_guidelines)
 
 $INBOX_SECTION
 

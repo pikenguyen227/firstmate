@@ -556,6 +556,11 @@ test_coding_guidelines_section() {
   done
   FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-guide-scout some-proj --scout >/dev/null 2>&1
   assert_no_grep '# Coding guidelines' "$home/data/brief-guide-scout/brief.md" "scout brief should not carry coding guidelines"
+  # A worker briefed under a secondmate's own home uses the same scaffold.
+  mkdir -p "$TMP_ROOT/guidelines-secondmate/data"
+  FM_HOME="$TMP_ROOT/guidelines-secondmate" "$ROOT/bin/fm-brief.sh" brief-guide-sm some-proj --mode direct-PR >/dev/null 2>&1
+  grep -qx '# Coding guidelines' "$TMP_ROOT/guidelines-secondmate/data/brief-guide-sm/brief.md" \
+    || fail "brief scaffolded under a secondmate home lacks the coding guidelines"
   pass "fm-brief.sh: ship briefs carry the coding guidelines in every mode"
 }
 

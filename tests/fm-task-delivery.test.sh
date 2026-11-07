@@ -420,6 +420,10 @@ test_promotion_persists_the_selected_ship_branch() {
     "promotion did not deliver the selected branch-creation command"
   assert_grep "Ship branch: fix/$id" "$instructions" \
     "promotion did not deliver the selected immutable branch contract"
+  assert_grep "andrej-karpathy-skills" "$instructions" \
+    "promotion did not deliver the coding guidelines"
+  assert_grep "andrej-karpathy-skills" "$home/data/$id/brief.md" \
+    "promoted brief did not carry the coding guidelines for relaunches"
   assert_contains "$out" "promoted $id to ship" "branch-prefix promotion did not complete normally"
   pass "fm-promote: a selected branch prefix reaches both worker instructions and durable task state"
 }

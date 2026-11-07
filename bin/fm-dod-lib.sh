@@ -149,6 +149,23 @@ fm_forge_valid_for_mode() {  # <forge> <mode> <caller>
   return 0
 }
 
+# Coding guidelines adapted from https://github.com/multica-ai/andrej-karpathy-skills
+# (MIT licensed). Single owner: a ship brief (bin/fm-brief.sh) and a scout
+# promotion (bin/fm-promote.sh) both render it, as plain contract text so every
+# harness receives it with no plugin or per-harness skill. "Ask" is translated to
+# the worker contract: a worker never addresses the captain and raises only
+# genuine ambiguity as needs-decision.
+fm_coding_guidelines() {
+  cat <<'EOF'
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
+3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+EOF
+}
+
 fm_ship_rule_one() {  # <no-mistakes|direct-PR|local-only> <task-id> [branch] [<forge>]
   local mode=$1 id=$2 forge=${4:-none}
   local branch=${3:-fm/$id}
