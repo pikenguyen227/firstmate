@@ -1,0 +1,46 @@
+Generated ship brief, mode=no-mistakes, guideline sections=1
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
+3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+
+Generated ship brief, mode=direct-PR, guideline sections=1
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
+3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+
+Generated ship brief, mode=local-only, guideline sections=1
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
+3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+
+Generated secondary-home ship brief, mode=direct-PR
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
+3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+
+Generated scout brief: no coding-guidelines section before promotion
+
+Promoted scout: current-worker instructions
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
+3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+
+Promoted scout: persisted relaunch brief has 1 guideline section
+promoted guide-scout to ship mode=local-only yolo=off (teardown protection restored)
+wrote ship instructions for mode=local-only: /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6SYGD44PMJYPN7DVMJFBG58/.fm-guidelines-live.oMgkmC/secondary/data/guide-scout/ship-instructions.md
+next: FM_HOME=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6SYGD44PMJYPN7DVMJFBG58/.fm-guidelines-live.oMgkmC/secondary bin/fm-send.sh fm-guide-scout "$(cat /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6SYGD44PMJYPN7DVMJFBG58/.fm-guidelines-live.oMgkmC/secondary/data/guide-scout/ship-instructions.md)"
