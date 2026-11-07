@@ -1,0 +1,25 @@
+[ship-no-mistakes-brief.md]
+1. Never push to the default branch. Never merge a PR.
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes. They never override any other section of this brief, the captain's intent, or the project's own instructions and skills; where those mandate a gate, sweep, parity check, or style rule, follow them.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+- NEVER pass `--yes` (or `-y`) to `no-mistakes axi run` or `no-mistakes axi respond`. It is banned fleet-wide.
+
+[ship-local-only-brief.md]
+1. Never push to any remote and never open a PR. Work only on your `fm/guide-local-only` branch; firstmate handles the merge into local `main`.
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes. They never override any other section of this brief, the captain's intent, or the project's own instructions and skills; where those mandate a gate, sweep, parity check, or style rule, follow them.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+The task is complete only when committed on your branch `fm/guide-local-only`. Do NOT push, do NOT open a PR, do NOT merge.
+
+[scout-before-promotion.md]
+1. Never push to any remote and never open a PR.
+
+[promoted-ship-instructions.md]
+Any earlier "Never push" or scout-only delivery language in this file is superseded.
+1. Never push to any remote and never open a PR. Work only on your `fm/guide-scout` branch; firstmate handles the merge into local `main`.
+# Coding guidelines
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes. They never override any other section of this brief, the captain's intent, or the project's own instructions and skills; where those mandate a gate, sweep, parity check, or style rule, follow them.
+1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
+The task is complete only when committed on your branch `fm/guide-scout`. Do NOT push, do NOT open a PR, do NOT merge.
+

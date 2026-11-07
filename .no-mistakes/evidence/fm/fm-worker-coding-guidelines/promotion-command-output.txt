@@ -1,0 +1,3 @@
+promoted guide-scout to ship mode=local-only yolo=off (teardown protection restored)
+wrote ship instructions for mode=local-only: /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6T0SKVHETXQ3X4ZB1FPTE6P/.guidelines-live.egL00D/primary/data/guide-scout/ship-instructions.md
+next: FM_HOME=/Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6T0SKVHETXQ3X4ZB1FPTE6P/.guidelines-live.egL00D/primary bin/fm-send.sh fm-guide-scout "$(cat /Users/pike/.no-mistakes/worktrees/81f2a0639ef5/01M6T0SKVHETXQ3X4ZB1FPTE6P/.guidelines-live.egL00D/primary/data/guide-scout/ship-instructions.md)"
