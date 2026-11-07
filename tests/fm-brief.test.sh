@@ -553,6 +553,8 @@ test_coding_guidelines_section() {
     assert_grep 'andrej-karpathy-skills' "$brief" "$mode brief does not credit the source"
     assert_grep 'Surgical changes' "$brief" "$mode brief lost a guideline rule"
     assert_grep 'raise it with a needs-decision line' "$brief" "$mode brief does not route ambiguity through the status mechanism"
+    assert_grep 'never override any other section of this brief' "$brief" "$mode brief guidelines do not defer to the other sections"
+    assert_grep 'a reproducing check first' "$brief" "$mode brief lost the project-neutral reproduction rule"
   done
   FM_HOME="$home" "$ROOT/bin/fm-brief.sh" brief-guide-scout some-proj --scout >/dev/null 2>&1
   assert_no_grep '# Coding guidelines' "$home/data/brief-guide-scout/brief.md" "scout brief should not carry coding guidelines"

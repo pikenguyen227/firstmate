@@ -158,11 +158,11 @@ fm_forge_valid_for_mode() {  # <forge> <mode> <caller>
 fm_coding_guidelines() {
   cat <<'EOF'
 # Coding guidelines
-Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes and never override the rules above.
+Adapted from https://github.com/multica-ai/andrej-karpathy-skills (MIT licensed); they reduce common LLM coding mistakes. They never override any other section of this brief, the captain's intent, or the project's own instructions and skills; where those mandate a gate, sweep, parity check, or style rule, follow them.
 1. Think before coding. State your assumptions and surface tradeoffs. Proceed on a clear brief; when a genuine ambiguity would change the result, raise it with a needs-decision line instead of silently picking one reading.
 2. Simplicity first. Write the minimum code that solves the task: no speculative features, no abstractions or configurability nobody asked for.
-3. Surgical changes. Touch only what the task needs and match the existing style. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
-4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing test first) and loop until they are verified.
+3. Surgical changes. Touch only what the task needs and match the existing conventions the project still endorses. Do not refactor or clean up unrelated code; remove only the imports, variables, and functions your own change made unused.
+4. Goal-driven execution. Turn the task into verifiable success criteria (for a bug, a reproducing check first - a test where the project has a test runner) and loop until they are verified.
 EOF
 }
 
