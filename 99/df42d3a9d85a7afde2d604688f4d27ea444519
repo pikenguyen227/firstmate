@@ -1,0 +1,22 @@
+bin/fm-promote.sh
+  s_cb0b8f918d3e98::t_185e0b040b8c61 12-15
+docs/scripts.md
+  s_cb0b8f918d3e98::t_ae106cf7520008 155
+  s_cb0b8f918d3e98::t_e107d0ca0736b6 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99df42d3a9d85a7afde2d604688f4d27ea444519",
+  "prompts": {},
+  "sessions": {
+    "s_cb0b8f918d3e98": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b3ef-1221-7c12-89e8-4c81c1d50f6c",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
