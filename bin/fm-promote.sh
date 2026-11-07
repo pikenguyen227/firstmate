@@ -9,9 +9,10 @@
 # scratch-state inventory, the clean
 # default-branch base, the immutable ship branch, and - rendered from
 # bin/fm-dod-lib.sh, the single owner an ordinary ship brief also uses - the
-# mode-specific Definition of done, so a promoted worker receives exactly the same
-# delivery contract as a briefed one, including the no-mistakes mode's ask-user
-# escalation rule and --yes ban. The instructions also carry `# Task` with
+# mode-specific Definition of done and shared coding guidelines, so a promoted
+# worker receives the same ship guidance as a briefed one, including the
+# no-mistakes mode's ask-user escalation rule and --yes ban. The instructions
+# also carry `# Task` with
 # `## Captain's intent` preserved from the scout brief and promotion's ship-time
 # instructions under `## Firstmate spec`; the scout-time spec remains context but
 # is not relabeled as the ship spec. Promotion refuses leftover `{TASK}` /
