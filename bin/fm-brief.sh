@@ -101,6 +101,8 @@
 # Every scaffold also carries the steering-inbox receive-and-ack section:
 # process state/<id>.inbox/*.msg in order and acknowledge each by moving it to
 # handled/ (record, doorbell, and ladder owned by bin/fm-task-inbox-lib.sh).
+# Ship briefs also carry a short coding-guidelines section, owned by
+# bin/fm-dod-lib.sh, in the scaffold text, so every harness gets it.
 # Ship and scout tasks include a project-knowledge section pointing the worker
 # at .agents/skills/project-vault/SKILL.md, the single owner of the vault
 # convention: consult the project's vault first, compile one from the task's own
@@ -695,6 +697,8 @@ $ASK_USER_BLOCK
    A decision or blocker you opened stays open until a \`resolved\` line carrying its exact key lands; a later \`done:\` or \`working:\` line never closes it, even when the answer is what started that work.
    Firstmate's reply normally writes that closing line at answer time; when a blocker or wait clears WITHOUT a firstmate reply, append \`resolved [at=<epoch>]: {how it cleared}\` yourself (same \`[key=<slug>]\` if you opened it with one) as you resume.
 $SHARED_INFRA_RULE
+
+$(fm_coding_guidelines)
 
 $INBOX_SECTION
 
