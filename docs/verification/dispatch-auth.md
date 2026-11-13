@@ -2,7 +2,7 @@
 
 Audience: maintainer verification.
 
-This record supports the dispatch judgment rules in `.agents/skills/quota-array-dispatch/SKILL.md` .
+This record supports the dispatch judgment rules in `.agents/skills/quota-array-dispatch/SKILL.md`.
 It records only facts that must be re-established when a producer or vendor version changes.
 Task chronology, incident transcripts, and credential metadata stay in private reports or PR evidence.
 

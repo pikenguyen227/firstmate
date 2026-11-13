@@ -165,7 +165,7 @@ A tool removed from the schema stays removed, so a genuinely intended use of a l
 - Allow returns exit 0 with both streams empty.
 - Deny returns exit 2 and writes `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] ..."}` to stderr.
 - Stdout stays empty on deny, because Claude Code ignores a PreToolUse deny when stdout is nonempty; `--claude` remains accepted by the tracked Claude entry.
-  This is the same verified quirk recorded in [`arm-pretool-check.md`](arm-pretool-check.md), and the tracked Claude hook therefore passes `--claude`.
+  This is the same verified quirk recorded in [`arm-pretool-check.md`](arm-pretool-check.md).
 - Malformed or empty stdin, invalid JSON, a payload with no tool name, and missing `jq` for stdin transport all fail open with exit 0 and no output.
 
 The deny message names the real dispatch path.
@@ -361,7 +361,7 @@ tests/fm-subagent-pretool-check.test.sh
 
 ## Known residual gap
 
-The tracked Claude hook entry for subagent-spawn also reaches Cursor, which loads the tracked Claude settings as well: `.cursor/hooks.json` registers no subagent-spawn matcher of its own, so this entry is the only one Cursor runs, and its `--claude` rendering leaves Cursor the exit-2 and stderr path rather than Cursor's own decision object.
+The tracked Claude hook entry for subagent-spawn also reaches Cursor, which loads the tracked Claude settings as well: `.cursor/hooks.json` registers no subagent-spawn matcher of its own, so this entry is the only one Cursor runs, and the checker's stderr-only deny leaves Cursor the exit-2 and stderr path rather than Cursor's own decision object.
 Cursor's subagent tool name has not been verified, and registering an unverified matcher would be a guess rather than coverage, so closing it needs the same tool-enumeration step described for OpenCode and Pi above.
 
 This change does not close the deeper harness-agnostic defect.

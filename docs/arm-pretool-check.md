@@ -25,7 +25,7 @@ It tokenizes the bytes and classifies lexical execution positions only.
 - Stdin JSON at `.tool_input.command` for Claude and Codex.
 - `--command <exact string>` for OpenCode, Pi, pi-signed, and omp.
 - `--background` as a compatibility-only field that never changes the decision.
-- `--claude` to preserve Claude's stderr-only deny requirement.
+- `--claude` as a compatibility-only flag for the tracked Claude entry that never changes the output.
 
 The wrapper discovers the code root from its own location.
 The active firstmate home is `${FM_HOME:-<code-root>}`.
@@ -159,7 +159,7 @@ Prose may improve without changing adapter behavior.
 | Harness | Exact command field | Adapter behavior on checker exit 2 |
 | --- | --- | --- |
 | Codex | `.tool_input.command` | The `.codex/hooks.json` command forwards the complete stdin payload and Codex blocks on exit 2. |
-| Claude | `.tool_input.command` | `.claude/settings.json` forwards stdin with `--claude`, leaving stdout empty and returning the stderr deny object. |
+| Claude | `.tool_input.command` | `.claude/settings.json` forwards stdin with `--claude`, and Claude blocks on exit 2 with the stderr deny object and empty stdout. |
 | OpenCode | `output.args.command` | `.opencode/plugins/fm-primary-pretool-check.js` passes one `--command` argument and throws only for exit 2. |
 | Pi / pi-signed | `event.input.command` | `.pi/extensions/fm-primary-turnend-guard.ts` passes one `--command` argument and returns `{block: true}` only for exit 2. |
 | omp | `event.input.command` | `.omp/extensions/fm-primary-turnend-guard.ts` passes one `--command` argument and returns `{block: true, reason}` only for exit 2; omp surfaces the reason verbatim to the model (verified 18.1.2). |

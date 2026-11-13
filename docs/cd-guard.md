@@ -76,8 +76,8 @@ It does not permit `cd /home/project`, because an absolute-path `cd` remains a p
 
 `bin/fm-cd-pretool-check.sh` supports every harness-engine entry shape used by the tracked adapters, with pi-signed sharing Pi's shape:
 
-- Claude sends stdin JSON at `.tool_input.command` and adds `--claude` to preserve Claude's stderr-only deny requirement.
-- Codex sends stdin JSON at `.tool_input.command` without `--claude`.
+- Claude sends stdin JSON at `.tool_input.command`; its tracked entry also passes `--claude`, a compatibility-only flag that never changes the output.
+- Codex sends stdin JSON at `.tool_input.command`.
 - OpenCode sends the exact command string through `--command <exact string>`.
 - Pi, pi-signed, and omp send the exact command string through `--command <exact string>`.
 - Cursor sends stdin JSON at `.tool_input.command` and adds `--cursor`, which renders the deny as Cursor's own returned decision object.

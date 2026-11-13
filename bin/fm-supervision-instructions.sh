@@ -146,7 +146,6 @@ render_snippet() {  # [snippet]
     line=${line//__FM_PI_TURNEND_EXT__/$pi_turnend_ext}
     line=${line//__FM_OMP_EXT__/$omp_ext}
     line=${line//__FM_OMP_TURNEND_EXT__/$omp_turnend_ext}
-    line=${line//__FM_X_MODE_ENV_SH__/$x_mode_env_sh}
     line=${line//__FM_X_MODE_ENV__/$x_mode_env}
     printf '%s\n' "$line"
   done < "$snippet"
