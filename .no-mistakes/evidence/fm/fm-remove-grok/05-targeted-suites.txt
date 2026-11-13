@@ -1,0 +1,70 @@
+### Targeted existing suites for the scripts and hooks this change touches, run at target e161bd34 as 'bash tests/<name>.test.sh' on 2026-11-13, 13:45-14:10.
+### These drive the real bin/ scripts with fake harness CLIs and fake tmux, so they are regression evidence, not live proof.
+### The host was heavily loaded during the run (load average 60-97), which is why several suites were slow or cut.
+
+== passed (ran to completion, exit 0)
+  fm-arm-pretool-check           155 ok, 0 not ok, exit 0, 45s
+  fm-cd-pretool-check            13 ok, 0 not ok, exit 0, 163s
+  fm-subagent-pretool-check      13 ok, 0 not ok, exit 0, 52s
+  fm-supervision-instructions    12 ok, 0 not ok, exit 0, 22s
+  fm-git-strip-ai-trailers       14 ok, 0 not ok, exit 0, 104s
+  fm-composer-lib                39 ok, 0 not ok, exit 0, 194s
+  fm-composer-ghost              33 ok, 0 not ok, exit 0, 25s
+  fm-busy-state                  30 ok, 0 not ok, exit 0, 24s
+  fm-tmux-submit-busy            11 ok, 0 not ok, exit 0, 21s
+  fm-control                     39 ok, 0 not ok, exit 0, 661s
+  fm-dispatch-resolve            30 ok, 0 not ok, exit 0, 128s
+  fm-bootstrap                   28 ok, 0 not ok, exit 0, 374s
+  fm-afk-launch                  82 ok, 0 not ok, exit 0, 65s
+  fm-kimi-harness                30 ok, 0 not ok, exit 0, 181s
+  fm-gemini-harness              9 ok, 0 not ok, exit 0, 3s
+
+== cut by the 900s per-suite cap while still passing (every case that ran passed; the remaining cases did not run)
+  fm-crew-state                  288 ok, 0 not ok, exit 142, 900s
+  fm-secondmate-harness          41 ok, 0 not ok, exit 142, 985s
+  fm-spawn-dispatch-profile      46 ok, 0 not ok, exit 142, 1019s
+  fm-session-start               10 ok, 0 not ok, exit 142, 904s
+
+== stopped at a host-environment failure that reproduces identically at base d6257ae1 (run from a plain base checkout in this same session)
+  fm-harness-precedence          target: 0 ok, 1 not ok, exit 1, 2s
+                                 base:   0 ok, 1 not ok, exit 1, 2s
+                                 first failure on both: not ok - codex ancestry alone resolved '', expected codex (the ancestry signal is not live)
+  fm-cursor-harness              target: 5 ok, 1 not ok, exit 1, 2s
+                                 base:   5 ok, 1 not ok, exit 1, 2s
+                                 first failure on both: not ok - a real cursor-agent ancestor must detect cursor, got ''
+  fm-busy-adapter-wiring         target: 0 ok, 1 not ok, exit 1, 21s
+                                 base:   0 ok, 1 not ok, exit 1, 29s
+                                 first failure on both: not ok - native progress drive failed: node:internal/modules/esm/get_format:219
+  fm-sessionstart-nudge          target: 19 ok, 1 not ok, exit 1, 123s
+                                 base:   19 ok, 1 not ok, exit 1, 49s
+                                 first failure on both: not ok - Pi continuation classification: expected exit 0, got 1
+  fm-supervision-host            target: 2 ok, 1 not ok, exit 1, 15s
+                                 base:   2 ok, 1 not ok, exit 1, 23s
+                                 first failure on both: not ok - an attended scan with a resolvable row must be safe (missing: 'status=safe')
+  fm-teardown                    target: 8 ok, 0 not ok, exit 127, 28s
+                                 base:   8 ok, 0 not ok, exit 127, 22s
+                                 first failure on both: tests/fm-teardown.test.sh: line 643: tasks-axi: command not found
+
+== stopped at one failing case; not re-run at base (each takes several minutes under this load). The failing case and the code behind it are not touched by this change.
+  fm-turnend-guard               38 ok, 1 not ok, exit 1, 215s
+      not ok - hook took 5s, expected well under a second (generous 3s CI margin)   [timing assertion, load average ~60 at the time]
+  fm-watch-triage                66 ok, 1 not ok, exit 1, 424s
+      not ok - an unreadable regular status was not reported   [preceded by 'wait_for_exit: owned pid exceeded 100 polls'; bin/fm-watch.sh changed only in two comments]
+  fm-control-relaunch            64 ok, 1 not ok, exit 1, 289s
+      not ok - Herdr Pi relaunch should complete (pi registration): 'pi executable not found on PATH'   [pi is not installed on this host]
+
+== selected but not run (time budget): fm-agy-harness fm-rovo-harness fm-devin-harness fm-muse-harness fm-omp-harness fm-test-run fm-daemon fm-host-mirror fm-remote-doctor fm-spawn-compact-adviser-disable fm-guard-stale-banner fm-watcher-lock fm-secondmate-liveness
+
+== grok-related cases that passed
+  ok - B6 spawn: an unverified resolved secondmate harness is refused (guard intact)
+  ok - captured cancelled run leaves fleet inventory unverified without a failure contradiction
+  ok - fm-control relaunch: an adapter unverified for this task kind refuses before the agent is stopped
+  ok - grok is refused as an unverified adapter
+  ok - renderer falls back to unknown.md for unverified harness names
+  ok - synthetic cancelled run leaves fleet inventory unverified without a failure contradiction
+
+== shellcheck on the 34 bin scripts this branch modified: bin/fm-lint.sh --fast <touched scripts>
+  fm-lint.sh: ShellCheck 0.11.0 (pinned 0.11.0)
+  fm-lint.sh: fast local mode; ShellCheck extended analysis disabled
+  exit: rc=0  (128s, no findings printed)
+  A full-rigor 'shellcheck -x' pass over the same files was started first and stopped after 10 minutes without finishing its first six files.

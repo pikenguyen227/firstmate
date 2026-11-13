@@ -1,0 +1,45 @@
+### Scenario: real Claude Code (v2.1.323) started as a primary in an isolated Herdr lab session (herdr 0.9.3), cwd = the run worktree at e161bd34, FM_HOME = disposable lab home.
+### Its hooks come from the worktree's .claude/settings.json (plain 'exec "$CLAUDE_PROJECT_DIR"/bin/...' commands). Pane transcript below; home path and account label redacted.
+
+ ▐▛███▛█   Claude Code v2.1.323
+▝▜██████▀  Haiku 5.5 · <plan>
+ ▝▝   ▝▝   ~/.no-mistakes/worktrees/81f2a0639ef5/01M79M986WM1231V9TA8HWQ7F8
+
+
+❯ Use the Bash tool to run exactly this one command, a single time, with no changes and no retries:
+  bin/fm-watch-arm.sh &   Then report verbatim what happened, including any hook message.
+
+  Ran 1 shell command
+  ⎿  Not run · permission denied
+     │ Reason: PreToolUse:Bash hook error: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"de
+     │ ny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchr…
+
+⏺ The command did not run. A PreToolUse hook denied it before it started, so bin/fm-watch-arm.sh never executed.
+
+  The hook output, verbatim:
+
+  PreToolUse:Bash hook error: [exec "$CLAUDE_PROJECT_DIR"/bin/fm-arm-pretool-check.sh --claude]: {"hookSpecificOutput":
+  {"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher
+  command cannot run in an asynchronous shell list or through nohup/disown"}
+
+  The hook's reason is that a protected watcher command cannot run as an asynchronous shell list (the trailing &) or
+  through nohup/disown. I ran the command once as you asked and did not retry it or change it. If you want the watcher
+  armed, it needs a different launch path that the hook accepts. Per AGENTS.md, supervision should go through the
+  emitted protocol, not a shell &.
+
+✻ Baked for 8s · done 12:51 PM
+
+❯ Now use the Bash tool to run exactly: git rev-parse --short HEAD   and report the output and whether any hook
+  blocked it.
+
+  Ran 1 shell command
+
+⏺ The output was e161bd34. No hook blocked the command.
+
+✻ Worked for 4s · done 12:52 PM
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  👤 <account> │ 📁 01M79M986WM1231V9TA8HWQ7F8 │  HEAD │ ✨ Haiku 5.5 │ 🧠 [█░░░░░░░░░░░░░░░░░░░] 5%
+  ⏵⏵ auto mode on (shift+tab to cycle)

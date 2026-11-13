@@ -1,0 +1,125 @@
+### Scenario: a config naming grok is refused with the unverified-adapter message, never silently falling back
+### target commit: e161bd34   lab FM_HOME: <lab>   driven 2026-11-13 13:47
+
+== 1. config/crew-harness names grok; crewmate spawns with no explicit harness
+$ cat <lab>/config/crew-harness
+grok
+[exit 0]
+
+$ lab bin/fm-harness.sh crew
+grok
+[exit 0]
+
+$ lab bin/fm-spawn.sh demo-scout-a1 <lab>/projects/demo --scout
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: no launch template for harness 'grok' (from config/crew-harness or detection); pass a raw launch command to use an unverified adapter
+[exit 1]
+
+$ lab bin/fm-spawn.sh demo-ship-a2 <lab>/projects/demo --mode local-only --yolo off
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: no launch template for harness 'grok' (from config/crew-harness or detection); pass a raw launch command to use an unverified adapter
+[exit 1]
+
+== 2. explicit --harness grok
+$ lab bin/fm-spawn.sh demo-scout-a3 <lab>/projects/demo --scout --harness grok --model grok-4 --effort high
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'grok'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+$ lab bin/fm-spawn.sh demo-ship-a4 <lab>/projects/demo --mode local-only --yolo off --harness grok
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'grok'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+== 3. config/secondmate-harness names grok; secondmate spawn
+$ cat <lab>/config/secondmate-harness
+grok grok-4 high
+[exit 0]
+
+$ lab bin/fm-harness.sh secondmate
+grok
+[exit 0]
+
+$ lab bin/fm-spawn.sh sm-a5 --secondmate
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: no launch template for harness 'grok' (from config/secondmate-harness (falling back to config/crew-harness) or detection); pass a raw launch command to use an unverified adapter
+[exit 1]
+
+== 3b. secondmate-harness absent, crew-harness names grok (the fallback chain must not turn grok into something else)
+$ lab bin/fm-harness.sh secondmate
+grok
+[exit 0]
+
+$ lab bin/fm-spawn.sh sm-a6 --secondmate
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: no launch template for harness 'grok' (from config/secondmate-harness (falling back to config/crew-harness) or detection); pass a raw launch command to use an unverified adapter
+[exit 1]
+
+== 4. adversarial: spellings and case variants of grok are refused too, not mapped onto a verified adapter
+$ lab bin/fm-spawn.sh demo-scout-v30606 <lab>/projects/demo --scout --harness Grok
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'Grok'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+$ lab bin/fm-spawn.sh demo-scout-v27405 <lab>/projects/demo --scout --harness GROK
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'GROK'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+$ lab bin/fm-spawn.sh demo-scout-v7892 <lab>/projects/demo --scout --harness grok-cli
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'grok-cli'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+$ lab bin/fm-spawn.sh demo-scout-v24785 <lab>/projects/demo --scout --harness grok-build
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'grok-build'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+$ lab bin/fm-spawn.sh demo-scout-v26964 <lab>/projects/demo --scout --harness xai-grok
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'xai-grok'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+== 5. config/crew-dispatch.json naming grok is rejected by the dispatch resolver (curl replaced by a refusing shim so nothing leaves the machine)
+$ cat <lab>/config/crew-dispatch.json
+{"rules":[{"when":"deep current work","use":{"harness":"grok","model":"grok-4","effort":"high"}}],"default":{"harness":"claude"}}
+[exit 0]
+
+$ lab env PATH=<no-network-shim>:$PATH TYPESAFE_API_KEY=dummy-not-a-real-key bin/fm-dispatch-resolve.sh <lab>/data/brief-demo.md --project demo
+error: malformed rules file: <lab>/config/crew-dispatch.json - each use profile must name a verified harness
+[exit 2]
+
+== 5b. control: the same file naming cursor with a cursor-grok model id (intentionally kept) is accepted by rules validation; the resolver moves past the harness check and stops only at its brief screening step
+$ cat <lab>/config/crew-dispatch.json
+{"rules":[{"when":"deep current work","use":{"harness":"cursor","model":"cursor-grok-4"}}],"default":{"harness":"claude"}}
+[exit 0]
+
+$ lab env PATH=<no-network-shim>:$PATH TYPESAFE_API_KEY=dummy-not-a-real-key bin/fm-dispatch-resolve.sh <lab>/data/brief-demo.md --project demo
+dispatch-resolve:
+  status: escalate
+  reason: task text not sent: no Task section in the brief
+[exit 0]
+
+== 5c. with crew-dispatch.json active, naming grok explicitly is still refused
+$ lab bin/fm-spawn.sh demo-scout-a7 <lab>/projects/demo --scout --harness grok
+fm-gate-refuse: gate agent lifecycle permitted only against lab home <lab>
+error: unknown harness 'grok'; pass a raw launch command to use an unverified adapter
+[exit 1]
+
+== 6. harness detection: Grok's environment markers no longer identify a harness
+   (each probe runs reparented to launchd with a scrubbed environment, so no Claude ancestor or marker is visible; base d6257ae1 shown for contrast)
+$ GROK_AGENT=1 GROK_HOOK_EVENT=Stop bin/fm-harness.sh
+  target: unknown
+  base:   grok
+$ CLAUDECODE=1 bin/fm-harness.sh   (control: Claude marker unchanged)
+  target: claude
+  base:   claude
+
+== lab state: nothing was created by any refused spawn (sections 1-3)
+   lab file listing identical before and after the refused spawns
+   task meta files: 0
+   demo project worktrees: 1 (1 = only the main checkout)
+   demo project branches: main 
+   lab state/ listing:
+   lab removed: yes

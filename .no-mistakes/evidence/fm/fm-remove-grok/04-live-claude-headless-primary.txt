@@ -1,0 +1,48 @@
+### Scenario: real Claude Code, started headless from the run worktree at e161bd34 with FM_HOME = disposable lab home, runs the plain hook commands from .claude/settings.json
+### Driven 2026-11-13 13:51 with the machine's existing Claude login. Live Herdr lab skipped per operator guidance; tmux is not installed on this host, so the primary was driven with 'claude -p' instead of an interactive pane.
+
+$ env -u NO_MISTAKES_GATE -u FM_*_OVERRIDE ... FM_HOME=<lab> claude -p "<prompt>" --model haiku --allowedTools Bash --output-format stream-json --verbose --include-hook-events
+prompt: Do exactly these two steps with the Bash tool, each a single time, no retries and no changes. Step 1: run exactly `bin/fm-watch-arm.sh &`. Step 2: run exactly `git rev-parse --short HEAD`. Then report, for each step, whether it ran, its output, and verbatim any hook message that blocked it.
+
+== session
+  Claude Code 2.1.323, model claude-haiku-5-5, permission mode default, cwd <worktree>
+
+== event stream, in order (hook lifecycle events as Claude Code reported them, tool calls, tool results)
+  hook  SessionStart:startup  exit=0  outcome=success
+  hook  UserPromptSubmit  exit=0  outcome=success
+  tool call  Bash: bin/fm-watch-arm.sh &
+  hook  PreToolUse:Bash  exit=0  outcome=success
+  hook  PreToolUse:Bash  exit=0  outcome=success
+  hook  PreToolUse:Bash  exit=2  outcome=error
+        stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  tool result  is_error=true
+        PreToolUse:Bash hook error: [exec "$CLAUDE_PROJECT_DIR"/bin/fm-arm-pretool-check.sh --claude]: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  tool call  Bash: git rev-parse --short HEAD
+  hook  PreToolUse:Bash  exit=0  outcome=success
+  hook  PreToolUse:Bash  exit=0  outcome=success
+  hook  PreToolUse:Bash  exit=0  outcome=success
+  tool result  is_error=false
+        e161bd34
+  hook  Stop  exit=0  outcome=success
+  hook  Stop  exit=0  outcome=success
+  hook  Stop  exit=0  outcome=success
+
+== hook events by type: PreToolUse x6  SessionStart x1  Stop x3  UserPromptSubmit x1  
+   (settings.json registers 1 SessionStart, 1 UserPromptSubmit, 3 PreToolUse hooks per Bash call, 3 Stop hooks)
+
+== Claude's final answer
+  Step 1 did not run. Step 2 ran.
+  
+  **Step 1: `bin/fm-watch-arm.sh &`**
+  - Did not run. A PreToolUse hook blocked it before execution.
+  - Verbatim hook message: `PreToolUse:Bash hook error: [exec "$CLAUDE_PROJECT_DIR"/bin/fm-arm-pretool-check.sh --claude]: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}`
+  - I did not retry or change the command, per your instructions. The hook's reason is that the watcher arm cannot run in a background (`&`) shell list.
+  
+  **Step 2: `git rev-parse --short HEAD`**
+  - Ran successfully. Output: `e161bd34`
+
+== after the run
+  claude exit status: 0
+  worktree git status (empty = clean): []
+  lab state/ entries: 
+  lab removed: yes

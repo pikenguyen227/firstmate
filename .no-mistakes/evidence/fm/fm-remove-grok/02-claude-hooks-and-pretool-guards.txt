@@ -1,0 +1,127 @@
+### Scenario: Claude hook commands are plain exec commands again and the pre-tool guards keep working for Claude
+### target = plain checkout of e161bd34 (what a teammate clones; the guards are inert in a linked worktree); base = plain checkout of d6257ae1; FM_HOME = disposable lab home; driven 2026-11-13 13:50
+
+== 1. every hook command Claude Code will run, parsed from the target .claude/settings.json, and whether the script it names is present and executable
+  SessionStart     matcher=-     exec "$CLAUDE_PROJECT_DIR"/bin/fm-sessionstart-run.sh   -> executable
+  PreToolUse       matcher=Bash  exec "$CLAUDE_PROJECT_DIR"/bin/fm-arm-pretool-check.sh --claude   -> executable
+  PreToolUse       matcher=Bash  exec "$CLAUDE_PROJECT_DIR"/bin/fm-cd-pretool-check.sh --claude   -> executable
+  PreToolUse       matcher=.*    "$CLAUDE_PROJECT_DIR"/bin/fm-subagent-pretool-check.sh --claude   -> executable
+  UserPromptSubmit matcher=-     exec "$CLAUDE_PROJECT_DIR"/bin/fm-host-mirror.sh hook claude   -> executable
+  Stop             matcher=-     exec "$CLAUDE_PROJECT_DIR"/bin/fm-turnend-guard.sh --claude   -> executable
+  Stop             matcher=-     exec "$CLAUDE_PROJECT_DIR"/bin/fm-claude-stop-autoarm.sh   -> executable
+  Stop             matcher=-     exec "$CLAUDE_PROJECT_DIR"/bin/fm-host-mirror.sh hook claude   -> executable
+  hook commands that are not a plain [exec] "$CLAUDE_PROJECT_DIR"/bin/<script> [args] line: target=0  base=7
+  example base command: [ -z "${GROK_AGENT:-}${GROK_HOOK_EVENT:-}" ] || exit 0; exec "$CLAUDE_PROJECT_DIR"/bin/fm-arm-pretool-check.sh --claude
+
+== 2. Claude PreToolUse hooks, each command string run verbatim with a Claude-shaped payload (Claude treats exit 2 + stderr as a deny)
+  payload: {"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"bin/fm-watch-arm.sh &"}}
+  [target arm guard, expect deny] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  [base   arm guard] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  payload: {"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"git status"}}
+  [target arm guard, expect allow] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [target cd guard, expect allow] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  payload: {"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cd projects/foo"}}
+  [target cd guard, expect deny] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[persistent-cd] a persistent top-level directory change in the primary firstmate checkout is blocked; it would move the shell out of the home so a later firstmate-owned command runs inside a project clone. Reach the targ
+  [base   cd guard] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[persistent-cd] a persistent top-level directory change in the primary firstmate checkout is blocked; it would move the shell out of the home so a later firstmate-owned command runs inside a project clone. Reach the targ
+  payload: {"hook_event_name":"PreToolUse","tool_name":"Task","tool_input":{}}
+  [target subagent guard, expect deny] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+  [base   subagent guard] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+  payload: {"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"file_path":"README.md"}}
+  [target subagent guard, expect allow] exit=0
+    stdout: <empty>
+    stderr: <empty>
+
+== 3. adversarial: stray GROK_AGENT / GROK_HOOK_EVENT in Claude's environment must not switch a guard off
+  [target arm guard, GROK_AGENT=1 GROK_HOOK_EVENT=PreToolUse] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  [base   arm guard, GROK_AGENT=1 GROK_HOOK_EVENT=PreToolUse] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [target cd guard, GROK_AGENT=1 GROK_HOOK_EVENT=PreToolUse] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[persistent-cd] a persistent top-level directory change in the primary firstmate checkout is blocked; it would move the shell out of the home so a later firstmate-owned command runs inside a project clone. Reach the targ
+  [target subagent guard, GROK_AGENT=1 GROK_HOOK_EVENT=PreToolUse] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+
+== 4. the guards no longer read Grok's camelCase payload fields (toolInput.command / toolName)
+  payload: {"toolName":"run_terminal_command","toolInput":{"command":"bin/fm-watch-arm.sh &","background":false}}
+  [target arm guard] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [base   arm guard] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  payload: {"toolName":"run_terminal_command","toolInput":{"command":"cd projects/foo"}}
+  [target cd guard] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [base   cd guard] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[persistent-cd] a persistent top-level directory change in the primary firstmate checkout is blocked; it would move the shell out of the home so a later firstmate-owned command runs inside a project clone. Reach the targ
+  payload: {"toolName":"Task"}
+  [target subagent guard] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [base   subagent guard] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+
+== 5. --claude is an accepted no-op: a deny looks the same with and without it, and the other harness entry forms still deny
+  [target arm --claude] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  [target arm (no flag, Codex form)] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  [target arm --command (OpenCode/Pi form)] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+  [target arm --cursor] exit=0
+    stdout: {"permission":"deny","user_message":"[watcher-background] a protected watcher command cannot run in an asynchronous shell list or through nohup/disown"}
+    stderr: <empty>
+  [target cd --claude] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[persistent-cd] a persistent top-level directory change in the primary firstmate checkout is blocked; it would move the shell out of the home so a later firstmate-owned command runs inside a project clone. Reach the targ
+  [target cd (no flag, Codex form)] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[persistent-cd] a persistent top-level directory change in the primary firstmate checkout is blocked; it would move the shell out of the home so a later firstmate-owned command runs inside a project clone. Reach the targ
+  [target subagent --claude] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+  [target subagent (no flag, Codex form)] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+  [target subagent --tool Task (OpenCode/Pi form)] exit=2
+    stdout: <empty>
+    stderr: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny"},"systemMessage":"[subagent-dispatch] the firstmate primary dispatches through the fleet, not the harness's own delegation tools: work started that way has no durable fleet record, leaves every firstmate guard inert, and dies with this se
+
+== 6. Claude Stop and UserPromptSubmit hook commands, run verbatim in the lab home (no fleet state: a clean pass-through is the expected result)
+  [target Stop: exec "$CLAUDE_PROJECT_DIR"/bin/fm-turnend-guard.sh --claude] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [target Stop: exec "$CLAUDE_PROJECT_DIR"/bin/fm-turnend-guard.sh --claude, GROK_HOOK_EVENT=Stop set] exit=0
+    stdout: <empty>
+    stderr: <empty>
+  [target UserPromptSubmit: exec "$CLAUDE_PROJECT_DIR"/bin/fm-host-mirror.sh hook claude] exit=0
+    stdout: <empty>
+    stderr: <empty>
+
+lab removed: yes

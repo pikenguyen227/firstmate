@@ -1,0 +1,80 @@
+### Scenario: a teammate's clone carries no Grok harness pieces; supervision instructions no longer know grok; every other harness renders unchanged; a Grok model's co-author trailer is still stripped
+### target = plain checkout of e161bd34, base = plain checkout of d6257ae1; driven 2026-11-13 13:52
+
+== 1. Grok harness files in a fresh checkout
+  GROK_BOT.md                                                    base=present target=absent
+  .grok/hooks                                                    base=present target=absent
+  bin/fm-turnend-guard-grok.sh                                   base=present target=absent
+  bin/fm-vendor-auth-probe.sh                                    base=present target=absent
+  docs/supervision-protocols/grok.md                             base=present target=absent
+  .agents/skills/harness-adapters/references/harness/grok.md     base=present target=absent
+  tests/fm-grok-harness.test.sh                                  base=present target=absent
+  tests/fm-grok-stop-live-e2e.test.sh                            base=present target=absent
+  tests/fm-grok-continuity-live-e2e.test.sh                      base=present target=absent
+  tests/fm-vendor-auth-probe.test.sh                             base=present target=absent
+  tracked paths with 'grok' in the name:  base=11  target=0
+  intentionally kept (not the Grok harness), still present in the target:
+    Cursor cursor-grok model ids in bin/fm-spawn.sh:        1 line(s)
+    quota-axi grok provider sample data under tests/:       3 file(s)
+
+== 2. supervision instructions for --harness grok (what a primary on a removed harness is told)
+-- target:
+    ================================================================================
+    SUPERVISION OPERATING INSTRUCTIONS - primary harness: unknown
+    ================================================================================
+    Current state:
+    - Lock: held by this session; this session owns normal supervision unless away mode says otherwise.
+    - Away/quiet mode: inactive.
+    - X mode: inactive; use the default watcher cadence.
+    - Ordinary wake: follow the continuation in the harness protocol below; do not use shell &.
+    
+    Mode: Unknown harness fallback.
+    
+    This primary harness does not have a verified watcher wake adapter.
+-- target repair line:
+    repair missing watcher supervision according to the session-start block for this harness; do not use shell &.
+-- base (first lines, for contrast):
+    ================================================================================
+    SUPERVISION OPERATING INSTRUCTIONS - primary harness: grok
+    ================================================================================
+
+== 3. every remaining harness renders byte-identical supervision instructions before and after the change
+   (columns: default, afk away, afk quiet, read-only, x-mode, repair-line, queue-pending)
+  supervision-host=off claude        = = = = = = =
+  supervision-host=off codex         = = = = = = =
+  supervision-host=off opencode      = = = = = = =
+  supervision-host=off pi            = = = = = = =
+  supervision-host=off pi-signed     = = = = = = =
+  supervision-host=off cursor        = = = = = = =
+  supervision-host=off omp           = = = = = = =
+  supervision-host=off kimi          = = = = = = =
+  supervision-host=off gemini        = = = = = = =
+  supervision-host=off muse          = = = = = = =
+  supervision-host=off rovo          = = = = = = =
+  supervision-host=off agy           = = = = = = =
+  supervision-host=off devin         = = = = = = =
+  supervision-host=off unknown-thing = = = = = = =
+  supervision-host=on  claude        = = = = = = =
+  supervision-host=on  codex         = = = = = = =
+  supervision-host=on  opencode      = = = = = = =
+  supervision-host=on  pi            = = = = = = =
+  supervision-host=on  pi-signed     = = = = = = =
+  supervision-host=on  cursor        = = = = = = =
+  supervision-host=on  omp           = = = = = = =
+  supervision-host=on  kimi          = = = = = = =
+  supervision-host=on  gemini        = = = = = = =
+  supervision-host=on  muse          = = = = = = =
+  supervision-host=on  rovo          = = = = = = =
+  supervision-host=on  agy           = = = = = = =
+  supervision-host=on  devin         = = = = = = =
+  supervision-host=on  unknown-thing = = = = = = =
+  identical non-empty renders: 196 / 196
+
+== 4. the commit-msg strip installed for fleet workers still removes a Grok model's co-author trailer (Grok models stay reachable through Cursor and Pi)
+  typed message trailers: Jane Doe (human), Grok <noreply@x.ai>, Cursor <cursoragent@cursor.com>
+  resulting commit object message:
+    | fix: model-emitted trailer
+    | 
+    | Co-authored-by: Jane Doe <jane@example.com>
+    | 
+lab removed: yes
