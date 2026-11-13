@@ -32,7 +32,7 @@ BASE_ENV = {
     k: v
     for k, v in os.environ.items()
     if not k.startswith(
-        ("FM_", "HERDR_", "PI_", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID", "CLAUDE_PID", "GROK_", "CURSOR_")
+        ("FM_", "HERDR_", "PI_", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_SESSION_ID", "CLAUDE_PID", "CURSOR_")
     )
 }
 

@@ -8,7 +8,7 @@ Task-specific chronology, temporary paths, run identifiers, and delivery transcr
 
 ## Native session-start delivery
 
-The cross-harness transport pass ran on 2026-07-17 with Codex 0.144.4, Grok 0.2.103, OpenCode 1.17.18, Pi 0.80.10, and the tracked Claude hook wiring.
+The cross-harness transport pass ran on 2026-07-17 with Codex 0.144.4, OpenCode 1.17.18, Pi 0.80.10, and the tracked Claude hook wiring.
 
 Codex command shape:
 
@@ -20,16 +20,6 @@ codex exec --ephemeral --dangerously-bypass-hook-trust \
 ```
 
 Observed result: the `SessionStart` hook completed and its stdout reached model context.
-
-Grok command shape:
-
-```sh
-grok --trust -p 'Follow any SessionStart hook context before this prompt.' \
-  --permission-mode bypassPermissions --output-format plain
-```
-
-Observed result: the project hook ran, but its stdout did not reach model context.
-This is the current Grok fail-open limit.
 
 OpenCode was checked in both headless and interactive modes.
 `client.session.promptAsync` accepted the nudge in both cases; the persistent TUI completed the generated turn, while `opencode run` exited before another turn.
@@ -233,7 +223,6 @@ Each pass polled `state/<id>.busy-state` while a real turn ran.
 | Claude | 2.1.220 (Claude Code) | Hooks `UserPromptSubmit`, `Stop`, `StopFailure`, `SessionEnd` | `UserPromptSubmit` fired for the argv launch prompt and each steer, and `Stop` closed every completed turn. A mid-stream Escape interrupt fired no closing hook, which is why the firstmate-controlled clear exists. `StopFailure` and `SessionEnd` are wired from the four hook names present in the installed binary; only the abnormal paths they cover were not reproduced live. |
 | Codex | codex-cli 0.145.0 | None usable | See below; classifies `unknown codex-unverified`. |
 | Kimi (standalone) | not installed | None usable | No binary on `PATH`, so the gate stays closed and it classifies `unknown kimi-unverified`. |
-| Grok | 0.2.112 | Isolated rendered-tail fallback | Retained unconverted; the approved audit could not credit a live structured-lifecycle run. |
 
 Codex was probed two ways, both refused:
 
@@ -257,7 +246,7 @@ tests/fm-crew-state.test.sh
 
 ## Turn-end guard
 
-The blocking and bounded-follow-up mechanisms were validated across seven harnesses on 2026-07-08 through 2026-09-21, with Claude's replacement Stop-owned path revalidated on 2026-09-21, Cursor's stop-hook park validated on 2026-08-13, and omp's blocking `session_stop` hook validated on 2026-09-05.
+The blocking and bounded-follow-up mechanisms were validated across six harnesses on 2026-07-08 through 2026-09-21, with Claude's replacement Stop-owned path revalidated on 2026-09-21, Cursor's stop-hook park validated on 2026-08-13, and omp's blocking `session_stop` hook validated on 2026-09-05.
 
 | Harness | Version verified | Mechanism | Observed result |
 | --- | --- | --- | --- |
@@ -266,7 +255,6 @@ The blocking and bounded-follow-up mechanisms were validated across seven harnes
 | OpenCode | 1.17.6 | Passive `session.idle` callback | Throwing could not block, while `promptAsync` scheduled one TUI follow-up; headless remained fail-open. |
 | Pi | 0.80.5 | Passive `agent_settled` callback | Exactly one guard follow-up ran for an unhealthy cycle, with no recursion across tool turns. |
 | omp | 18.1.11 | Blocking `session_stop` hook returning `{ continue: true, additionalContext }` | In the isolated rpc lab (2026-09-05), the successor watcher was frozen with `SIGSTOP` until its beacon passed the lab `FM_GUARD_GRACE` of 20s while its arm child stayed attached (a killed watcher closes its arm child and the extension re-arms before the guard can fire); the next turn end raised the guard, the guard spy recorded `rc=2` followed by a stop carrying `stop_hook_active: true`, omp compelled a continuation carrying the `turn-end-guard` operational text, the `fm_watch_arm_omp` invocation count then rose to at least two, and a live watcher held the home lock after the thaw; the flagged stop was allowed, so exactly one continuation ran. `session_stop` never fired for an interrupted turn. |
-| Grok | 0.2.112 native and 0.2.73 pre-native | Running-payload adaptive `Stop` | Native false-to-true continuation stayed in one process with two model turns and zero resume launches; the field-absent pre-native process launched exactly one guarded resume. |
 | Cursor | 2026.08.11-e8db854 | Awaited `stop` hook park returning one `followup_message` | Exit 2 ended the turn normally, proving it cannot block; a returned follow-up ran a genuine second turn; a sleeping hook held the boundary open and the wake landed after it; `loop_limit` stopped the hook being invoked at its ceiling. |
 
 ### Cursor primary park, 2026-08-13
@@ -316,27 +304,6 @@ Two static facts decided that: `PreCompactRequestResponse` carries only `user_me
 A staged-then-delivered design is rejected because carrying a digest across two concurrently running `stop` hooks can deliver it twice or strand it indefinitely, while closing those races enlarges a critical section inside a hook Cursor awaits at the turn boundary.
 Native `preCompact` firing was not observed because a real compaction could not be forced in the isolated session, so the surface has no empirical basis yet.
 It is therefore recorded as uncovered in the same sense as the Codex interactive TUI, and `tests/fm-cursor-primary.test.sh` asserts `preCompact` stays unregistered so it cannot return unnoticed without its own design and evidence.
-
-The Grok adaptive matrix ran on 2026-07-28 with separate scratch repositories and homes, dedicated tmux sockets, one target plus one control window, ambient tmux variables removed, and a socket-bound wrapper first in `PATH`.
-
-```sh
-FM_GROK_STOP_LIVE_E2E=1 \
-  FM_GROK_NATIVE_BIN="$native_grok_0_2_112" \
-  FM_GROK_LEGACY_BIN="$official_pre_native_grok_0_2_73" \
-  tests/fm-grok-stop-live-e2e.test.sh
-```
-
-Observed bounded output:
-
-```text
-ok - grok 0.2.112 (9bbd559437aa) [stable] native Stop kept one session across false->true, two model turns, and zero resume processes
-ok - grok 0.2.73 (9ff14c43bbe5) [stable] legacy Stop omitted capability, resumed exactly once, and stopped normally
-ok - Grok adaptive Stop real-process matrix passed with exact target cleanup and control-window survival
-```
-
-The same run proved the Claude-compatible Stop entries stay inert under `GROK_AGENT`, the legacy resume carries `GROK_TURNEND_GUARD_ACTIVE=1`, and every replacement root is removed after exact target cleanup while its control window survives.
-That inertness result is scoped to the builds it exercised: it did not establish that `GROK_AGENT` reaches a Grok HOOK process, and on grok 1.0.0 it does not, so the marker set was widened to `GROK_HOOK_EVENT` as well (docs/turnend-guard.md "Harness integrations").
-`tests/fm-turnend-guard.test.sh` now pins every tracked `.claude/settings.json` hook entry against a real grok 1.0.0 hook environment so the inertness contract is covered deterministically rather than only by the opt-in live matrix.
 
 The secondmate-home scope and manual-repair wake path were measured with Claude Code 2.1.207 on 2026-07-12, when a native background completion re-invoked the idle model with no human input.
 The current Stop-owned main/secondmate inclusion and child-worktree exclusion are covered deterministically by `tests/fm-claude-stop-autoarm.test.sh`.
@@ -400,7 +367,6 @@ Current entry points:
 tests/fm-turnend-guard.test.sh
 tests/fm-supervision-instructions.test.sh
 FM_PI_LIVE_E2E=1 tests/fm-pi-primary-live-e2e.test.sh
-FM_GROK_STOP_LIVE_E2E=1 FM_GROK_NATIVE_BIN="$native_grok" FM_GROK_LEGACY_BIN="$pre_native_grok" tests/fm-grok-stop-live-e2e.test.sh
 ```
 
 The Claude auto-arm false-failure, guard-predicate, and monotonic bounded fail-open correction was verified on 2026-08-02 with the installed ShellCheck 0.11.0 and isolated behavior suites.
@@ -542,7 +508,6 @@ Claude Code 2.1.278
 codex-cli 0.144.4
 OpenCode 1.17.18
 Pi 0.80.10
-grok 0.2.103 (89c3d36fb6f1) [stable]
 ```
 
 | Harness | Exact opt-in command | Observed guarantee |
@@ -552,7 +517,6 @@ grok 0.2.103 (89c3d36fb6f1) [stable]
 | OpenCode | `FM_OPENCODE_LIVE_E2E=1 tests/fm-opencode-primary-live-e2e.test.sh` | A verified successor existed before prompt handling, with no model re-arm or turn-end fallback. |
 | Pi | `FM_PI_LIVE_E2E=1 FM_PI_LIVE_WATCH_ONLY=1 tests/fm-pi-primary-live-e2e.test.sh` | Three consecutive actionable closes each produced a ledger-linked successor, and an intentional stopped-chain failure still raised the outage alarm. |
 | omp | `FM_OMP_LIVE_E2E=1 tests/fm-omp-primary-live-e2e.test.sh` | One initial `fm_watch_arm_omp` invocation (the openai-codex model reaches extension tools through omp's `xd://` virtual-file bridge, a `write` to `xd://fm_watch_arm_omp`, counted as the same invocation) started a live watcher; an actionable close spawned a ledger-linked successor and woke main exactly once; the lab is reaped by path, and omp 18.1.11 did not exit within 30s of its rpc stdin closing, recorded as a note. omp 18.1.11, 2026-09-05. |
-| Grok | `FM_GROK_LIVE_E2E=1 tests/fm-grok-continuity-live-e2e.test.sh` | Native task completion surfaced the actionable close and the cycle ledger recorded `reason=actionable-signal`. |
 
 Pi 0.81.1 repeated the continuity and clean-exit lifecycle on 2026-07-23 after the Calm presentation changes.
 
@@ -675,8 +639,8 @@ tests/fm-watch-arm.test.sh
 
 ### Non-Pi primaries
 
-This supports the per-primary routing in [supervision-host.md](../supervision-host.md): with `config/supervision-host`, the Cursor, OpenCode, Grok, and Codex arm owners run the host with the Claude engine, and without it nothing changes.
-It was measured on 2026-09-24 on macOS 26.6.2 arm64 with Claude Code 2.1.281 as the engine (`sonnet`), codex-cli 0.155.1, cursor-agent 2026.09.23-86fc751, OpenCode 1.18.32, grok 1.0.41, and Claude Code 2.1.281 as primaries, and Pi 0.87.0 workers on `openai-codex/gpt-5.6-sol`, in disposable lab homes on private tmux sockets.
+This supports the per-primary routing in [supervision-host.md](../supervision-host.md): with `config/supervision-host`, the Cursor, OpenCode, and Codex arm owners run the host with the Claude engine, and without it nothing changes.
+It was measured on 2026-09-24 on macOS 26.6.2 arm64 with Claude Code 2.1.281 as the engine (`sonnet`), codex-cli 0.155.1, cursor-agent 2026.09.23-86fc751, OpenCode 1.18.32, and Claude Code 2.1.281 as primaries, and Pi 0.87.0 workers on `openai-codex/gpt-5.6-sol`, in disposable lab homes on private tmux sockets.
 omp is not installed on the measuring machine, so its routing rests on `tests/fm-omp-harness.test.sh` alone.
 OpenCode's OpenAI login on that machine rejects `gpt-5.6-sol` and has exhausted its `gpt-5.5` usage, so the OpenCode primary ran on OpenCode's free `opencode/big-pickle`.
 
@@ -686,20 +650,19 @@ The lab opened the gates, interrupted a worker mid-turn, tried a main-actor stee
 | Case | Observed |
 | --- | --- |
 | Away entry | every primary wrote the away record and started no daemon; Codex's checkpoint reported its raised bound under `FM_CODEX_WATCH_CHECKPOINT_AWAY=900` (bound 900, limit 2130) |
-| Decision the words pre-answered | the engine answered it on all five primaries and reported `per your away instructions:`; main stayed parked |
-| Steer the words named | the engine delivered it on all five, and the finished work carries it |
-| Worker stopped mid-task | the engine told it to continue and confirmed it working again (Codex, Cursor, Grok, OpenCode) |
-| Main steer during an engine turn | `fm-send.sh` exited 6 with `task ... is leased to the branch supervision actor ... retry after that actor releases it` on all five |
-| Dispatch the words ordered with no override | the worker launched on the primary's own runtime (`codex`, `cursor`, `grok`, `claude`); on OpenCode the home's saved default dispatch profile (Pi) took precedence, as configured |
+| Decision the words pre-answered | the engine answered it on all four primaries and reported `per your away instructions:`; main stayed parked |
+| Steer the words named | the engine delivered it on all four, and the finished work carries it |
+| Worker stopped mid-task | the engine told it to continue and confirmed it working again (Codex, Cursor, OpenCode) |
+| Main steer during an engine turn | `fm-send.sh` exited 6 with `task ... is leased to the branch supervision actor ... retry after that actor releases it` on all four |
+| Dispatch the words ordered with no override | the worker launched on the primary's own runtime (`codex`, `cursor`, `claude`); on OpenCode the home's saved default dispatch profile (Pi) took precedence, as configured |
 | Boundary | main drained, acknowledged, and re-parked on every primary |
-| Return during an engine turn | the finished turn's outcome reached main: Codex and Grok through the host's hand-back line, Cursor through the queued `check: supervision-host outcome <n> ... was recorded after the captain returned` wake after the captain's message superseded the park, Claude through both, and OpenCode in the return brief |
+| Return during an engine turn | the finished turn's outcome reached main: Codex through the host's hand-back line, Cursor through the queued `check: supervision-host outcome <n> ... was recorded after the captain returned` wake after the captain's message superseded the park, Claude through both, and OpenCode in the return brief |
 | Malformed engine result (Claude) | handed back as Stop-hook feedback that kept the `supervision-host:` line and named itself not a return |
 | A wake that lands between main's drain and its acknowledgement | main's acknowledgement claims only rows at or below its cutoff, so the away session can still take a later row; `tests/fm-wake-queue.test.sh` pins this, and no live run reached that window after the change |
 
-Engine turns cost $0.06 to $0.79 each; whole away windows cost $0.66 (Claude), $1.21 (Cursor), $1.64 (OpenCode), $2.51 (Grok), and $3.76 (Codex, two windows).
-An engine-dispatched Grok 1.0.41 worker stops on Grok's workspace-trust prompt for a project under `/private/tmp`; the engine held it for the captain rather than answering it.
+Engine turns cost $0.06 to $0.79 each; whole away windows cost $0.66 (Claude), $1.21 (Cursor), $1.64 (OpenCode), and $3.76 (Codex, two windows).
 
-Without `config/supervision-host`, attended and away sessions on Codex, Cursor, and Grok primaries ran identically on the tree before this change (`9284978f`) and with it: the attended worker landed and was cleaned up, `/afk` started the daemon, the away finish was delivered, the return brief rendered, and nothing landed.
+Without `config/supervision-host`, attended and away sessions on Codex and Cursor primaries ran identically on the tree before this change (`9284978f`) and with it: the attended worker landed and was cleaned up, `/afk` started the daemon, the away finish was delivered, the return brief rendered, and nothing landed.
 The OpenCode pair could not run, because every primary turn hit the model rejection or usage limit above in both trees.
 The live guards gave the same results in both trees:
 
@@ -709,11 +672,7 @@ The live guards gave the same results in both trees:
 | `FM_SUPERVISION_HOST_LIVE_E2E=1 tests/fm-supervision-host-live-e2e.test.sh` | ok | ok |
 | `FM_CURSOR_PRIMARY_LIVE_E2E=1 tests/fm-cursor-primary-live-e2e.test.sh` | 7 of 7 ok | 7 of 7 ok |
 | `FM_CODEX_LIVE_E2E=1 tests/fm-codex-continuity-live-e2e.test.sh` | ok | ok |
-| `FM_GROK_LIVE_E2E=1 tests/fm-grok-continuity-live-e2e.test.sh` | ok | ok |
-| `FM_GROK_STOP_LIVE_E2E=1 tests/fm-grok-stop-live-e2e.test.sh` (native 1.0.41, legacy 0.2.102) | `not ok - native path expected two Stop payloads, got 3` | same |
 | `FM_OPENCODE_LIVE_E2E=1 tests/fm-opencode-primary-live-e2e.test.sh` | `not ok - ... "The usage limit has been reached","statusCode":429` | same |
-
-The Grok stop guard was last verified on 0.2.112 and has drifted from Grok 1.0.41 in both trees.
 
 Deterministic entry points:
 

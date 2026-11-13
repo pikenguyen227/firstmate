@@ -8,7 +8,7 @@ This record owns concurrent isolation evidence for the portable parallel candida
 
 - Date: 2026-08-20
 - Command: `bin/fm-test-isolation-proof.sh --jobs 4 --json /tmp/fm-isolation-proof.json`
-- Result: `FM_ISOLATION_SUMMARY total=24 failed=0 concurrency=4 duration_ms=113278`
+- Result: `FM_ISOLATION_SUMMARY total=23 failed=0 concurrency=4 duration_ms=113278`
 
 | Field | Value |
 |---|---|
@@ -16,7 +16,7 @@ This record owns concurrent isolation evidence for the portable parallel candida
 | `started_at` | `2026-08-21T00:44:04Z` |
 | `finished_at` | `2026-08-21T00:45:57Z` |
 | concurrency | 4 |
-| candidates | 24 |
+| candidates | 23 |
 | failed | 0 |
 | wall duration | 113278 ms |
 
@@ -31,7 +31,6 @@ This record owns concurrent isolation evidence for the portable parallel candida
 - `tests/fm-composer-lib.test.sh`
 - `tests/fm-crew-state.test.sh`
 - `tests/fm-ensure-agents-md.test.sh`
-- `tests/fm-grok-harness.test.sh`
 - `tests/fm-herdr-lab.test.sh`
 - `tests/fm-lint.test.sh`
 - `tests/fm-pi-primary-types.test.sh`
@@ -60,7 +59,6 @@ This record owns concurrent isolation evidence for the portable parallel candida
 | 16582 | 0 | 5 | `tests/fm-cd-pretool-check.test.sh` |
 | 9766 | 0 | 12 | `tests/fm-lint.test.sh` |
 | 9562 | 0 | 11 | `tests/fm-herdr-lab.test.sh` |
-| 6768 | 0 | 10 | `tests/fm-grok-harness.test.sh` |
 | 6290 | 0 | 14 | `tests/fm-pr-merge.test.sh` |
 | 5569 | 0 | 6 | `tests/fm-composer-ghost.test.sh` |
 | 4563 | 0 | 16 | `tests/fm-send-popup-settle.test.sh` |

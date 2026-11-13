@@ -2217,7 +2217,6 @@ test_secondmate_home_teardown_delivers_final_line_or_refuses() {
   channel="$case_dir/parent/state/mate-x.status"
   write_meta "$case_dir" local-only ship
   mkdir -p "$case_dir/tasktmp"
-  printf '!\n' > "$case_dir/state/task-x1.grok-turnend-token"
   printf '!\n' > "$case_dir/state/task-x1.kimi-turnend-token"
   printf 'tasktmp=%s\n' "$case_dir/tasktmp" >> "$case_dir/state/task-x1.meta"
   wt_commit "$case_dir" "merged work"
@@ -2233,8 +2232,7 @@ test_secondmate_home_teardown_delivers_final_line_or_refuses() {
     || fail "mate-teardown-refuses: refusal did not name the parent channel: $(cat "$case_dir/stderr")"
   [ -f "$case_dir/state/task-x1.meta" ] && [ -f "$case_dir/state/task-x1.status" ] \
     || fail "mate-teardown-refuses: refusal did not retain the task records"
-  [ -f "$case_dir/state/task-x1.grok-turnend-token" ] \
-    && [ -f "$case_dir/state/task-x1.kimi-turnend-token" ] \
+  [ -f "$case_dir/state/task-x1.kimi-turnend-token" ] \
     && [ -d "$case_dir/tasktmp" ] \
     || fail "mate-teardown-refuses: refusal removed endpoint records before parent delivery"
   rmdir "$channel"

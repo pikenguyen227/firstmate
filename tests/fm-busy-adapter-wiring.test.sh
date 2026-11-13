@@ -36,8 +36,7 @@ run_spawn() {  # <home> <wt> <fakebin> <spawn-args...>
   # fixed valid one.
   local home=$1 wt=$2 fakebin=$3
   shift 3
-  GROK_HOME="$home/grok-home" \
-    fm_test_run_spawn "$home" "$wt" "$fakebin" "$@" --mode no-mistakes --yolo off
+  fm_test_run_spawn "$home" "$wt" "$fakebin" "$@" --mode no-mistakes --yolo off
 }
 
 read_case_record() {
@@ -398,8 +397,7 @@ test_gemini_is_refused_as_a_secondmate() {
   read_case_record "$rec"
   # A secondmate spawn carries no delivery contract, so this one deliberately
   # bypasses run_spawn's ship-only --mode/--yolo arguments.
-  out=$(GROK_HOME="$HOME_DIR/grok-home" \
-    fm_test_run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" --secondmate "$id" gemini) && {
+  out=$(fm_test_run_spawn "$HOME_DIR" "$WT_DIR" "$FAKEBIN_DIR" --secondmate "$id" gemini) && {
     fail "a gemini secondmate must be refused, it has no primary supervision protocol: $out"
   }
   assert_contains "$out" 'crewmate/scout adapter only' \
@@ -407,25 +405,21 @@ test_gemini_is_refused_as_a_secondmate() {
   pass "gemini is refused as a secondmate because it has no primary supervision protocol"
 }
 
-test_kimi_and_grok_install_no_unverified_wiring() {
+test_kimi_installs_no_unverified_wiring() {
   local state out
   state="$TMP_ROOT/gates/state"
   mkdir -p "$state"
   [ -z "$(fm_busy_sources_for_harness kimi)" ] \
     || fail "standalone kimi must trust no semantic source until it is verified"
-  [ -z "$(fm_busy_sources_for_harness grok)" ] \
-    || fail "grok must trust no semantic source while its structured path is unverified"
   out=$(fm_busy_classify tmux fake:w kimi gate-k "$state" '🌒 · thinking')
   [ "$out" = "unknown kimi-unverified" ] || fail "kimi must classify unknown, not from its spinner, got '$out'"
-  out=$(fm_busy_classify tmux fake:w grok gate-g "$state" 'Ctrl+c:cancel')
-  [ "$out" = "busy grok-regex" ] || fail "grok must classify through its isolated fallback, got '$out'"
-  pass "kimi and grok install no unverified semantic wiring and classify through their own gates"
+  pass "kimi installs no unverified semantic wiring and classifies through its own gate"
 }
 
 test_pi_extension_semantic_lifecycle
 test_pi_extension_serializes_settle_before_next_start
 test_pi_extension_stale_incarnation_rejected
-test_kimi_and_grok_install_no_unverified_wiring
+test_kimi_installs_no_unverified_wiring
 test_opencode_plugin_semantic_lifecycle
 test_claude_hooks_semantic_lifecycle
 test_claude_hooks_stale_incarnation_harmless

@@ -45,7 +45,7 @@
 #                    unknown invalidation fm-control writes after a Devin interrupt
 #   fm-recovery      a documented recovery reset after relaunch
 # Classifier-only sources (never written into a record):
-#   endpoint-gone, herdr-native, grok-regex, rovo-regex, agy-regex, muse-session-log,
+#   endpoint-gone, herdr-native, rovo-regex, agy-regex, muse-session-log,
 #   cursor-transcript, missing, malformed, gen-mismatch, source-mismatch,
 #   kimi-unverified, codex-unverified, capture-failed, no-target, launch-prompt
 #
@@ -69,7 +69,7 @@
 #   4. no record at all: herdr's native busy verdict is trusted as busy
 #      (generation state is sufficient for busy, not for idle), then the
 #      muse session-log and cursor transcript pull sources, then the
-#      Grok/Rovo/AGY temporary regex fallbacks classify a grok, rovo, or agy
+#      Rovo/AGY temporary regex fallbacks classify a rovo or agy
 #      task from its rendered tail, then unknown missing
 #   5. malformed, stale, or untrusted records -> unknown, never a fallback
 #
@@ -89,7 +89,7 @@
 # a real busy verdict once any hook has posted, and it defers to whatever
 # harness-specific trust pre-registration already exists (fm-claude-trust.sh,
 # GEMINI_CLI_TRUST_WORKSPACE) to stop the dialog from appearing at all.
-# Apart from the launch-prompt backstop above, Grok, Rovo, and AGY are the ONLY
+# Apart from the launch-prompt backstop above, Rovo and AGY are the ONLY
 # rendered-text busy fallbacks that survive the redesign, because none of their
 # structured lifecycles was credited-live-verified
 # in the approved audit (Rovo's clean ACP stopReason lives outside the TUI
@@ -216,10 +216,9 @@ fm_busy_current_gen() {  # <state-dir> <id>
 # fm_busy_sources_for_harness: the semantic sources trusted to classify a
 # task recorded with <harness>. One line, space-separated, possibly empty.
 # The firstmate-owned sources are appended for every converted adapter.
-# Grok and muse deliberately trust nothing: neither has a semantic WRITER, so
-# neither is armed, and both read their live source on demand in the classifier
-# (grok's rendered tail, muse's session log) rather than through a stored
-# record. Listing a source here without a writer that can clear it would seed a
+# Muse deliberately trusts nothing: it has no semantic WRITER, so it is not
+# armed, and it reads its live source on demand in the classifier (its session
+# log) rather than through a stored record. Listing a source here without a writer that can clear it would seed a
 # busy record nothing could ever settle.
 fm_busy_sources_for_harness() {  # <harness>
   local adapter=
@@ -864,21 +863,12 @@ fm_busy_cursor_turn_state() {  # <transcript>
   '
 }
 
-# fm_busy_grok_tail_busy: the Grok-only temporary rendered-tail fallback.
-# Consumes the tail on stdin; 0 when Grok's verified busy signature matches.
-# FM_BUSY_REGEX still globally overrides the signature, mirroring the
-# historical operator escape hatch.
-fm_busy_grok_tail_busy() {
-  grep -v '^[[:space:]]*$' | tail -12 \
-    | grep -qiE "${FM_BUSY_REGEX:-${FM_DELIVERY_GROK_BUSY_REGEX_DEFAULT:-Ctrl\\+c:cancel}}"
-}
-
 # fm_busy_rovo_tail_busy: the Rovo-only temporary rendered-tail fallback.
 # Consumes the tail on stdin; 0 when Rovo's verified animated busy line
 # matches (the "Rovo is thinking..." text rendered while a turn is running,
 # verified live on rovo 202609.1.2; both observed glyph variants share this
 # literal text). rovo has no turn-end hook - its eventHooks fire at tool
-# granularity only - so this fallback, like Grok's, is the only source; it is
+# granularity only - so this fallback is the only source; it is
 # never armed as a semantic writer (fm_busy_sources_for_harness trusts
 # nothing for rovo). FM_BUSY_ROVO_REGEX overrides the signature.
 fm_busy_rovo_tail_busy() {
@@ -904,7 +894,7 @@ fm_busy_agy_tail_busy() {
 # --- launch-prompt signatures (fm_busy_launch_prompt_parked) ----------------
 #
 # Each function consumes a captured pane tail on stdin (the caller's whole
-# tail40, NOT reduced to the last 12 non-blank lines the way the Grok/Rovo/AGY
+# tail40, NOT reduced to the last 12 non-blank lines the way the Rovo/AGY
 # busy footers above are): a bordered dialog box renders many short lines of
 # pure border/padding (`│  ...  │`) that are NOT whitespace-only, so a 12-line
 # non-blank reduction was verified live to push the box's own heading text
@@ -1011,8 +1001,8 @@ fm_busy_launch_prompt_parked() {  # <harness>
 # fm_busy_classify: semantic classification for a task whose endpoint the
 # caller has already established as present. Prints "<verdict> <source>":
 # busy|idle|unknown plus the producing source (see header). Never probes
-# process state. <tail40> is optional pre-captured plain output: the grok,
-# rovo, and agy arms capture it themselves through fm_backend_capture when it
+# process state. <tail40> is optional pre-captured plain output: the rovo
+# and agy arms capture it themselves through fm_backend_capture when it
 # is absent (or report unknown capture-failed if that is unavailable too),
 # while the launch-prompt backstop below has no capture fallback of its own -
 # without a supplied tail40 it is skipped entirely and a record still pinned
@@ -1103,25 +1093,6 @@ fm_busy_classify() {  # <backend> <target> <harness> <id> <state-dir> [tail40]
       esac
       return 0
       ;;
-    grok*)
-      if [ -z "$tail40" ]; then
-        if command -v fm_backend_capture >/dev/null 2>&1; then
-          tail40=$(fm_backend_capture "$backend" "$target" 40 2>/dev/null) || {
-            printf 'unknown capture-failed'
-            return 0
-          }
-        else
-          printf 'unknown capture-failed'
-          return 0
-        fi
-      fi
-      if printf '%s' "$tail40" | fm_busy_grok_tail_busy; then
-        printf 'busy grok-regex'
-      else
-        printf 'idle grok-regex'
-      fi
-      return 0
-      ;;
     rovo*)
       if [ -z "$tail40" ]; then
         if command -v fm_backend_capture >/dev/null 2>&1; then
@@ -1189,7 +1160,7 @@ fm_busy_classify_live() {  # <backend> <target> <harness> <id> <state-dir> [expe
 # consumer resolves backend, target, and harness the same way instead of
 # re-deriving them. Requires fm-backend.sh to be sourced. <tail40> is
 # optional pre-captured plain output reused by the contract's rendered-text
-# checks: the Grok/Rovo/AGY busy fallbacks and the launch-prompt backstop.
+# checks: the Rovo/AGY busy fallbacks and the launch-prompt backstop.
 fm_busy_classify_meta() {  # <meta-file> <id> <state-dir> [tail40]
   local meta=$1 id=$2 state=$3 tail40=${4-} backend target harness
   [ -f "$meta" ] || { printf 'unknown missing'; return 0; }

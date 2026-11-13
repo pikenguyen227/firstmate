@@ -228,12 +228,12 @@ test_stdin_transports_and_output_shapes() {
 
   rc=0
   : > "$OUT"; : > "$ERR"
-  printf '%s' '{"toolName":"Agent"}' \
+  printf '%s' '{"tool_name":"Agent"}' \
     | FM_ROOT_OVERRIDE="$PRIMARY" FM_HOME="$PRIMARY" FM_STATE_OVERRIDE="$STATE" \
       "$CHECK" > "$OUT" 2> "$ERR" || rc=$?
-  [ "$rc" -eq 2 ] || fail "Grok-shaped stdin must deny, got exit $rc"
-  jq -e '.decision == "deny" and (.reason | startswith("[subagent-dispatch]"))' "$OUT" >/dev/null 2>&1 \
-    || fail "default deny mode must write a Grok decision object on stdout: $(cat "$OUT")"
+  [ "$rc" -eq 2 ] || fail "default-mode stdin must deny, got exit $rc"
+  [ ! -s "$OUT" ] || fail "default deny mode must leave stdout empty: $(cat "$OUT")"
+  grep -q '\[subagent-dispatch\]' "$ERR" || fail "default deny must carry the reason on stderr: $(cat "$ERR")"
 
   rc=0
   : > "$OUT"; : > "$ERR"

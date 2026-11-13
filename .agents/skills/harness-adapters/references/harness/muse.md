@@ -8,12 +8,12 @@ The router owns Muse's task-kind boundary.
 | Fact | Value |
 |---|---|
 | Binary | Absolute `muse` from `PATH`, refused if absent; launcher `~/.local/bin/muse` execs versioned `muse-bin-<version>`, so live process name changes on update. |
-| Launch | Positional instructions, like Grok or Pi. |
+| Launch | Positional instructions, like Pi. |
 | Models | `--model <model>`; only provider `meta`. |
 | Busy | Durable session event log folded by `../../../bin/fm-busy-lib.sh`; no hook or plugin writer, arming, or seeded busy record. |
 | Exit | `/exit`, one Enter; prints `To continue this session, run muse resume <session-uuid>`. |
 | Interrupt | Single Escape records `terminal: cancelled` and restores bright prompt text, so control follows with `Ctrl+U`; the legacy typed key path uses the same clear table. |
-| Skill | `/<skill>`, the Claude or Grok form. |
+| Skill | `/<skill>`, the Claude form. |
 | Resume | `muse resume --last` or `muse resume <session-uuid>`; bare `muse resume` opens a picker. |
 | Autonomy | `--yolo` disables approval and sandbox and trusts the workspace. |
 | Trust | Dialog `Do you trust this workspace?`, choice `1 Trust and continue` preselected for Enter; `--yolo` suppresses it, which fresh task paths require. |

@@ -786,11 +786,11 @@ test_composer_state_ghost_placeholder_is_empty() {
   local dir fb out
   dir="$TMP_ROOT/composer-ghost"; mkdir -p "$dir/responses"
   cmux_panes_response "$dir" 1 "bbbbbbbb-1111-1111-1111-111111111111"
-  cmux_read_screen_response "$dir" 2 $'  ╭────────────────────────╮\n  │ ❯ Type a message...    │\n  ╰──────── Composer ──────╯'
+  cmux_read_screen_response "$dir" 2 $'  ╭────────────────────────╮\n  │ ❯ Add a follow-up      │\n  ╰──────── Composer ──────╯'
   fb=$(make_cmux_fakebin "$dir")
   out=$( PATH="$fb:$PATH" FM_CMUX_LOG="$dir/log" FM_CMUX_RESPONSES="$dir/responses" \
     bash -c '. "$0/bin/backends/cmux.sh"; fm_backend_cmux_composer_state "aaaaaaaa-0000-0000-0000-000000000000:bbbbbbbb-1111-1111-1111-111111111111"' "$ROOT" )
-  [ "$out" = empty ] || fail "the known ghost placeholder 'Type a message...' should read as empty, got '$out'"
+  [ "$out" = empty ] || fail "the known ghost placeholder 'Add a follow-up' should read as empty, got '$out'"
   pass "fm_backend_cmux_composer_state: the ghost placeholder text reads empty, not pending"
 }
 

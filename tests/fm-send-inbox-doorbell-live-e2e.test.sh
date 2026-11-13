@@ -85,7 +85,6 @@ launch_cmd() {  # <name>
     codex) printf '%s' 'codex --dangerously-bypass-approvals-and-sandbox' ;;
     opencode) printf '%s' "OPENCODE_CONFIG_CONTENT='{\"permission\":{\"*\":\"allow\"}}' opencode" ;;
     pi|pi-signed) printf '%s' "$1" ;;
-    grok) printf '%s' 'grok --always-approve' ;;
     kimi) printf '%s' 'kimi --auto' ;;
     muse) printf '%s' 'MUSE_EXPERIMENTAL_FOREIGN_PERSONAL_CONTEXT_KILL=on muse --yolo' ;;
     *) return 1 ;;
@@ -185,7 +184,7 @@ check_harness_doorbell() {  # <name>
   tmux -L "$SOCKET" kill-window -t "$SESSION:$win" 2>/dev/null || true
 }
 
-HARNESSES=${FM_SEND_INBOX_LIVE_HARNESSES:-'claude codex opencode pi grok kimi muse'}
+HARNESSES=${FM_SEND_INBOX_LIVE_HARNESSES:-'claude codex opencode pi kimi muse'}
 for h in $HARNESSES; do
   if command -v "$h" >/dev/null 2>&1; then
     check_harness_doorbell "$h"

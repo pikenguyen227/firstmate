@@ -239,7 +239,7 @@ run_control() {  # <case-dir> <args...>
     -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID \
     PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
     HOME="$dir/user-home" CLAUDE_CONFIG_DIR='' \
-    FM_SPAWN_NO_GUARD=1 GROK_HOME="$dir/grokhome" \
+    FM_SPAWN_NO_GUARD=1 \
     FM_CONTROL_POLL=0.01 FM_CONTROL_EXIT_WAIT=0.05 FM_CONTROL_LAUNCH_WAIT=0.05 \
     FM_REAL_GIT="${FM_REAL_GIT:-}" FM_FAKE_GIT_FAILURE="${FM_FAKE_GIT_FAILURE:-}" \
     FM_REAL_MV="${FM_REAL_MV:-}" FM_FAKE_COMPLETE_JOURNAL_MV_FAIL="${FM_FAKE_COMPLETE_JOURNAL_MV_FAIL:-}" \
@@ -261,7 +261,7 @@ run_spawn() {  # <case-dir> <args...>
     -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID \
     PATH="$dir/fakebin:$PATH" FM_HOME="$dir/home" FM_FAKE_DIR="$dir/fake" \
     HOME="$dir/user-home" CLAUDE_CONFIG_DIR='' \
-    FM_SPAWN_NO_GUARD=1 GROK_HOME="$dir/grokhome" \
+    FM_SPAWN_NO_GUARD=1 \
     "$SPAWN" "$@" 2>&1
 }
 
@@ -672,26 +672,26 @@ test_harness_switch_does_not_carry_the_old_profile_axes() {
 test_harness_switch_resolves_a_prefixed_recorded_harness() {
   local dir out rc auth
   dir=$(new_case prefixcontrol rl32)
-  add_ship_task "$dir" rl32 grok-2
-  printf 'grok-2' > "$dir/fake/command"
-  mkdir -p "$dir/grokhome/hooks/fm-turn-end.d"
-  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl32.grok-turnend-token"
-  auth="$dir/grokhome/hooks/fm-turn-end.d/fm.abcdefabcdef"
+  add_ship_task "$dir" rl32 kimi-2
+  printf 'kimi-2' > "$dir/fake/command"
+  mkdir -p "$dir/user-home/.kimi-code/fm-turn-end.d"
+  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl32.kimi-turnend-token"
+  auth="$dir/user-home/.kimi-code/fm-turn-end.d/fm.abcdefabcdef"
   printf '%s\n' "$dir/home/state/rl32.turn-ended" > "$auth"
-  printf 'token=fm.abcdefabcdef\n' > "$dir/wt/.fm-grok-turnend"
+  printf 'token=fm.abcdefabcdef\n' > "$dir/wt/.fm-kimi-turnend"
 
   out=$(run_control "$dir" rl32 relaunch --harness claude --note "switching runtime"); rc=$?
   expect_code 0 "$rc" "relaunch should resolve a prefixed recorded harness"$'\n'"$out"
   [ "$(sed -n '1p' "$dir/fake/literal")" = /exit ] \
-    || fail "relaunch should stop a grok-prefixed task with grok's exit command"
+    || fail "relaunch should stop a kimi-prefixed task with kimi's exit command"
   [ "$(meta_field "$dir" rl32 harness)" = claude ] \
     || fail "relaunch should publish the explicitly selected replacement harness"
-  [ "$(journal_field "$dir" rl32 from_harness)" = grok-2 ] \
+  [ "$(journal_field "$dir" rl32 from_harness)" = kimi-2 ] \
     || fail "relaunch should retain the recorded harness basename in its provenance"
-  assert_contains "$out" "harness=claude from=grok-2" \
+  assert_contains "$out" "harness=claude from=kimi-2" \
     "relaunch should report the recorded-to-selected harness transition"
-  [ ! -e "$auth" ] && [ ! -e "$dir/home/state/rl32.grok-turnend-token" ] \
-    && [ ! -e "$dir/wt/.fm-grok-turnend" ] \
+  [ ! -e "$auth" ] && [ ! -e "$dir/home/state/rl32.kimi-turnend-token" ] \
+    && [ ! -e "$dir/wt/.fm-kimi-turnend" ] \
     || fail "relaunch should retire wiring owned by the prefixed prior harness"
   pass "fm-control relaunch: a prefixed recorded harness can switch adapters transactionally"
 }
@@ -699,8 +699,8 @@ test_harness_switch_resolves_a_prefixed_recorded_harness() {
 test_prefixed_recorded_harness_requires_explicit_replacement() {
   local dir out rc meta brief
   dir=$(new_case prefixrefuse rl34)
-  add_ship_task "$dir" rl34 grok-2
-  printf 'grok-2' > "$dir/fake/command"
+  add_ship_task "$dir" rl34 kimi-2
+  printf 'kimi-2' > "$dir/fake/command"
   meta="$dir/home/state/rl34.meta"
   brief="$dir/home/data/rl34/brief.md"
   cp "$meta" "$dir/meta.before"
@@ -710,7 +710,7 @@ test_prefixed_recorded_harness_requires_explicit_replacement() {
   expect_code 1 "$rc" "implicit relaunch from a prefixed command should refuse"
   assert_contains "$out" "original launch command cannot be reconstructed from its recorded basename" \
     "the refusal should name the missing launch identity"
-  assert_contains "$out" "would substitute the canonical adapter 'grok'" \
+  assert_contains "$out" "would substitute the canonical adapter 'kimi'" \
     "the refusal should name the unsafe substitution"
   assert_contains "$out" "Pass an explicit --harness" \
     "the refusal should name the deliberate replacement path"
@@ -718,7 +718,7 @@ test_prefixed_recorded_harness_requires_explicit_replacement() {
     || fail "a refused prefixed relaunch must leave metadata byte-identical"
   cmp -s "$brief" "$dir/brief.before" \
     || fail "a refused prefixed relaunch must leave instructions byte-identical"
-  [ "$(cat "$dir/fake/command")" = grok-2 ] \
+  [ "$(cat "$dir/fake/command")" = kimi-2 ] \
     || fail "a refused prefixed relaunch must leave the original agent alive"
   [ -z "$(cat "$dir/fake/literal")" ] && [ -z "$(cat "$dir/fake/keys")" ] \
     || fail "a refused prefixed relaunch must deliver no lifecycle input"
@@ -842,15 +842,15 @@ test_relaunch_onto_an_unverified_harness_is_refused() {
 
 test_prior_harness_turnend_registry_entry_is_cleared() {
   local dir auth
-  dir=$(new_case grokauth rl9)
-  add_ship_task "$dir" rl9 grok
-  mkdir -p "$dir/grokhome/hooks/fm-turn-end.d"
-  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl9.grok-turnend-token"
-  auth="$dir/grokhome/hooks/fm-turn-end.d/fm.abcdefabcdef"
+  dir=$(new_case kimiauth rl9)
+  add_ship_task "$dir" rl9 kimi
+  mkdir -p "$dir/user-home/.kimi-code/fm-turn-end.d"
+  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl9.kimi-turnend-token"
+  auth="$dir/user-home/.kimi-code/fm-turn-end.d/fm.abcdefabcdef"
   printf '%s\n' "$dir/home/state/rl9.turn-ended" > "$auth"
-  printf 'grok' > "$dir/fake/command"
-  printf 'grok' > "$dir/fake/becomes"
-  run_control "$dir" rl9 relaunch --note "restart on the same runtime" >/dev/null
+  printf 'kimi' > "$dir/fake/command"
+  printf 'claude' > "$dir/fake/becomes"
+  run_control "$dir" rl9 relaunch --harness claude --note "switch away from the retired runtime" >/dev/null
   [ ! -e "$auth" ] \
     || fail "the previous incarnation's turn-end registry entry must not outlive it"
   pass "fm-control relaunch: the retired incarnation's global turn-end token is revoked"
@@ -881,23 +881,19 @@ test_wiring_removal_failure_refuses_before_replacement_arm() {
 }
 
 test_turnend_auth_paths_are_owned_by_the_control_adapter() {
-  local dir state grok_path kimi_path token_path
+  local dir state kimi_path token_path
   dir=$(fm_test_tmproot fm-control-auth)
   state="$dir/state"
   mkdir -p "$state"
-  printf 'fm.111111111111\n' > "$state/x.grok-turnend-token"
   printf 'fm.222222222222\n' > "$state/x.kimi-turnend-token"
-  token_path=$(fm_control_harness_turnend_token_path grok "$state" x)
-  [ "$token_path" = "$state/x.grok-turnend-token" ] \
-    || fail "the grok token path should be computed without reading it"
-  grok_path=$(GROK_HOME="$dir/gh" fm_control_harness_turnend_auth_path grok fm.111111111111)
-  [ "$grok_path" = "$dir/gh/hooks/fm-turn-end.d/fm.111111111111" ] \
-    || fail "grok's registry path should resolve under GROK_HOME, got '$grok_path'"
+  token_path=$(fm_control_harness_turnend_token_path kimi "$state" x)
+  [ "$token_path" = "$state/x.kimi-turnend-token" ] \
+    || fail "the kimi token path should be computed without reading it"
   kimi_path=$(HOME="$dir/kh" fm_control_harness_turnend_auth_path kimi fm.222222222222)
   [ "$kimi_path" = "$dir/kh/.kimi-code/fm-turn-end.d/fm.222222222222" ] \
     || fail "kimi's registry path should resolve under the home store, got '$kimi_path'"
-  grok_path=$(GROK_HOME="$dir/gh" fm_control_harness_turnend_auth_path grok 'not a token/../..')
-  [ -z "$grok_path" ] || fail "a malformed token must resolve to no path, got '$grok_path'"
+  kimi_path=$(HOME="$dir/kh" fm_control_harness_turnend_auth_path kimi 'not a token/../..')
+  [ -z "$kimi_path" ] || fail "a malformed token must resolve to no path, got '$kimi_path'"
   pass "fm-control-lib: one owner resolves each harness's turn-end registry entry, and refuses a malformed token"
 }
 
@@ -1197,24 +1193,24 @@ test_promoted_scout_relaunch_receives_the_current_delivery_contract() {
 # fm-spawn arms per-task wiring on harness PREFIXES, because a task launched
 # from a raw command records that command's basename rather than the exact
 # adapter name. Retirement must resolve the same way, or a task recorded as
-# `grok-2` would have its turn-end token and hook pointer armed and never
+# `kimi-2` would have its turn-end token and hook pointer armed and never
 # retired - leaving a registry entry that outlives the agent that owned it.
 test_prefixed_prior_harness_wiring_is_still_retired() {
   local dir auth
   dir=$(new_case prefixwiring rl30)
-  add_ship_task "$dir" rl30 grok-2
-  mkdir -p "$dir/grokhome/hooks/fm-turn-end.d"
-  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl30.grok-turnend-token"
-  auth="$dir/grokhome/hooks/fm-turn-end.d/fm.abcdefabcdef"
+  add_ship_task "$dir" rl30 kimi-2
+  mkdir -p "$dir/user-home/.kimi-code/fm-turn-end.d"
+  printf 'fm.abcdefabcdef\n' > "$dir/home/state/rl30.kimi-turnend-token"
+  auth="$dir/user-home/.kimi-code/fm-turn-end.d/fm.abcdefabcdef"
   printf '%s\n' "$dir/home/state/rl30.turn-ended" > "$auth"
-  printf 'token=fm.abcdefabcdef\n' > "$dir/wt/.fm-grok-turnend"
+  printf 'token=fm.abcdefabcdef\n' > "$dir/wt/.fm-kimi-turnend"
   printf 'zsh' > "$dir/fake/command"
   run_spawn "$dir" rl30 --relaunch --harness claude >/dev/null
   [ ! -e "$auth" ] \
     || fail "a prefixed prior harness must still have its turn-end registry entry revoked"
-  [ ! -e "$dir/home/state/rl30.grok-turnend-token" ] \
+  [ ! -e "$dir/home/state/rl30.kimi-turnend-token" ] \
     || fail "a prefixed prior harness must still have its private token retired"
-  [ ! -e "$dir/wt/.fm-grok-turnend" ] \
+  [ ! -e "$dir/wt/.fm-kimi-turnend" ] \
     || fail "a prefixed prior harness must still have its worktree hook pointer removed"
   pass "fm-spawn --relaunch: wiring armed under a prefixed harness name is still retired"
 }

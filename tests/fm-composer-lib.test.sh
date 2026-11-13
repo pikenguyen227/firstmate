@@ -139,12 +139,11 @@ test_real_text_is_pending() {
 # correctness matrix (audit data/fm-composer-consolidation-audit-s1, task
 # fm-composer-thin-adapter-refactor-r1).
 #
-# Fixtures are the audit's byte-level captures of six REAL idle harnesses:
+# Fixtures are the audit's byte-level captures of REAL idle harnesses:
 # claude 2.1.226 (bare `❯` + U+00A0 NO-BREAK SPACE), codex 0.146.0 (bold `›`
 # + SGR-2 dim hint), codex 0.154.0 (the same `›` amid a braille starfield over
 # a status footer, captured through Herdr on 2026-09-15), muse (truecolor `⟩`, 38;2;90;160;255), pi (blank row
-# between solid `─` rules), opencode 1.14.46 (left-bar `┃` rows), and grok
-# 1.0.0 (bordered box with a TITLED bottom border), plus claude captured
+# between solid `─` rules), and opencode 1.14.46 (left-bar `┃` rows), plus claude captured
 # inside zellij through `dump-screen --ansi` (`ESC[m` `❯` U+00A0).
 #
 # Capability profiles mirror the real adapters' descriptors: tmux
@@ -705,32 +704,6 @@ test_matrix_opencode_leftbar_signals() {
   pass "matrix: opencode's left-bar composer reads empty everywhere and scans the full active run"
 }
 
-test_matrix_grok_titled_bottom_border() {
-  # Grok 1.0.5 widened its titled BOTTOM border three columns past the top and
-  # content rows. This is the idle capture from issue #3436; Herdr has no
-  # cursor anchor, so the geometry mismatch used to make the proven box
-  # ambiguous and the verdict unknown, stranding away-mode injection.
-  local titled plain_border typed malformed placeholder_draft
-  titled=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯                                                                        │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯\n\n  Shift+Tab:mode  │  Ctrl+x:shortcuts'
-  plain_border=$'  ╭──────────────────────────────────────╮\n  │ ❯                                    │\n  ╰──────────────────────────────────────╯'
-  assert_screen "grok titled on tmux" empty "$CAPS_TMUX" "$titled" 1
-  assert_screen "grok titled on tmux bottom-border cursor" empty "$CAPS_TMUX" "$titled" 2
-  assert_screen "issue #3436 idle grok 1.0.5 on herdr" empty "$CAPS_STYLED" "$titled"
-  placeholder_draft=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯ Type a message...                                                      │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯'
-  assert_screen "grok bright placeholder-like draft on tmux" pending "$CAPS_TMUX" "$placeholder_draft" 1
-  assert_screen "grok placeholder on plain backends" empty "$CAPS_PLAIN" "$placeholder_draft"
-  assert_screen "grok titled on cmux/orca" empty "$CAPS_PLAIN" "$titled"
-  assert_screen "grok titled on zellij" empty "$CAPS_STYLED_NOID" "$titled"
-  # The tolerance is additive: an untitled border still proves the same box.
-  assert_screen "grok untitled border" empty "$CAPS_TMUX" "$plain_border" 1
-  typed=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯ deploy the fix                                                         │\n  ╰────────────────────────────────────────────────────────── Grok 4.6 (xhigh) ─╯'
-  assert_screen "grok typed on tmux" pending "$CAPS_TMUX" "$typed" 1
-  assert_screen "grok typed on herdr" pending "$CAPS_STYLED" "$typed"
-  malformed=$'  ╭──────────────────────────────────────────────────────────────────────────╮\n  │ ❯                                                                        │\n  ╰────────────────────────────────────────────────────────── unknown surface ─╯'
-  assert_screen "oversized unknown title on herdr" unknown "$CAPS_STYLED" "$malformed"
-  pass "matrix: grok's real oversized titled bottom is empty while typed and unproved panes stay safe"
-}
-
 test_matrix_kimi_bordered_shell_glyph_box() {
   # Kimi's bordered `│ > │` composer - the shape fm-spawn.sh's retired
   # spawn-local regex used to own. Now the shared owner proves it everywhere,
@@ -856,7 +829,7 @@ test_cursorless_bare_wrap_region_classifies() {
 }
 
 test_cursorless_container_rejects_contiguous_lower_activity() {
-  local box leftbar grok kimi opencode
+  local box leftbar titled kimi opencode
   box=$'╭────────────────────────╮\n│ ❯                      │\n╰────────────────────────╯\nWorking on request...'
   assert_screen "stale box above activity on herdr" unknown "$CAPS_STYLED" "$box"
   assert_screen "stale box above activity on zellij" unknown "$CAPS_STYLED_NOID" "$box"
@@ -867,10 +840,10 @@ test_cursorless_container_rejects_contiguous_lower_activity() {
   assert_screen "stale left-bar above activity on zellij" unknown "$CAPS_STYLED_NOID" "$leftbar"
   assert_screen "stale left-bar above activity on cmux/orca" unknown "$CAPS_PLAIN" "$leftbar"
 
-  grok=$'╭────────────────────────╮\n│ ❯                      │\n╰──────── Grok 4.5 ──────╯\n\nGrok status'
+  titled=$'╭────────────────────────╮\n│ ❯                      │\n╰──────── Model 4.5 ─────╯\n\nTitled status'
   kimi=$'╭────────────────────────╮\n│ >                      │\n╰────────────────────────╯\n\nKimi status'
   opencode=$'┃\n┃  Ask anything...\n┃\n┃  Build · GPT-5.5 Fast OpenAI · high\n╹▀▀▀▀▀▀▀▀\n\nOpenCode status'
-  assert_screen "blank-separated grok footer" empty "$CAPS_STYLED_NOID" "$grok"
+  assert_screen "blank-separated titled footer" empty "$CAPS_STYLED_NOID" "$titled"
   assert_screen "blank-separated kimi footer" empty "$CAPS_PLAIN" "$kimi"
   assert_screen "left-bar floor and blank-separated footer" empty "$CAPS_STYLED_NOID" "$opencode"
   pass "fm_composer_classify_screen: cursorless containers reject only contiguous unclaimed activity"
@@ -901,7 +874,7 @@ test_incomplete_lower_box_invalidates_stale_candidate() {
 
 test_titled_bottom_requires_matching_width() {
   local screen out
-  screen=$'╭────────────────────────╮\n│ ❯                      │\n╰─ Grok ─╯'
+  screen=$'╭────────────────────────╮\n│ ❯                      │\n╰─ Title ─╯'
   out=$(fm_composer_classify_screen "$CAPS_TMUX" "$screen" 1)
   [ "$out" = unknown ] \
     || fail "a short titled bottom must not prove an empty box, got '$out'"
@@ -927,17 +900,17 @@ test_selected_content_is_composer_scoped_and_wrap_normalized() {
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ "$out" = 'hello captain' ] \
     || fail "left-bar extraction should join user rows without footer furniture, got '$out'"
-  screen=$'╭────────────────────╮\n│ ❯ '"${ESC}[2mType a message...${ESC}[0m"$'│\n╰────────────────────╯'
+  screen=$'╭────────────────────╮\n│ ❯ '"${ESC}[2mAdd a follow-up${ESC}[0m"$'  │\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ -z "$out" ] \
     || fail "ghost agent-prompt placeholders should be excluded from extracted user content, got '$out'"
-  screen=$'╭────────────────────╮\n│ > '"${ESC}[2mType a message...${ESC}[0m"$'│\n╰────────────────────╯'
+  screen=$'╭────────────────────╮\n│ > '"${ESC}[2mAdd a follow-up${ESC}[0m"$'  │\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ -z "$out" ] \
     || fail "ghost shell-prompt placeholders should be excluded from boxed user content, got '$out'"
-  screen=$'╭────────────────────╮\n│ ❯ Type a message...│\n╰────────────────────╯'
+  screen=$'╭────────────────────╮\n│ ❯ Add a follow-up  │\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
-  [ "$out" = 'Type a message...' ] \
+  [ "$out" = 'Add a follow-up' ] \
     || fail "surviving placeholder-like input should remain extracted user content, got '$out'"
   screen=$'❯ a legitimately long steer that\nwraps across the next bare row\n\ntranscript below the break'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
@@ -981,7 +954,6 @@ test_matrix_codex_idle_starfield_furniture
 test_matrix_pi_separated_needs_identity
 test_matrix_pi_dollar_status_footer_is_empty
 test_matrix_opencode_leftbar_signals
-test_matrix_grok_titled_bottom_border
 test_matrix_kimi_bordered_shell_glyph_box
 test_matrix_claude_inside_zellij_ansi_dump
 test_strict_blank_row_divergence

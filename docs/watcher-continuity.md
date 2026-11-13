@@ -21,7 +21,7 @@ In this document, an arm is one run of `bin/fm-watch-arm.sh`, which starts a wat
 ## Ownership
 
 On Pi, omp, OpenCode, Cursor, and Claude primaries, one component owns re-arming the watcher.
-Codex and Grok keep their own protocols; see [Manual recovery and other harnesses](#manual-recovery-and-other-harnesses).
+Codex keeps its own protocol; see [Manual recovery and other harnesses](#manual-recovery-and-other-harnesses).
 
 | Harness | Re-arm owner |
 | --- | --- |
@@ -202,7 +202,6 @@ It enters its poll loop immediately and keeps scanning signals, stale panes, and
 - A genuine auto-arm failure describes the automatic mechanism as broken and never directs a routine manual background arm.
 - Terminal arm-output classification (`started`, `attached`, or `FAILED`) remains defense in depth for the manual recovery path.
 - Codex follows its [foreground checkpoint protocol](supervision-protocols/codex.md).
-- Grok retains its tracked background-task notification protocol.
 
 No adapter starts a replacement with a fire-and-forget shell `&` from a model command.
 The Claude hook's detached handling successor is launched by the hook itself, which waits for the successor's status line before it exits.
@@ -537,7 +536,6 @@ The other harnesses rely on these mechanisms:
 
 - Claude depends on the Stop `asyncRewake` rewake.
 - Cursor depends on its awaited stop-hook park.
-- Grok retains native background-completion notifications.
 - Codex retains bounded foreground checkpoints.
 
 [`verification/supervision.md`](verification/supervision.md#watcher-continuity) records the current cross-harness live evidence, the dated Stop-owned Claude auto-arm results, and exact opt-in commands.

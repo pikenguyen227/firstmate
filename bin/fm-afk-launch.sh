@@ -17,7 +17,7 @@
 # On Pi and pi-signed the entry ENDS there: the away daemon is no longer launched
 # on Pi, the ordinary supervision session keeps running in both postures, and
 # `start` refuses on those harnesses. The same holds for away mode (not quiet
-# mode) on a claude, cursor, opencode, omp, grok, or codex primary whose home
+# mode) on a claude, cursor, opencode, omp, or codex primary whose home
 # opted into the supervision host (config/supervision-host), where the host
 # runs the away session; `enter` there adds one line when the host has no
 # engine, because every away wake then reaches main. Every other harness still
@@ -50,7 +50,7 @@
 # Why the terminal lifecycle exists (docs/herdr-backend.md "Away-mode daemon terminal launch"):
 # bin/fm-afk-start.sh execs the supervise daemon in the FOREGROUND of whatever
 # terminal it is already in. Harnesses with a native in-pane tracked-background
-# tool (claude, grok) run it there directly and it is fine. A harness with NO
+# tool (claude) run it there directly and it is fine. A harness with NO
 # native background mechanism (pi) has to manufacture a terminal, and doing that
 # by SPLITTING the captain's active pane visibly shrinks it - the regression this
 # script fixes. Instead this creates a non-visible tracked terminal (a herdr tab/
@@ -228,7 +228,7 @@ fm_afk_launch_primary_harness() {
   # detect_own precedence never reads either variable (see header).
   if [ "${FM_TEST_SEAM:-}" = 1 ]; then
     case "${FM_TEST_HARNESS:-}" in
-      claude | codex | opencode | pi | pi-signed | grok | kimi | cursor | gemini | muse | rovo | omp | agy | devin | unknown)
+      claude | codex | opencode | pi | pi-signed | kimi | cursor | gemini | muse | rovo | omp | agy | devin | unknown)
         printf '%s' "$FM_TEST_HARNESS"
         return
         ;;
@@ -241,7 +241,7 @@ fm_afk_launch_primary_harness() {
 # home opted in (docs/supervision-host.md).
 fm_afk_launch_host_primary() {  # <harness>
   case "$1" in
-    claude|cursor|opencode|omp|grok|codex) return 0 ;;
+    claude|cursor|opencode|omp|codex) return 0 ;;
   esac
   return 1
 }

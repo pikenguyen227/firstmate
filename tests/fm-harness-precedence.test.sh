@@ -29,7 +29,7 @@ set -u
 
 # This suite states the markers it means to test in every case. Drop the ambient
 # ones so a verdict never depends on which harness launched the suite.
-unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS GROK_AGENT CURSOR_AGENT CURSOR_INVOKED_AS \
+unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS CURSOR_AGENT CURSOR_INVOKED_AS \
   FM_SUPERVISION_ACTOR FM_SUPERVISION_PRIMARY_HARNESS
 
 HARNESS="$ROOT/bin/fm-harness.sh"
@@ -44,7 +44,7 @@ BASE_PATH=${FM_TEST_BASE_PATH:-/usr/bin:/bin:/usr/sbin:/sbin}
 under_process() {  # <named-executable> [VAR=VAL ...]
   local bin=$1
   shift
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS "$@" \
     "$bin" -c "r=\$(\"$HARNESS\"); printf '%s' \"\$r\""
 }
@@ -107,7 +107,7 @@ under_fake_ps() {  # <fakebin> <VAR=VAL ...> -- [harness args]
     shift
   done
   [ "${1:-}" = -- ] && shift
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS "${assignments[@]}" \
     PATH="$fakebin:$BASE_PATH" "$HARNESS" "$@"
 }
@@ -115,7 +115,7 @@ under_fake_ps() {  # <fakebin> <VAR=VAL ...> -- [harness args]
 with_blind_ancestry() {  # <fakebin> [VAR=VAL ...]
   local fakebin=$1
   shift
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS "$@" \
     PATH="$fakebin:$BASE_PATH" "$HARNESS"
 }
@@ -175,14 +175,6 @@ test_genuine_marker_and_ancestry_agree() {
   [ "$got" = cursor ] || fail "a genuine cursor session resolved '$got', expected cursor"
   got=$(under_process "$bin" CURSOR_INVOKED_AS=cursor-agent)
   [ "$got" = cursor ] || fail "a genuine cursor session (launcher marker) resolved '$got', expected cursor"
-
-  bin=$(named_bin "$dir/grok-tree" grok)
-  got=$(under_process "$bin" GROK_AGENT=1)
-  [ "$got" = grok ] || fail "a genuine grok session resolved '$got', expected grok"
-  # grok 1.0.0 hook processes carry no GROK_AGENT at all, so ancestry alone must
-  # still answer for them.
-  got=$(under_process "$bin")
-  [ "$got" = grok ] || fail "an unmarked grok hook process resolved '$got', expected grok"
 
   pass "a harness that publishes a marker inside its own process tree is unchanged"
 }
@@ -259,12 +251,12 @@ test_interpreter_args_match_does_not_outrank_a_marker() {
 r=\$("$HARNESS"); printf '%s' "\$r"
 SH
 
-  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS "$node" "$script")
   [ "$got" = codex ] \
     || fail "an unmarked interpreter holding a codex-shaped script path resolved '$got', expected codex"
 
-  got=$(env -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  got=$(env -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS CLAUDECODE=1 "$node" "$script")
   [ "$got" = claude ] \
     || fail "a published CLAUDECODE lost to a codex-shaped script path, resolving '$got'"
@@ -307,7 +299,7 @@ SH
   # the shim entry point directly below, so this helper stays the plain no-marker
   # launch.
   run_shim() {
-    env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+    env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
       -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
       FM_TEST_HARNESS="$HARNESS" FM_TEST_NATIVE="$native" FM_TEST_PROBE="$probe" \
       "$node" "$entry"
@@ -322,7 +314,7 @@ SH
   [ "$got" = codex ] \
     || fail "the real Codex shim topology with a retained CLAUDECODE resolved '$got', expected codex"
 
-  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
     FM_TEST_HARNESS="$HARNESS" FM_TEST_NATIVE="$native" FM_TEST_PROBE="$probe" \
     "$node" "$entry" ancestry)
@@ -400,7 +392,7 @@ SH
 wait "$!"
 SH
 
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
     FM_TEST_NATIVE="$native" FM_TEST_HOLD="$hold" FM_TEST_READY="$ready" \
     "$node" "$entry" &
@@ -490,7 +482,7 @@ printf '%s\n' "$!" > "$FM_TEST_DIR/mcp.pid"
 wait
 SH
 
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
     FM_TEST_DIR="$dir" FM_TEST_NODE="$node" FM_TEST_NATIVE="$native" \
     FM_TEST_WORKER="$worker" FM_TEST_HOLD="$hold" FM_TEST_BLOCK="$block" \
@@ -581,7 +573,7 @@ printf '%s\n' "$!" > "$FM_TEST_DIR/native.pid"
 wait
 SH
 
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
     FM_TEST_DIR="$dir" FM_TEST_NODE="$node" FM_TEST_NATIVE="$native" \
     FM_TEST_HOLD="$hold" FM_TEST_MCP="$mcp_script" FM_TEST_READY="$ready" \
@@ -673,7 +665,7 @@ touch "$FM_TEST_READY"
 wait
 SH
 
-    env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+    env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
       -u CURSOR_AGENT -u CURSOR_INVOKED_AS \
       FM_TEST_ORDER="$order" FM_TEST_DIR="$dir" FM_TEST_NODE="$node" \
       FM_TEST_NATIVE="$native" FM_TEST_BLOCK="$block" FM_TEST_MCP="$mcp_script" \
@@ -726,7 +718,7 @@ SH
 pin_probe() {  # <named-executable> <home> <verb> [VAR=VAL ...]
   local bin=$1 home=$2 verb=$3
   shift 3
-  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u FM_SUPERVISION_ACTOR \
     -u FM_SUPERVISION_PRIMARY_HARNESS FM_HOME="$home" "$@" \
     "$bin" -c "r=\$(\"$HARNESS\" $verb 2>\"$home/stderr\"); rc=\$?; printf '%s|%s' \"\$r\" \"\$rc\""
@@ -808,13 +800,13 @@ test_supervision_protocol_follows_corrected_verdict() {
   bin=$(named_bin "$dir/codex-tree" codex)
   fakebin=$(blind_ancestry_bin "$dir/blind")
 
-  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS CLAUDECODE=1 FM_HOME="$home" \
     PATH="$fakebin:$BASE_PATH" "$RENDER")
   assert_contains "$got" "primary harness: claude" \
     "with ancestry blinded, the retained marker must still render claude (the case is otherwise vacuous)"
 
-  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  got=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS CLAUDECODE=1 FM_HOME="$home" \
     "$bin" -c "r=\$(\"$RENDER\"); printf '%s' \"\$r\"")
   assert_contains "$got" "primary harness: codex" \

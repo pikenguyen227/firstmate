@@ -27,7 +27,7 @@ Rovo CLI: 202609.1.2
 
 ## Launch: bare launch-then-send, the kimi shape
 
-`fm-spawn.sh` builds `env -u CLAUDECODE -u PI_CODING_AGENT -u GROK_AGENT -u FM_PI_HARNESS <rovo-bin> run --yolo <model/effort flags>` - BARE, with no positional brief - wrapped by the shared `env -u CURSOR_AGENT -u CURSOR_INVOKED_AS` prefix every non-cursor harness gets.
+`fm-spawn.sh` builds `env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS <rovo-bin> run --yolo <model/effort flags>` - BARE, with no positional brief - wrapped by the shared `env -u CURSOR_AGENT -u CURSOR_INVOKED_AS` prefix every non-cursor harness gets.
 The brief is then typed in after the TUI comes up, the same launch-then-send shape kimi uses, through the same shared readers (`fm_backend_capture`, `fm_backend_composer_state`, `fm_backend_send_text_submit`):
 
 1. `rovo_wait_for_ready` polls for the `Welcome to Rovo!` banner (primary) or a composer-empty verdict (weaker fallback, see the composer-ghost-text gap below).
@@ -63,8 +63,7 @@ Enter to queue, Ctrl+Enter to steer
 ```
 
 `fm_busy_rovo_tail_busy` (`bin/fm-busy-lib.sh`) matches that exact rendered text; `fm_busy_classify` was confirmed live-and-portably to read it as `busy rovo-regex`, and an idle footer with no busy line as `idle rovo-regex`.
-This is a rendered-tail fallback exactly like Grok's, not a semantic source: rovo's `eventHooks` (`~/.rovo/config.yml`) fire at tool granularity (`on_tool_start`/`on_tool_end`) only, never at turn-end, so no writer is armed and none is seeded.
-Grok was previously the only rendered-text arm the redesigned busy contract allowed; this task extends that same documented exception to rovo, scoped to `harness=rovo` exactly like Grok is scoped to `harness=grok`, and neither can classify the other (`tests/fm-rovo-harness.test.sh`'s isolation case).
+This is a rendered-tail fallback, not a semantic source: rovo's `eventHooks` (`~/.rovo/config.yml`) fire at tool granularity (`on_tool_start`/`on_tool_end`) only, never at turn-end, so no writer is armed and none is seeded.
 
 ## Composer ghost text: measured, deliberately left unfixed
 
@@ -89,7 +88,7 @@ The `fm-rovo-smoke-s1` scout report recorded a single Escape printing `Agent can
 A follow-up live check under real tmux 3.6a reproduced the scout's exact finding: a single Escape sent during a genuine mid-flight bash tool call printed `Agent cancelled` in the captured pane, in an isolated `tmux -L <private-socket>` session/window, not the shared fleet session.
 The launch-then-send live guard (`tests/fm-rovo-signals-live-e2e.test.sh`) also reproduces it over a raw PTY. A single fixed-timer Escape had landed unreliably there - the exact instant the interrupt is delivered is timing-sensitive over a bare PTY, so one fixed Escape can fall between states - so the guard now sends Escape across the live `sleep 25` tool-call window until the cancel renders. That reproduced `Agent cancelled` on every run (it consistently landed within the first few attempts, ~8s into the tool call); a session that never rendered the cancel would exhaust every attempt and fail.
 The session was never wedged: `/exit` still exited cleanly with the `Run rovo --restore <id> to resume your conversation` hint immediately after the Escape.
-`bin/fm-control-lib.sh` records rovo's `fm_control_interrupt_ack_source` as `none`, the same conservative choice already made for claude, codex, grok, kimi, and cursor - a control-plane fact independent of whether the render happens to appear, because a rendered acknowledgement is not something the control plane depends on for any of those adapters.
+`bin/fm-control-lib.sh` records rovo's `fm_control_interrupt_ack_source` as `none`, the same conservative choice already made for claude, codex, kimi, and cursor - a control-plane fact independent of whether the render happens to appear, because a rendered acknowledgement is not something the control plane depends on for any of those adapters.
 Escape is the recorded interrupt key, and its rendered evidence is now corroborated both under real tmux and over a raw PTY rather than in tension with the code.
 
 ## OAuth token lifetime and silent refresh
