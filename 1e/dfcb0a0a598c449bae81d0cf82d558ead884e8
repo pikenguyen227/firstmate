@@ -1,0 +1,36 @@
+.agents/skills/afk/SKILL.md
+  h_eb882fdf9e0ce8 84
+bin/fm-composer-lib.sh
+  h_eb882fdf9e0ce8 459-462,469
+docs/calm-mode-feasibility.md
+  h_eb882fdf9e0ce8 275
+docs/sessionstart-nudge.md
+  h_eb882fdf9e0ce8 30
+docs/subagent-guard.md
+  h_eb882fdf9e0ce8 223,364-365
+docs/supervision-host.md
+  h_eb882fdf9e0ce8 401
+tests/fm-backend-cmux.test.sh
+  h_eb882fdf9e0ce8 789,793
+tests/fm-backend-herdr.test.sh
+  h_eb882fdf9e0ce8 3921
+tests/fm-backend-zellij.test.sh
+  h_eb882fdf9e0ce8 1076
+tests/fm-composer-lib.test.sh
+  h_eb882fdf9e0ce8 903,907,911,913
+tests/fm-supervision-instructions.test.sh
+  h_eb882fdf9e0ce8 262-263
+tests/fm-tmux-submit-busy.test.sh
+  h_eb882fdf9e0ce8 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1edfcb0a0a598c449bae81d0cf82d558ead884e8",
+  "prompts": {},
+  "humans": {
+    "h_eb882fdf9e0ce8": {
+      "author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
