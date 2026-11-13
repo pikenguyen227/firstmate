@@ -590,7 +590,7 @@ setup_watch_case() {  # <name> -> echoes case dir; state in <dir>/state
   dir="$TMP_ROOT/$name"
   mkdir -p "$dir/state"
   make_watch_stubs "$dir" >/dev/null
-  fm_write_meta "$dir/state/t1.meta" "window=sess:fm-t1" "kind=ship" "harness=kimi"
+  fm_write_meta "$dir/state/t1.meta" "window=sess:fm-t1" "kind=ship" "harness=rovo"
   printf '%s\n' "$dir"
 }
 
@@ -641,7 +641,7 @@ test_watcher_waits_on_busy_pane() {
   age_path "$rec"
   watch_bg "$state" "$dir/fakebin" "$out" \
     FM_SEND_LOG="$log" FM_FAKE_TMUX_CAPTURE="$dir/busy.capture" \
-    FM_BUSY_REGEX=BUSYTOKEN FM_TASK_INBOX_RING_MAX=99
+    FM_BUSY_ROVO_REGEX=BUSYTOKEN FM_TASK_INBOX_RING_MAX=99
   pid=$!
   sleep 4
   kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
@@ -785,7 +785,7 @@ test_watcher_dead_pane_ignores_stale_busy_state() {
   age_path "$rec"
   watch_bg "$state" "$dir/fakebin" "$out" \
     FM_SEND_LOG="$log" FM_FAKE_TMUX_CAPTURE="$dir/busy.capture" \
-    FM_FAKE_TMUX_AGENT=zsh FM_BUSY_REGEX=BUSYTOKEN FM_TASK_INBOX_RING_MAX=99
+    FM_FAKE_TMUX_AGENT=zsh FM_BUSY_ROVO_REGEX=BUSYTOKEN FM_TASK_INBOX_RING_MAX=99
   pid=$!
   wait_watcher_gone "$pid" \
     || { kill "$pid" 2>/dev/null; fail "stale busy state hid a dead pane's unhandled instruction"; }
