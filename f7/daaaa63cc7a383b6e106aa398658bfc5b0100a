@@ -1,0 +1,20 @@
+docs/arm-pretool-check.md
+  h_eb882fdf9e0ce8 28,162
+docs/cd-guard.md
+  h_eb882fdf9e0ce8 79-80
+docs/subagent-guard.md
+  h_eb882fdf9e0ce8 168,364
+docs/verification/dispatch-auth.md
+  h_eb882fdf9e0ce8 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7daaaa63cc7a383b6e106aa398658bfc5b0100a",
+  "prompts": {},
+  "humans": {
+    "h_eb882fdf9e0ce8": {
+      "author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
