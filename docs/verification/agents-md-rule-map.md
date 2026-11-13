@@ -74,7 +74,7 @@ Every hard rule, safety boundary, and skill load trigger stays inline.
 | 85 | section 3 | Load `session-start-recovery` when the digest reports unfinished checks, actionable diagnostics, recovery inputs, or... | AGENTS.md section 3 | kept verbatim |
 | 89 | section 4 | When `config/strategy` exists, load `strategy-autonomy` at startup, after a strategy change, and before dispatch, fix... | AGENTS.md section 4 | kept verbatim |
 | 91 | section 4 | - Load `harness-adapters` before every spawn or recovery and before trust handling, skill invocation, interrupt, exit... | AGENTS.md section 4 | kept, condensed wording |
-| 92 | section 4 | - The verified harnesses are `claude`, `codex`, `opencode`, `pi`, `pi-signed`, `grok`, `kimi`, `cursor`, and `omp`, p... | AGENTS.md section 4 | kept, condensed wording |
+| 92 | section 4 | - The verified harnesses are `claude`, `codex`, `opencode`, `pi`, `pi-signed`, `kimi`, `cursor`, and `omp`, p... | AGENTS.md section 4 | kept, condensed wording |
 | 93 | section 4 | - If static `config/crew-harness` or `config/secondmate-harness` names an unverified adapter, report it and fall back... | AGENTS.md section 4 | kept, condensed wording |
 | 94 | section 4 | - Only the captain chooses or changes a worker account pin (`config/claude-account`, `config/pi-account`), so on a pi... | AGENTS.md section 4 | kept, condensed wording |
 | 96 | section 4 | `docs/configuration.md` owns dispatch-profile and runtime-backend schemas, `bin/fm-harness.sh` owns static resolution... | AGENTS.md section 4 and docs/configuration.md | pointer condensed to the dispatch-profiles line; fm-harness.sh and fm-spawn.sh headers own resolution and validation |

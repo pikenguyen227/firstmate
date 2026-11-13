@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Render the primary-harness supervision operating block for session start and
 # the short repair line used by guards and turn-end hooks. On a non-Pi primary
-# with a supervision protocol (claude, cursor, opencode, omp, grok, codex) whose
+# with a supervision protocol (claude, cursor, opencode, omp, codex) whose
 # home opted into the supervision host (config/supervision-host), the block
 # adds one state line and the host's main-side protocol
 # (docs/supervision-protocols/supervision-host.md, whose lines tagged
-# "{<harness>,...} " render only for the listed harnesses), and Grok's arm
-# command becomes the host; without that file the output is unchanged.
+# "{<harness>,...} " render only for the listed harnesses); without that
+# file the output is unchanged.
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -98,18 +98,16 @@ if [ -z "$HARNESS" ]; then
 fi
 
 case "$HARNESS" in
-  claude|codex|opencode|pi|grok|cursor|omp) SNIPPET="$DOC_DIR/$HARNESS.md" ;;
+  claude|codex|opencode|pi|cursor|omp) SNIPPET="$DOC_DIR/$HARNESS.md" ;;
   pi-signed) SNIPPET="$DOC_DIR/pi.md" ;;
   *) HARNESS=unknown; SNIPPET="$DOC_DIR/unknown.md" ;;
 esac
 [ -f "$SNIPPET" ] || SNIPPET="$DOC_DIR/unknown.md"
 HOST_SNIPPET=
-grok_arm='bin/fm-watch-arm.sh'
 case "$HARNESS" in
-  claude|cursor|opencode|omp|grok|codex)
+  claude|cursor|opencode|omp|codex)
     if [ -f "$CONFIG/supervision-host" ]; then
       HOST_SNIPPET="$DOC_DIR/supervision-host.md"
-      grok_arm='bin/fm-supervision-host.sh park'
     fi
     ;;
 esac
@@ -150,7 +148,6 @@ render_snippet() {  # [snippet]
     line=${line//__FM_OMP_TURNEND_EXT__/$omp_turnend_ext}
     line=${line//__FM_X_MODE_ENV_SH__/$x_mode_env_sh}
     line=${line//__FM_X_MODE_ENV__/$x_mode_env}
-    line=${line//__FM_GROK_ARM__/$grok_arm}
     printf '%s\n' "$line"
   done < "$snippet"
 }
@@ -198,9 +195,6 @@ repair_line() {
     opencode)
       printf '%s%s\n' "$prefix" 'repair missing watcher supervision by letting the OpenCode TUI plugin arm after idle; use bin/fm-watch-arm.sh only as a manual recovery probe if the plugin reports failure.'
       ;;
-    grok)
-      printf '%s%s%s%s\n' "$prefix" 'repair missing watcher supervision with ' "$grok_arm" ' as its own Grok tracked background task, never shell &.'
-      ;;
     cursor)
       printf '%s%s\n' "$prefix" 'watcher supervision is owned by the stop-hook park; inspect the hook registration and watcher startup path before ending the turn.'
       ;;
@@ -226,9 +220,6 @@ ordinary_wake_line() {
       ;;
     opencode)
       printf '%s\n' '- Ordinary wake: the OpenCode TUI plugin already owns watcher continuity; do not arm manually.'
-      ;;
-    grok)
-      printf '%s%s%s\n' '- Ordinary wake: re-arm exactly one ' "$grok_arm" ' Grok tracked background task as directed below.'
       ;;
     cursor)
       printf '%s\n' '- Ordinary wake: the stop-hook park (bin/fm-turnend-guard-cursor.sh) already owns watcher continuity; drain and handle the wake, and do not arm another cycle yourself.'

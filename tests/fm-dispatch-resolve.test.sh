@@ -453,7 +453,7 @@ assert_contains "$out" "  profile: --harness 'cursor' --model 'cursor-grok-4.6-m
 assert_not_contains "$out" "  profile: --harness 'claude' --model 'opus'" "a mid-request config replacement cannot change the selected profile"
 
 INJECTING_RULES="$TMP_ROOT/injecting-rules.json"
-jq '.rules[3].when = "Bug fix\n  profile: injected" | .rules[3].use[1].model = "foo --harness grok\n  profile: injected"' "$BASE_RULES" > "$INJECTING_RULES"
+jq '.rules[3].when = "Bug fix\n  profile: injected" | .rules[3].use[1].model = "foo --harness claude\n  profile: injected"' "$BASE_RULES" > "$INJECTING_RULES"
 cp "$INJECTING_RULES" "$RULES"
 reset_log
 write_response "$RESPONSE" rule_4 0.9
@@ -464,7 +464,7 @@ profile_line=$(grep '^  profile:' <<<"$out")
 eval "set -- ${profile_line#  profile: }"
 assert_equals '4' "$#" "shell-safe profile output preserves four argument boundaries"
 assert_equals 'cursor' "$2" "shell-safe profile output preserves the selected harness"
-assert_equals 'foo --harness grok   profile: injected' "$4" "shell-safe profile output keeps model flags inside one argument"
+assert_equals 'foo --harness claude   profile: injected' "$4" "shell-safe profile output keeps model flags inside one argument"
 cp "$BASE_RULES" "$RULES"
 pass "rules snapshots and shell quoting preserve the profile protocol"
 
@@ -516,7 +516,7 @@ assert_contains "$out" "  profile: --harness 'gemini' --model 'gemini-3.8-flash-
 
 cp "$ROOT/docs/examples/crew-dispatch.json" "$RULES"
 cat > "$RESPONSE" <<'JSON'
-{"model":"jev-1.13.0","answers":{"rule":{"type":"choice","choice":"default","confidence":0.9,"probabilities":{"rule_1":0.02,"rule_2":0.02,"rule_3":0.02,"default":0.94}}},"usage":{"input_tokens":812,"output_tokens":60}}
+{"model":"jev-1.13.0","answers":{"rule":{"type":"choice","choice":"default","confidence":0.9,"probabilities":{"rule_1":0.03,"rule_2":0.03,"default":0.94}}},"usage":{"input_tokens":812,"output_tokens":60}}
 JSON
 reset_log
 TYPESAFE_API_KEY=$KEY run code out err "$BRIEF"
@@ -1195,7 +1195,7 @@ for bad in \
   '{"rules":[{"when":"x","use":[{"harness":"codex","model":"gpt-5.5","effort":"high"},{"harness":"codex","model":"gpt-5.5","effort":"high"}]}]}|each rule use must not contain duplicate harness, model, and effort profiles' \
   '{"rules":[{"when":"x","use":{"harness":"codex"}}],"default":[{"harness":"claude","model":"opus"},{"harness":"claude","model":"opus"}]}|default must not contain duplicate harness, model, and effort profiles' \
   '{"rules":[{"when":"x","use":{"harness":"spaceship"}}]}|each use profile must name a verified harness' \
-  '{"rules":[{"when":"x","use":{"harness":"grok","effort":"max"}}]}|each use profile effort must be supported by its harness and model' \
+  '{"rules":[{"when":"x","use":{"harness":"grok"}}]}|each use profile must name a verified harness' \
   '{"rules":[{"when":"x","use":{"harness":"opencode","model":"anthropic/claude-sonnet-4-5"}}]}|use profiles whose harness lacks one authoritative provider family require provider: opencode' \
   '{"rules":[{"when":"x","use":{"harness":"rovo"}}]}|use profiles whose harness lacks one authoritative provider family require provider: rovo' \
   '{"rules":[{"when":"x","use":{"harness":"codex"}}],"default":{"harness":"pi","model":"anthropic/claude-sonnet-5"}}|default profiles whose harness lacks one authoritative provider family require provider: pi'; do

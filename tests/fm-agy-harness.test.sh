@@ -41,7 +41,7 @@ set -u
 # from inside another harness inherits those markers, which outrank the fake
 # ancestry the detection cases set up. Drop the ambient markers so the asserted
 # verdict does not depend on which harness launched the suite.
-unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS GROK_AGENT CURSOR_AGENT CURSOR_INVOKED_AS \
+unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS CURSOR_AGENT CURSOR_INVOKED_AS \
   ATLASSIAN_AGENT_TYPE ROVODEV_CLI GEMINI_CLI AGENT FM_OMP_HARNESS
 
 # shellcheck source=/dev/null
@@ -179,10 +179,8 @@ test_agy_busy_tail_needs_the_pinned_status_row() {
 test_agy_busy_signatures_are_harness_scoped() {
   printf 'esc to cancel\n' | fm_busy_lines_match agy \
     || fail "harness=agy must match its own esc token"
-  printf 'esc to cancel\n' | fm_busy_lines_match grok \
-    && fail "harness=grok must never borrow agy's esc token" || true
   printf 'Ctrl+c:cancel\n' | fm_busy_lines_match agy \
-    && fail "harness=agy must never borrow grok's token" || true
+    && fail "harness=agy must never borrow a foreign cancel token" || true
   printf 'esc to cancel\n' | fm_busy_lines_match kimi \
     && fail "harness=kimi must never borrow agy's token" || true
   printf 'esc to cancel\n' | fm_busy_lines_match spaceship \

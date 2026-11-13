@@ -10,10 +10,10 @@ set -u
 # bin/fm-harness.sh checks verified ENV markers before ancestry, but that
 # ordering settles the marker layer only: a structural (comm-strength)
 # ancestor of a different harness still outranks either marker. A suite run
-# from inside Cursor, Claude, Pi, or Grok inherits those markers, which outrank
+# from inside Cursor, Claude, or Pi inherits those markers, which outrank
 # the fake ancestry the detection cases set up. Drop the ambient markers so the
 # asserted verdict does not depend on which harness launched the suite.
-unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS GROK_AGENT CURSOR_AGENT CURSOR_INVOKED_AS \
+unset CLAUDECODE PI_CODING_AGENT FM_PI_HARNESS CURSOR_AGENT CURSOR_INVOKED_AS \
   ATLASSIAN_AGENT_TYPE ROVODEV_CLI
 
 SPAWN="$ROOT/bin/fm-spawn.sh"
@@ -205,7 +205,7 @@ test_rovo_launch_then_send_is_verified() {
   assert_not_contains "$launch" "encode launch-brief" "rovo launch carried a positional brief instead of launching bare"
   assert_not_contains "$launch" "brief for rovo" "rovo launch embedded the brief body as a positional argument"
   assert_contains "$launch" "--model 'auto'" "rovo launch omitted the requested model"
-  assert_contains "$launch" "env -u CLAUDECODE -u PI_CODING_AGENT -u GROK_AGENT -u FM_PI_HARNESS" \
+  assert_contains "$launch" "env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS" \
     "rovo launch did not clear foreign primary markers"
   assert_contains "$launch" "env -u CURSOR_AGENT -u CURSOR_INVOKED_AS" \
     "rovo launch did not clear cursor's markers via the shared outer wrap"
@@ -387,7 +387,7 @@ esac
 SH
   chmod +x "$fakebin/ps"
 
-  out=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS -u GROK_AGENT \
+  out=$(env -u CLAUDECODE -u PI_CODING_AGENT -u FM_PI_HARNESS \
     -u CURSOR_AGENT -u CURSOR_INVOKED_AS -u ATLASSIAN_AGENT_TYPE -u ROVODEV_CLI \
     PATH="$fakebin:$BASE_PATH" FM_CONFIG_OVERRIDE="$cfg" "$ROOT/bin/fm-harness.sh")
   [ "$out" = rovo ] || fail "rovo ancestry detection returned '$out'"
@@ -440,9 +440,7 @@ test_rovo_busy_regex_isolated() {
   printf 'Context: 5.3%% 48.7K/922K\n? for shortcuts.\n' | fm_busy_rovo_tail_busy \
     && fail "an idle rovo composer footer was misread as busy"
   printf 'Ctrl+c:cancel\n' | fm_busy_rovo_tail_busy \
-    && fail "Grok's exact busy token leaked into rovo's harness-scoped matcher"
-  printf 'Rovo is thinking\n' | fm_busy_grok_tail_busy \
-    && fail "rovo's busy line leaked into Grok's harness-scoped matcher"
+    && fail "A foreign cancel token leaked into rovo's harness-scoped matcher"
 
   local out
   out=$(fm_busy_classify tmux fake:0 rovo taskid /nonexistent-state '⬢ Rovo is thinking...')

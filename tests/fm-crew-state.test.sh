@@ -2503,7 +2503,7 @@ test_no_run_busy_pane() {
 # authoritative read still said working, the watcher would silently swallow
 # the wake even though bin/fm-busy-lib.sh's own classifier had already flipped
 # to unknown launch-prompt. crew_busy_verdict must therefore capture a real
-# tail for every harness, not only grok, so the backstop's own tail-based
+# tail for every harness, so the backstop's own tail-based
 # check ever runs here at all.
 test_no_run_launch_prompt_parked_is_not_working() {
   reset_fakes
@@ -2547,26 +2547,6 @@ test_no_run_footer_text_alone_is_not_working() {
   assert_contains "$out" "state: unknown" "no semantic record -> unknown"
   assert_not_contains "$out" "source: status-log" "unknown semantic state must not fall through to a stale log"
   pass "a converted adapter never reads working from rendered footer text"
-}
-
-# Grok keeps its isolated temporary rendered-tail fallback until its structured
-# lifecycle is live-verified, so a grok crew still reads working from its own
-# verified signature.
-test_no_run_grok_uses_isolated_fallback() {
-  reset_fakes
-  local d; d=$(new_case busy-grok)
-  make_repo_on_branch "$d/wt" fm/feat-h3
-  make_fakebin "$d" >/dev/null
-  fm_write_meta "$d/state/feat-h3.meta" "window=fm:fm-feat-h3" "worktree=$d/wt" "kind=ship" "harness=grok"
-  FM_FAKE_AXI_STATUS=""
-  FM_FAKE_RUNS_LIST=""
-  FM_FAKE_BUSY=1
-  FM_FAKE_BUSY_TEXT='Ctrl+c:cancel'
-  export FM_FAKE_BUSY_TEXT
-  local out; out=$(run_crew_state "$d" feat-h3)
-  assert_contains "$out" "state: working" "grok busy tail -> working"
-  assert_contains "$out" "grok-regex" "the grok verdict names its isolated fallback source"
-  pass "grok still reads working through its isolated rendered-tail fallback"
 }
 
 test_no_run_herdr_unknown_uses_backend_capture() {
@@ -5662,7 +5642,6 @@ test_moved_remote_branch_without_named_head_is_blocked
 test_no_run_busy_pane
 test_no_run_launch_prompt_parked_is_not_working
 test_no_run_footer_text_alone_is_not_working
-test_no_run_grok_uses_isolated_fallback
 test_no_run_herdr_unknown_uses_backend_capture
 test_no_run_herdr_cli_failure_reads_unreachable_not_gone
 test_no_run_herdr_alive_with_failed_read_stays_live

@@ -14,7 +14,7 @@ set -u
 . "$ROOT/bin/fm-agent-process-lib.sh"
 TMP_ROOT=$(fm_test_tmproot fm-devin-harness)
 HARNESS="$ROOT/bin/fm-harness.sh"
-unset CLAUDECODE PI_CODING_AGENT GROK_AGENT CURSOR_AGENT CURSOR_INVOKED_AS GEMINI_CLI FM_OMP_HARNESS ATLASSIAN_AGENT_TYPE ROVODEV_CLI
+unset CLAUDECODE PI_CODING_AGENT CURSOR_AGENT CURSOR_INVOKED_AS GEMINI_CLI FM_OMP_HARNESS ATLASSIAN_AGENT_TYPE ROVODEV_CLI
 
 mkdir -p "$TMP_ROOT/names"
 for name in devin devin-helper; do ln -s /bin/bash "$TMP_ROOT/names/$name"; done

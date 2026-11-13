@@ -27,7 +27,7 @@ The tier is a property of the harness surface, not of the home.
 | Tier | What the adapter does | Used by |
 | --- | --- | --- |
 | Run | Executes `bin/fm-session-start.sh` through the native session-open adapter and gates its ordered digest into model context before the first turn. | Claude, `codex exec`, Pi / pi-signed, omp, Cursor |
-| Nudge | Asks the agent to run the digest through the native adapter or the tracked session-start instruction. | Grok, OpenCode, and run-tier sources routed to the nudge |
+| Nudge | Asks the agent to run the digest through the native adapter or the tracked session-start instruction. | OpenCode, and run-tier sources routed to the nudge |
 
 Codex's interactive TUI has no tracked session-open, compaction, or re-emit channel and is not covered by either tier.
 
@@ -40,7 +40,6 @@ Codex's interactive TUI has no tracked session-open, compaction, or re-emit chan
 | Codex interactive TUI | Uncovered | [Codex interactive TUI](#codex-interactive-tui) |
 | Pi / pi-signed | Run | [Pi and pi-signed](#pi-and-pi-signed) |
 | OpenCode | Nudge | [OpenCode](#opencode) |
-| Grok | Nudge | [Grok](#grok) |
 | Cursor | Run | [Cursor](#cursor) |
 | omp | Run | [omp](#omp) |
 | Cursor compaction | Uncovered | [Cursor compaction](#cursor-compaction) |
@@ -315,18 +314,6 @@ That early exit is also why OpenCode cannot use the run tier.
 The OpenCode nudge runs only on `session.created`.
 The watcher-arm and turn-end plugins run later, on `session.idle`.
 The guard lets the watcher coordinator act first, so the plugins do not race for one lifecycle event.
-
-### Grok
-
-Grok is a nudge-tier harness.
-`.grok/hooks/fm-primary-sessionstart-nudge.json` registers a project `SessionStart` hook and invokes the wrapper through inline-defaulted `${GROK_WORKSPACE_ROOT:-}`.
-The project hook runs when the checkout is trusted.
-Grok currently discards hook stdout from model context.
-So this path is intentionally fail-open and cannot use the run tier.
-
-Grok's guaranteed-loading alternative is a global token-guarded hook like the pattern used by `bin/fm-spawn.sh`.
-That alternative expands trust and writes outside this repository.
-So Firstmate never installs it or grants folder trust automatically.
 
 ### Cursor
 

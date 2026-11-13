@@ -2477,7 +2477,7 @@ test_outbox_delivers_past_an_unprovable_pane_on_claude_and_codex() {
 
 test_outbox_transport_is_claude_and_codex_only() {
   local harness got
-  for harness in claude codex opencode omp grok cursor kimi unknown; do
+  for harness in claude codex opencode omp cursor kimi unknown; do
     got=$(unset FM_DAEMON_TRANSPORT; FM_DAEMON_PRIMARY_HARNESS=$harness escalate_transport)
     case "$harness" in
       claude) [ "$got" = hook ] || fail "claude transport: $got" ;;
@@ -3292,10 +3292,10 @@ test_pane_is_busy_defaults_to_tmux_when_backend_omitted() {
   local dir fakebin capture
   dir=$(make_supercase busy-default-backend)
   fakebin="$dir/fakebin"; capture="$dir/pane.txt"
-  printf 'Ctrl+c:cancel\n' > "$capture"
-  PATH="$fakebin:$PATH" FM_FAKE_TMUX_CAPTURE="$capture" FM_STATE_OVERRIDE="$dir/state" FM_DAEMON_PRIMARY_HARNESS=grok pane_is_busy "fakepane" \
+  printf 'esc to cancel\n' > "$capture"
+  PATH="$fakebin:$PATH" FM_FAKE_TMUX_CAPTURE="$capture" FM_STATE_OVERRIDE="$dir/state" FM_DAEMON_PRIMARY_HARNESS=agy pane_is_busy "fakepane" \
     || fail "pane_is_busy with no backend arg should still default to tmux"
-  pass "pane_is_busy: omitted backend defaults to tmux for Grok's isolated fallback"
+  pass "pane_is_busy: omitted backend defaults to tmux for the rendered-tail fallback"
 }
 
 test_pane_input_pending_herdr_dispatch() {

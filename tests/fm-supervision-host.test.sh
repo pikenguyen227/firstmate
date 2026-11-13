@@ -1211,14 +1211,14 @@ SH
   pass "host: a decision close accepted away whose turn starts attended still reaches main unchanged"
 }
 
-# Grok and OpenCode have no mirror writer, because they cannot record a
+# OpenCode has no mirror writer, because it cannot record a
 # session's first captain prompt, and neither Codex nor omp has a proven one,
 # so none of them has a verified dialog mirror: every attended close reaches
 # main as without the host, while the away posture, which needs no mirror,
 # still runs on the engine.
 test_primary_without_a_verified_mirror_runs_away_only() {
   local home harness
-  for harness in grok opencode omp codex; do
+  for harness in opencode omp codex; do
     home=$(make_home "attended-$harness" attended claude)
     FM_SUPERVISION_HOST_PRIMARY=$harness start_host "$home"
     wait_until 150 watcher_live "$home" || fail "$harness: the host never started a watcher cycle"
@@ -1230,17 +1230,17 @@ test_primary_without_a_verified_mirror_runs_away_only() {
     assert_re "	pass-through	attended	no verified dialog mirror for $harness	" "$home/state/.supervision-host.log" \
       "the ledger must record that no verified mirror kept the close on main"
   done
-  home=$(make_home away-grok away claude)
-  FM_SUPERVISION_HOST_PRIMARY=grok start_host "$home"
-  wait_until 150 watcher_live "$home" || fail "away grok: the host never started a watcher cycle"
+  home=$(make_home away-opencode away claude)
+  FM_SUPERVISION_HOST_PRIMARY=opencode start_host "$home"
+  wait_until 150 watcher_live "$home" || fail "away opencode: the host never started a watcher cycle"
   append_status "$home" 'step one'
   wait_until 250 handled_at_least "$home" 1 \
-    || fail "away grok: the wake was not handled on the engine: $(cat "$home/host.out"; cat "$home/state/.supervision-host.log")"
-  assert_re '^primary=grok$' "$home/engine-call.1" "the away engine must carry the grok primary pin"
+    || fail "away opencode: the wake was not handled on the engine: $(cat "$home/host.out"; cat "$home/state/.supervision-host.log")"
+  assert_re '^primary=opencode$' "$home/engine-call.1" "the away engine must carry the opencode primary pin"
   assert_re '^POSTURE: AWAY\.' "$home/engine-call.1" "the away wake must carry the away tail"
-  [ ! -s "$home/host.rc" ] || fail "a handled away wake on grok reached main: $(cat "$home/host.out")"
+  [ ! -s "$home/host.rc" ] || fail "a handled away wake on opencode reached main: $(cat "$home/host.out")"
   kill -TERM "$(awk -F '\t' '$1 == "host" { print $2 }' "$home/state/.supervision-host")"
-  wait_until 200 host_exited "$home" || fail "away grok: the host did not stop on TERM"
+  wait_until 200 host_exited "$home" || fail "away opencode: the host did not stop on TERM"
   pass "host: a primary with no verified dialog mirror keeps every attended close on main, and its away posture still runs"
 }
 
