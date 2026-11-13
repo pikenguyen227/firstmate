@@ -32,5 +32,5 @@
     {"duration_ms": 35415, "exit": 0, "path": "tests/fm-x-mode.test.sh", "worker": 24}
   ],
   "started_at": "2026-08-21T00:44:04Z",
-  "summary": {"duration_ms": 113278, "failed": 0, "total": 24}
+  "summary": {"duration_ms": 113278, "failed": 0, "total": 23}
 }
