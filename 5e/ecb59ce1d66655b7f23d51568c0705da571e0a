@@ -1,0 +1,24 @@
+README.md
+  h_eb882fdf9e0ce8 77
+docs/subagent-guard.md
+  h_eb882fdf9e0ce8 233
+docs/turnend-guard.md
+  h_eb882fdf9e0ce8 536
+docs/verification/rovo.md
+  h_eb882fdf9e0ce8 66
+docs/verification/runtime-backends.md
+  h_eb882fdf9e0ce8 139,197,220,251,826
+docs/verification/supervision.md
+  h_eb882fdf9e0ce8 249,653-654,656
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5eecb59ce1d66655b7f23d51568c0705da571e0a",
+  "prompts": {},
+  "humans": {
+    "h_eb882fdf9e0ce8": {
+      "author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
