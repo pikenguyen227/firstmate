@@ -1,0 +1,16 @@
+docs/fm-test-isolation-proof.json
+  h_eb882fdf9e0ce8 35
+docs/fm-test-isolation-proof.md
+  h_eb882fdf9e0ce8 11,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e161bd34d0fb2a49c9a0f879ed397e4eeec0d188",
+  "prompts": {},
+  "humans": {
+    "h_eb882fdf9e0ce8": {
+      "author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
