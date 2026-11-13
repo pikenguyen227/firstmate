@@ -299,14 +299,16 @@ test_claude_busy_signature_uses_real_capture_shapes() {
   # No harness keeps the historical combined-pattern compatibility fallback.
   printf 'Working...\n' > "$composer"
   pane_busy fallback || fail "no-harness fallback should retain Pi's shared signature"
+  printf 'Ctrl+c:cancel\n' > "$composer"
+  pane_busy fallback && fail "no-harness fallback must not read a cancel key tip as busy"
 
   # A supplied harness must never use another harness's signature. This is
-  # particularly important for Kimi: its idle key-tip rotation can include the
-  # cancel token another harness once used to mean busy.
+  # particularly important for Kimi: its idle key-tip rotation can include a
+  # cancel key tip, which is not a busy signal.
   printf 'Working...\n' > "$composer"
   pane_busy unknown kimi && fail "Kimi must ignore Pi's Working footer"
   printf 'Ctrl+c:cancel\n' > "$composer"
-  pane_busy unknown kimi && fail "idle Kimi must ignore a foreign cancel footer"
+  pane_busy unknown kimi && fail "idle Kimi must ignore a cancel key tip"
 
   # Older Claude Code and the existing Pi signatures remain unchanged.
   printf 'esc to interrupt\n' > "$composer"

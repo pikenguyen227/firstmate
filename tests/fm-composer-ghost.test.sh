@@ -374,14 +374,14 @@ test_bordered_busy_signatures_are_pending() {
   dir="$TMP_ROOT/bordered-busy-signatures"; mkdir -p "$dir"
   fb=$(make_fake_tmux "$dir")
   capture="$dir/styled.txt"
-  for signature in 'Working...' 'Ctrl+c:cancel'; do
+  for signature in 'Working...' 'esc to interrupt'; do
     printf '╭────────────────────╮\n│ %-18s │\n╰────────────────────╯\n' "$signature" > "$capture"
     out=$(PATH="$fb:$PATH" FM_FAKE_STYLED="$capture" FM_FAKE_CY=1 \
       fm_tmux_composer_state "fakepane")
     [ "$out" = pending ] \
       || fail "typed bordered busy signature '$signature' should be pending, got '$out'"
   done
-  pass "fm_tmux_composer_state: typed Pi and foreign busy signatures inside a box are pending"
+  pass "fm_tmux_composer_state: typed busy signatures inside a box are pending"
 }
 
 test_non_bordered_busy_footer_is_unknown_strict() {

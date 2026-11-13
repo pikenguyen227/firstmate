@@ -86,6 +86,7 @@ Uncertainty and ineligibility are different findings:
 - Only concrete contradictory evidence blocks: an authoritative catalog proving the model unsupported, or proof that the credential the candidate actually selects is unusable.
 - Reserve login wording for that proven-unusable case, and name the harness, model, surface, and evidence.
 
+Never launch a vendor CLI yourself, and never probe a credential store the candidate does not use.
 
 Malformed configuration is an actionable error, not a candidate to rank around.
 

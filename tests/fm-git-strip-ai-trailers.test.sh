@@ -49,6 +49,23 @@ test_cursor_trailer_does_not_reach_the_commit_object() {
 }
 
 
+test_model_name_trailer_is_stripped_whatever_harness_ran_it() {
+  local repo hooks body
+  repo="$TMP_ROOT/model-name"
+  make_repo "$repo"
+  hooks="$TMP_ROOT/hooks-model-name"
+  "$STRIP" install "$hooks" "$repo" || fail "install should succeed"
+  printf 'note\n' >>"$repo/README.md"
+  git -C "$repo" add README.md
+  with_hooks_env "$hooks" git -C "$repo" commit -q \
+    --trailer 'Co-authored-by: Grok <grok@example.invalid>' \
+    --trailer 'Co-authored-by: Jane Doe <jane@example.com>' -m 'fix: model-emitted trailer'
+  body=$(git -C "$repo" log -1 --format=%B)
+  assert_not_contains "$body" "Co-authored-by: Grok" "a Grok model's co-author trailer reached the commit object"
+  assert_contains "$body" "Co-authored-by: Jane Doe <jane@example.com>" "human co-author was stripped"
+  pass "a model-named co-author trailer is stripped by name, independent of the harness that ran the model"
+}
+
 test_human_coauthor_is_kept() {
   local repo hooks body
   repo="$TMP_ROOT/human-coauthor"
@@ -302,6 +319,7 @@ test_strip_msgfile_alone_does_not_rewrite_author_fields() {
 }
 
 test_cursor_trailer_does_not_reach_the_commit_object
+test_model_name_trailer_is_stripped_whatever_harness_ran_it
 test_human_coauthor_is_kept
 test_human_at_a_vendor_domain_is_kept
 test_hook_manager_cannot_displace_the_strip

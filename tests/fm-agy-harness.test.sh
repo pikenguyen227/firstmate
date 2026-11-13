@@ -179,8 +179,8 @@ test_agy_busy_tail_needs_the_pinned_status_row() {
 test_agy_busy_signatures_are_harness_scoped() {
   printf 'esc to cancel\n' | fm_busy_lines_match agy \
     || fail "harness=agy must match its own esc token"
-  printf 'Ctrl+c:cancel\n' | fm_busy_lines_match agy \
-    && fail "harness=agy must never borrow a foreign cancel token" || true
+  printf 'ctrl+c to stop\n' | fm_busy_lines_match agy \
+    && fail "harness=agy must never borrow Cursor's stop token" || true
   printf 'esc to cancel\n' | fm_busy_lines_match kimi \
     && fail "harness=kimi must never borrow agy's token" || true
   printf 'esc to cancel\n' | fm_busy_lines_match spaceship \
