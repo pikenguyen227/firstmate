@@ -259,6 +259,8 @@ test_pi_signed_preserves_identity_with_pi_supervision_protocol() {
 test_grok_is_unverified_adapter() {
   local out
   out=$("$RENDER" --harness grok)
+  assert_contains "$out" "primary harness: unknown" "a removed harness did not render the unknown heading"
+  assert_contains "$out" "Mode: Unknown harness fallback." "a removed harness did not render the unknown fallback protocol"
   assert_not_contains "$out" "Grok" "a removed harness must fall back to the unknown protocol, not a Grok one"
   assert_not_contains "$out" "__FM_" "renderer leaked a placeholder for an unknown harness"
   pass "an unknown harness name renders no harness-specific protocol"

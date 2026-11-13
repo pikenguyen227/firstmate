@@ -900,17 +900,17 @@ test_selected_content_is_composer_scoped_and_wrap_normalized() {
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ "$out" = 'hello captain' ] \
     || fail "left-bar extraction should join user rows without footer furniture, got '$out'"
-  screen=$'╭────────────────────╮\n│ ❯ '"${ESC}[2mType a message...${ESC}[0m"$'│\n╰────────────────────╯'
+  screen=$'╭────────────────────╮\n│ ❯ '"${ESC}[2mAdd a follow-up${ESC}[0m"$'  │\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ -z "$out" ] \
     || fail "ghost agent-prompt placeholders should be excluded from extracted user content, got '$out'"
-  screen=$'╭────────────────────╮\n│ > '"${ESC}[2mType a message...${ESC}[0m"$'│\n╰────────────────────╯'
+  screen=$'╭────────────────────╮\n│ > '"${ESC}[2mAdd a follow-up${ESC}[0m"$'  │\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
   [ -z "$out" ] \
     || fail "ghost shell-prompt placeholders should be excluded from boxed user content, got '$out'"
-  screen=$'╭────────────────────╮\n│ ❯ Type a message...│\n╰────────────────────╯'
+  screen=$'╭────────────────────╮\n│ ❯ Add a follow-up  │\n╰────────────────────╯'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")
-  [ "$out" = 'Type a message...' ] \
+  [ "$out" = 'Add a follow-up' ] \
     || fail "surviving placeholder-like input should remain extracted user content, got '$out'"
   screen=$'❯ a legitimately long steer that\nwraps across the next bare row\n\ntranscript below the break'
   out=$(fm_composer_extract_selected_content "$CAPS_STYLED_NOID" "$screen")

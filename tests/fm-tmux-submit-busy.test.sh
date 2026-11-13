@@ -131,7 +131,7 @@ test_placeholder_like_bare_input_retries_swallowed_enter() {
   composer="$dir/composer"
   sent="$dir/sent.log"
   vfile="$dir/verdict"
-  printf 'transcript\n❯ Type a message...\n' > "$composer"
+  printf 'transcript\n❯ Add a follow-up\n' > "$composer"
   : > "$sent"
   touch "$dir/.swallow"
   PATH="$fakebin:$PATH" FM_FAKE_COMPOSER="$composer" FM_FAKE_SENT="$sent" \

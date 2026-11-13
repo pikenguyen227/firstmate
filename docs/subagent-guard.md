@@ -220,7 +220,7 @@ SUBAGENT_TOOL=no
 `multi_tool_use.parallel` batches calls to the tools above; it does not spawn an agent.
 Codex is therefore not applicable today, and this table row is the tripwire: if a future Codex release adds a delegated-agent tool, wire `.codex/hooks.json` the same way its `Bash` PreToolUse entries already forward stdin to a checker.
 
-### OpenCode, and Pi, inspected but not wired
+### OpenCode and Pi, inspected but not wired
 
 The integration surface of each was inspected and each is structurally wireable for the shipped guard.
 
@@ -361,8 +361,8 @@ tests/fm-subagent-pretool-check.test.sh
 
 ## Known residual gap
 
-The tracked Claude hook entry for subagent-spawn is a deliberate exception and stays unguarded for Cursor, which loads the tracked Claude settings as well: `.cursor/hooks.json` registers no subagent-spawn matcher, so this entry stays unguarded there for the same reason, and its `--claude` rendering leaves Cursor the exit-2 and stderr path rather than Cursor's own decision object.
-Cursor's subagent tool name has not been verified, and registering an unverified matcher would be a guess rather than coverage, so closing it needs the same verification step.
+The tracked Claude hook entry for subagent-spawn also reaches Cursor, which loads the tracked Claude settings as well: `.cursor/hooks.json` registers no subagent-spawn matcher of its own, so this entry is the only one Cursor runs, and its `--claude` rendering leaves Cursor the exit-2 and stderr path rather than Cursor's own decision object.
+Cursor's subagent tool name has not been verified, and registering an unverified matcher would be a guess rather than coverage, so closing it needs the same tool-enumeration step described for OpenCode and Pi above.
 
 This change does not close the deeper harness-agnostic defect.
 Every firstmate guard's in-flight-work branch keys off `state/<id>.meta`, and only `bin/fm-spawn.sh` writes that record.

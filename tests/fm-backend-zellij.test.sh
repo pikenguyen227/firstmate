@@ -1073,7 +1073,7 @@ test_send_text_submit_accepts_wrapped_boxed_text() {
   local dir fb out
   dir="$TMP_ROOT/submit-wrapped-box"; mkdir -p "$dir/responses"
   zellij_pane_response "$dir" 1 7 3
-  printf '%s' $'╭────────────────────╮\n│ > Type a message...│\n╰────────────────────╯' > "$dir/responses/2.out"
+  printf '%s' $'╭────────────────────╮\n│ > Add a follow-up  │\n╰────────────────────╯' > "$dir/responses/2.out"
   zellij_pane_response "$dir" 3 7 3
   zellij_pane_response "$dir" 5 7 3
   printf '%s' $'╭────────────────────╮\n│ > hello            │\n│ captain            │\n╰────────────────────╯' > "$dir/responses/6.out"

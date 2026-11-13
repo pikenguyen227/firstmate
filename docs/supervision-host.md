@@ -398,7 +398,7 @@ Each arm owner's own suite covers its host mode against a stub host.
 | `tests/fm-pi-watch-extension.test.sh` | The OpenCode plugin's host mode against a stub host. |
 | `tests/fm-omp-harness.test.sh` | The omp arm owner's host mode against a stub host. |
 | `tests/fm-watch-checkpoint.test.sh` | The Codex checkpoint's host mode against a stub host. |
-| `tests/fm-supervision-instructions.test.sh` | The rendered protocol, including the host arm command. |
+| `tests/fm-supervision-instructions.test.sh` | The rendered protocol. |
 | `tests/fm-host-mirror.test.sh` | The dialog mirror's writers through the tracked Claude and Cursor registrations, the opt-in gate, the feed, and the verified-writer list. |
 | `tests/fm-afk-launch.test.sh` | `/quiet` on an opted-in home: the statement, the paused statement, each named missing part, the quiet daemon fallback that carries its recorded mode, a failed quiet start that archives its quiet record, and the refusal under a live away record until the return. |
 | `tests/fm-afk-return.test.sh` | The return's drain-owned read-cursor advance through the away window on a host home, and none on Pi. |
