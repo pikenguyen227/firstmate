@@ -1,0 +1,41 @@
+.agents/skills/quota-array-dispatch/SKILL.md
+  s_b2e19edce369b3::t_49f8509680c480 89
+bin/fm-composer-lib.sh
+  s_b2e19edce369b3::t_46c53eec688af7 379
+bin/fm-git-strip-ai-trailers.sh
+  s_b2e19edce369b3::t_184cc8d5d8528e 111
+bin/fm-test-run.sh
+  s_b2e19edce369b3::t_3fa871131b5fa9 1552-1553
+docs/architecture.md
+  s_b2e19edce369b3::t_621f1d60e3e6e4 169
+docs/configuration.md
+  s_b2e19edce369b3::t_89b2221d8ac6e6 801
+docs/supervision-host.md
+  s_b2e19edce369b3::t_0273acdad8ba93 259
+tests/fm-agy-harness.test.sh
+  s_b2e19edce369b3::t_2c73260a0df321 182-183
+tests/fm-busy-state.test.sh
+  s_b2e19edce369b3::t_e65d038739cac8 279
+tests/fm-composer-ghost.test.sh
+  s_b2e19edce369b3::t_c84bb07372cec0 377,384
+tests/fm-git-strip-ai-trailers.test.sh
+  s_b2e19edce369b3::t_57993d306c5589 52-68,322
+tests/fm-tmux-submit-busy.test.sh
+  s_b2e19edce369b3::t_bb3cef2286469d 302-303,306-307,311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a64fd19ba5e77f10070c62015e57a1e6b6cbd198",
+  "prompts": {},
+  "sessions": {
+    "s_b2e19edce369b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ed7abdb-cf58-45d4-bb85-ed761887abae",
+        "model": "unknown"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
