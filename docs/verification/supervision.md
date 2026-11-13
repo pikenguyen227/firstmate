@@ -246,7 +246,7 @@ tests/fm-crew-state.test.sh
 
 ## Turn-end guard
 
-The blocking and bounded-follow-up mechanisms were validated across seven harnesses on 2026-07-08 through 2026-09-21, with Claude's replacement Stop-owned path revalidated on 2026-09-21, Cursor's stop-hook park validated on 2026-08-13, and omp's blocking `session_stop` hook validated on 2026-09-05.
+The blocking and bounded-follow-up mechanisms were validated across six harnesses on 2026-07-08 through 2026-09-21, with Claude's replacement Stop-owned path revalidated on 2026-09-21, Cursor's stop-hook park validated on 2026-08-13, and omp's blocking `session_stop` hook validated on 2026-09-05.
 
 | Harness | Version verified | Mechanism | Observed result |
 | --- | --- | --- | --- |
@@ -650,10 +650,10 @@ The lab opened the gates, interrupted a worker mid-turn, tried a main-actor stee
 | Case | Observed |
 | --- | --- |
 | Away entry | every primary wrote the away record and started no daemon; Codex's checkpoint reported its raised bound under `FM_CODEX_WATCH_CHECKPOINT_AWAY=900` (bound 900, limit 2130) |
-| Decision the words pre-answered | the engine answered it on all five primaries and reported `per your away instructions:`; main stayed parked |
-| Steer the words named | the engine delivered it on all five, and the finished work carries it |
+| Decision the words pre-answered | the engine answered it on all four primaries and reported `per your away instructions:`; main stayed parked |
+| Steer the words named | the engine delivered it on all four, and the finished work carries it |
 | Worker stopped mid-task | the engine told it to continue and confirmed it working again (Codex, Cursor, OpenCode) |
-| Main steer during an engine turn | `fm-send.sh` exited 6 with `task ... is leased to the branch supervision actor ... retry after that actor releases it` on all five |
+| Main steer during an engine turn | `fm-send.sh` exited 6 with `task ... is leased to the branch supervision actor ... retry after that actor releases it` on all four |
 | Dispatch the words ordered with no override | the worker launched on the primary's own runtime (`codex`, `cursor`, `claude`); on OpenCode the home's saved default dispatch profile (Pi) took precedence, as configured |
 | Boundary | main drained, acknowledged, and re-parked on every primary |
 | Return during an engine turn | the finished turn's outcome reached main: Codex through the host's hand-back line, Cursor through the queued `check: supervision-host outcome <n> ... was recorded after the captain returned` wake after the captain's message superseded the park, Claude through both, and OpenCode in the return brief |

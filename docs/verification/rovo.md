@@ -63,7 +63,7 @@ Enter to queue, Ctrl+Enter to steer
 ```
 
 `fm_busy_rovo_tail_busy` (`bin/fm-busy-lib.sh`) matches that exact rendered text; `fm_busy_classify` was confirmed live-and-portably to read it as `busy rovo-regex`, and an idle footer with no busy line as `idle rovo-regex`.
-This is a rendered-tail fallback not a semantic source: rovo's `eventHooks` (`~/.rovo/config.yml`) fire at tool granularity (`on_tool_start`/`on_tool_end`) only, never at turn-end, so no writer is armed and none is seeded.
+This is a rendered-tail fallback, not a semantic source: rovo's `eventHooks` (`~/.rovo/config.yml`) fire at tool granularity (`on_tool_start`/`on_tool_end`) only, never at turn-end, so no writer is armed and none is seeded.
 
 ## Composer ghost text: measured, deliberately left unfixed
 

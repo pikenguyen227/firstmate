@@ -533,7 +533,7 @@ That warning uses `bin/fm-supervision-instructions.sh --repair-line`, so it alwa
 - The away-mode beacon's poll-derived grace widening for a live daemon still mid-cycle and its bound against a dead daemon, a beacon older than that wider grace, and FM_POLL's inapplicability with away mode off.
 - Pi logical-run latching.
 - Missing-`jq` behavior.
-- All five primary registrations.
+- The Claude, Codex, OpenCode, and Pi registrations.
 - Malformed input.
 - Exactly-one-path safety.
 
