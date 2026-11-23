@@ -829,6 +829,7 @@ printf 'guard-fired\n' >&2
 exit 2
 EOF
   for decoy in "$parent/bin/fm-turnend-guard.sh" "$subdir/bin/fm-turnend-guard.sh"; do
+    # shellcheck disable=SC2016 # $0 expands in the generated decoy script.
     printf '#!/usr/bin/env bash\ncat >/dev/null\nprintf "wrong-guard %%s\\n" "$0" >&2\nexit 2\n' > "$decoy"
   done
   chmod +x "$primary_dir/bin/fm-turnend-guard.sh" "$parent/bin/fm-turnend-guard.sh" "$subdir/bin/fm-turnend-guard.sh"
