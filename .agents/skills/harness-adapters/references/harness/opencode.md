@@ -2,13 +2,15 @@
 
 The tracked primary plugins target pinned OpenCode 2.3.2.
 OpenCode 1 primary plugin support is retired because the two plugin APIs require different entry points and lifecycle hooks.
+OpenCode workers are not ported: `../../../bin/fm-spawn.sh` still writes the OpenCode 1 busy-state plugin into each worker worktree, so an OpenCode worker needs OpenCode 1, and dispatching an OpenCode worker on OpenCode 2 is not supported yet.
+Claude Code and Codex workers are unaffected.
 Earlier OpenCode 1 observations below are historical until reverified on OpenCode 2.
 
 ## Operating facts
 
 | Fact | Value |
 |---|---|
-| Busy state | The Firstmate-owned plugin's semantic `session.status`: `busy` and `retry` are active, `idle` is inactive, latched to the worker's own session. |
+| Busy state | The Firstmate-owned OpenCode 1 worker plugin's semantic `session.status`: `busy` and `retry` are active, `idle` is inactive, latched to the worker's own session. |
 | Exit command | `/exit`. |
 | Interrupt | Double Escape; it is known to be flaky while a long shell command runs, so use `../../../bin/fm-control.sh <task-id> relaunch` for a wedged pane. |
 | Skill invocation | No separate verified form beyond normal slash-command behavior; use natural language when the exact command is uncertain. |
@@ -37,7 +39,7 @@ The live Herdr guard is `FM_HERDR_SUBMIT_CONFIRM_LIVE=1 ../../../tests/fm-herdr-
 
 The five tracked plugins export OpenCode 2 default definitions with `id` and `setup` from `.opencode/plugins/`.
 They use the V2 runtime context directly and have no package dependency; the verified CLI pin is 2.3.2.
-The session-start plugin subscribes to `session.created` and `session.inbox.enqueued`, then queues one nudge per session id when `../../../bin/fm-sessionstart-nudge.sh` prints one.
+The session-start plugin subscribes only to `session.created`, then queues one nudge per session id when `../../../bin/fm-sessionstart-nudge.sh` prints one; a `--continue` resume or a session reopened in the TUI gets no new digest.
 The watcher and turn-end plugins subscribe to terminal `session.execution.*` events.
 The turn-end callback is passive and queues one follow-up with `ctx.session.prompt({ delivery: "queue" })` when `../../../bin/fm-turnend-guard.sh` returns 2.
 In a home with `config/supervision-host` the watch-arm plugin spawns the supervision host instead of `../../../bin/fm-watch-arm.sh`, with Claude's print mode as its headless engine; [`supervision-host.md`](../../../../../docs/supervision-host.md) owns the host.

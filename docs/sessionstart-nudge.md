@@ -303,12 +303,12 @@ Whenever the digest is incomplete, this approved containment keeps the prefix an
 OpenCode is a nudge-tier harness.
 The `.opencode/plugins/fm-primary-sessionstart-nudge.js` plugin does three things:
 
-- It listens for `session.created` and the first `session.inbox.enqueued` event when a headless session was created before plugin subscription.
+- It listens only for `session.created`, so a session resumed with `--continue` or reopened in the TUI gets no new digest.
 - It runs once per session id.
 - It calls OpenCode 2 `ctx.session.prompt` with `delivery: "queue"` only when the wrapper prints a nudge.
 
 Interactive TUI delivery is supported.
-Headless `opencode run` can process an immediate queued nudge, but it has no persistent TUI to receive a later watcher wake.
+Headless `opencode run` is not a supported primary path: its session can be created before the plugin subscribes, so it may receive no digest, and it has no persistent TUI to receive a later watcher wake.
 That early exit is also why OpenCode cannot use the run tier.
 
 The OpenCode nudge runs once per session id.
@@ -411,7 +411,8 @@ It uses a TERM-resistant digest that exceeds its budget and proves that the dige
 
 ### Native startup and Ahoy tests
 
-`tests/fm-pi-primary-live-e2e.test.sh` and `tests/fm-opencode-primary-live-e2e.test.sh` exercise native startup paths with first-message and later-message Ahoy regressions.
+`tests/fm-pi-primary-live-e2e.test.sh` exercises Pi native startup paths with first-message and later-message Ahoy regressions.
+`tests/fm-opencode-primary-live-e2e.test.sh` exercises the retired OpenCode 1 startup paths only; it is not evidence for the current OpenCode 2 primary, whose live record is in [`verification/supervision.md`](verification/supervision.md#opencode-2-primary-plugin-port).
 
 ### Cursor tests
 

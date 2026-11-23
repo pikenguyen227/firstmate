@@ -13,6 +13,7 @@ The CLI was installed in a disposable location, and every invocation used separa
 A local scripted OpenAI-compatible endpoint supplied deterministic model replies after OpenCode's free model returned a usage-limit error; this verifies the real OpenCode 2 TUI, plugin API, shell hook, and watcher processes without claiming a credentialed model pass.
 The earlier OpenCode 1 results in this record are historical for the retired primary API.
 `tests/fm-opencode-primary-live-e2e.test.sh` is an OpenCode 1 fixture and is not current OpenCode 2 evidence.
+The OpenCode worker busy-state plugin written by `bin/fm-spawn.sh` was not ported or exercised; OpenCode workers still need OpenCode 1.
 
 | Boundary | Observed result |
 | --- | --- |
@@ -23,7 +24,7 @@ The earlier OpenCode 1 results in this record are historical for the retired pri
 | Pretool deny | `ctx.tool.hook("execute.before")` rejected a backgrounded `fm-watch-arm.sh` shell command; OpenCode stored the tool as `executed:false` and the command's sentinel was absent. |
 | Worker scope | A real linked worker worktree with in-flight metadata and a TUI turn created no watch lock. |
 | Restart and trust | `/exit` followed by `--continue` kept the session id and resumed watcher arming. A separate `--continue` launch without `--auto` also opened the TUI without a project trust dialog. |
-| Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. |
+| Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. That pass included a `session.inbox.enqueued` session-start trigger that was later removed, so headless digest delivery is no longer claimed. |
 
 The same four isolated Firstmate behavior scripts were run before and after this port.
 Before the edit, `fm-captain-hold-lifecycle`, `fm-watch-triage`, and `fm-remote-secondmate-lifecycle-e2e` failed, while `fm-wake-queue` passed.

@@ -188,7 +188,6 @@ const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 const event = {
   type: "session.created",
@@ -203,6 +202,42 @@ EOF
   expect_code 0 "$status" "OpenCode exact nudge delivery"
   [ -z "$out" ] || fail "OpenCode exact nudge delivery printed output: $out"
   pass "OpenCode session.created delivers the exact wrapper nudge once per session"
+}
+
+test_opencode_plugin_skips_resumed_session_input() {
+  local root="$TMP_ROOT/opencode-resume-primary" out status=0
+  make_primary "$root"
+  cp "$ROOT/bin/fm-sessionstart-nudge.sh" "$ROOT/bin/fm-primary-scope-lib.sh" \
+    "$ROOT/bin/fm-gate-refuse-lib.sh" "$ROOT/bin/fm-operational-input.sh" "$root/bin/"
+  chmod +x "$root/bin/fm-sessionstart-nudge.sh"
+  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" HELPER="$ROOT/tests/lib-opencode2.mjs" \
+    WORKTREE="$root" node --input-type=module 2>&1 <<'EOF'
+import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
+
+const prompts = [];
+const client = {
+  session: {
+    promptAsync: async (request) => {
+      prompts.push(request.body.parts[0].text);
+    },
+  },
+};
+const mod = await import(pathToFileURL(process.env.PLUGIN).href);
+const hooks = await setupOpenCodePlugin(mod.default, {
+  client,
+  directory: process.env.WORKTREE,
+});
+await hooks.event({
+  event: { type: "session.inbox.enqueued", properties: { sessionID: "session-resumed" } },
+});
+await new Promise((resolve) => setTimeout(resolve, 200));
+if (prompts.length !== 0) throw new Error(`resumed session queued a digest after the user message: ${prompts.join(" | ")}`);
+EOF
+  ) || status=$?
+  expect_code 0 "$status" "OpenCode resumed-session input"
+  [ -z "$out" ] || fail "OpenCode resumed-session input printed output: $out"
+  pass "OpenCode queues no session-start digest on a resumed session's first input"
 }
 
 # --- run tier ----------------------------------------------------------------
@@ -1058,6 +1093,7 @@ test_missing_state_is_silent
 test_owned_lock_is_silent
 test_namespace_pid1_lock_holder_is_silent
 test_opencode_plugin_delivers_exact_nudge_once
+test_opencode_plugin_skips_resumed_session_input
 test_run_startup_runs_the_full_digest
 test_run_clear_and_compact_reemit
 test_run_rebuild_forwards_source_to_drifted_instruction_refresh

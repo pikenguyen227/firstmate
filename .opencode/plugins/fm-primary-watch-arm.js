@@ -37,7 +37,7 @@ let armClose = new WeakMap();
 let armReadiness = new WeakMap();
 let armRecovery = new WeakMap();
 let armHostMode = new WeakMap();
-let unloading = false;
+let activePaths = null;
 
 function positiveInteger(name, fallback) {
   const value = Number(process.env[name]);
@@ -346,9 +346,10 @@ async function restoreAfterActionableClose(paths, sessionID, client, predecessor
 }
 
 async function scheduleRetry(paths, sessionID, client, reason, predecessorArmPid) {
-  if (unloading) return;
   if (child || retryTimer) return;
-  if (!(await sessionOwnsLock(paths))) {
+  const ownsLock = await sessionOwnsLock(paths);
+  if (paths !== activePaths) return;
+  if (!ownsLock) {
     setArmStatus("failed");
     surfaceFailure(paths, client, sessionID, `watcher: FAILED - OpenCode cannot restore continuity because this session no longer owns the lock\n${reason}`);
     return;
@@ -361,8 +362,8 @@ async function scheduleRetry(paths, sessionID, client, reason, predecessorArmPid
   }
   setArmStatus("retrying");
   const timer = setTimeout(() => {
-    if (unloading) return;
     if (retryTimer === timer) retryTimer = null;
+    if (paths !== activePaths) return;
     void ensureArm(paths, sessionID, client, predecessorArmPid).then((status) => {
       if (["armed", "starting", "wake"].includes(status)) return;
       surfaceFailure(paths, client, sessionID, `watcher: FAILED - OpenCode could not launch a continuity retry (${status})`);
@@ -432,7 +433,7 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
     settled = true;
     resolveClosed();
     releaseChild();
-    if (unloading) return;
+    if (paths !== activePaths) return;
     const classification = classifyArmClose(paths, hostMode, stdout, stderr, code, signal);
     settleReadiness(classification.kind === "actionable" ? "wake" : "failed");
     const predecessor = String(armChild.pid ?? "");
@@ -471,7 +472,7 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
     settled = true;
     resolveClosed();
     releaseChild();
-    if (unloading) return;
+    if (paths !== activePaths) return;
     settleReadiness("failed");
     if (restorationInFlight) {
       setArmStatus("failed");
@@ -489,10 +490,10 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
 }
 
 async function beginArm(paths, sessionID, client, predecessorArmPid) {
-  if (unloading) return { status: "skipped", armChild: null };
   if (!sessionID) return { status: "skipped", armChild: null };
   if (!(await isPrimaryRoot(paths.root, paths.home))) return { status: "not-primary", armChild: null };
   if (!(await sessionOwnsLock(paths))) return { status: "read-only", armChild: null };
+  if (paths !== activePaths) return { status: "skipped", armChild: null };
   if (child) return { status: "existing", armChild: child };
   if (retryTimer) return { status: "retrying", armChild: null };
   if (!shouldArm(paths)) return { status: "not-needed", armChild: null };
@@ -526,9 +527,9 @@ async function ensureArm(paths, sessionID, client, predecessorArmPid = "", inclu
 export default {
   id: "fm.primary.watch-arm",
   async setup(ctx) {
-    unloading = false;
     const root = await resolveRoot(ctx.location.directory);
     const paths = effectivePaths(root);
+    activePaths = paths;
     const coordinator = {
       ensureArmed: (sessionID, activeCtx) => ensureArm(paths, sessionID, activeCtx ?? ctx),
     };
@@ -544,12 +545,18 @@ export default {
       }
     })().catch(() => {});
     return () => {
-      unloading = true;
       controller.abort();
+      if (globalThis[COORDINATOR_KEY] === coordinator) delete globalThis[COORDINATOR_KEY];
+      if (activePaths !== paths) return;
+      activePaths = null;
       if (retryTimer) clearTimeout(retryTimer);
       retryTimer = null;
-      if (globalThis[COORDINATOR_KEY] === coordinator) delete globalThis[COORDINATOR_KEY];
-      void retireArm(child);
+      retryFailures = 0;
+      launchInFlight = null;
+      restorationInFlight = null;
+      const retiring = child;
+      child = null;
+      void retireArm(retiring);
     };
   },
 };

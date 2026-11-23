@@ -40,7 +40,7 @@ export default {
     const controller = new AbortController();
     void (async () => {
       for await (const event of ctx.event.subscribe({
-        types: ["session.created", "session.inbox.enqueued"],
+        types: ["session.created"],
         signal: controller.signal,
       })) {
         const sessionID = event.data?.info?.id ?? event.data?.sessionID;

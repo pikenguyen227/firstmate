@@ -1,13 +1,20 @@
 // Drive a V2 plugin's subscribed events with the existing Node fixture calls.
-export async function setupOpenCodePlugin(definition, { client, directory, worktree }) {
+export async function setupOpenCodePlugin(definition, { client, directory }) {
   const listeners = [];
   const ctx = {
-    location: { directory: worktree ?? directory },
+    location: { directory },
     session: {
-      prompt: async ({ sessionID, text }) => client.session.promptAsync({
-        path: { id: sessionID },
-        body: { parts: [{ type: "text", text }] },
-      }),
+      prompt: async ({ sessionID, text, delivery }) => {
+        if (delivery !== "queue") {
+          console.error(`OpenCode plugin prompt used delivery ${JSON.stringify(delivery)} instead of "queue"`);
+          process.exitCode = 1;
+          throw new Error(`unexpected prompt delivery: ${delivery}`);
+        }
+        return client.session.promptAsync({
+          path: { id: sessionID },
+          body: { parts: [{ type: "text", text }] },
+        });
+      },
     },
     event: {
       subscribe({ types, signal }) {
