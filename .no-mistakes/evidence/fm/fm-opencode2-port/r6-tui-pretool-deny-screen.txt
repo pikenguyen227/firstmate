@@ -1,0 +1,45 @@
+   ack from lab mock             +
+
+     ack from lab mock                                                                                        ack from lab mock
+
+     Build · m · 7.6s · 1000.0 tok/s                                                                          Context
+                                                                                                              13 tokens
+  ┃                                                                                                           0% used
+  ┃  FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle
+  ┃  the reported wake. Watcher continuity is plugin-owned.
+  ┃
+  ┃  check: rearm-resurface
+  ┃
+
+     ack from lab mock
+
+     Build · m · 53ms · 1500.0 tok/s
+
+  ┃
+  ┃  FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle
+  ┃  the reported wake. Watcher continuity is plugin-owned.
+  ┃
+  ┃  signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/state/task-a.status
+  ┃
+
+     ack from lab mock
+
+     Build · m · 214ms · 375.0 tok/s
+
+  ┃
+  ┃  DENYTEST please
+  ┃
+                                                                                                                ⬖ Getting started                ✕
+     + 1 command
+                                                                                                                  OpenCode includes free models so
+     tool step finished                                                                                           you can start immediately.
+
+     Build · m · 241ms · 461.5 tok/s                                                                              Connect from 75+ providers to
+                                                                                                                  use other models, including
+  ┃                                                                                                               Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                                               Connect provider        /connect
+  ┃  Build · m lab
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj     13 (0%)  ctrl+p commands    /…/v4dnb5gj6nl8p…/T/fm-lab.sjkFKd/proj
+

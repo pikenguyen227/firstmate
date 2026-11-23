@@ -1,0 +1,11 @@
+## OpenCode 2.3.2 TUI in linked worktree /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/wt (git-dir != common-dir), FM_HOME=lab, task-a.meta in flight
+.lock before=74978 after=74978
+## watch lock: fm-home
+pid
+pid-identity
+watcher-path
+## watcher processes:
+## model-visible requests in this worker session
+user 'worker copy turn'
+user 'Here is the first message of the conversation:\n\n<message>\nworker copy turn\n</message>\n\nReply with only the title.'
+## note: state/.watch.lock is the dir left by the exited primary's watcher: pid=48057 alive=no mtime=Nov 23 21:46:58 2026; worker TUI launched at Nov 23 21:47:44 2026 (raw log creation); no new watcher started

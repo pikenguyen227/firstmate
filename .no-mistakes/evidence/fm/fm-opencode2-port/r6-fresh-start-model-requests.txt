@@ -1,0 +1,17 @@
+## Fresh persistent OpenCode 2.3.2 TUI (--standalone, no --auto), commit 78948e61, FM_HOME=lab, task-a.meta in flight. Last message of every model request, in order:
+user 'first turn hello'
+user 'Here is the first message of the conversation:\n\n<message>\nfirst turn hello\n</message>\n\nReply with only the title.'
+user '\u2063FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing any other instructions.'
+tool '\n================================================================================\nSESSION START - /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd\n==========================================================='
+user '\u2063FIRSTMATE_OP: v1 turn-end-guard: TURN WOULD END BLIND - supervision is off. The watcher cycle is missing, failed, or unhealthy. Follow the harness recovery instruction below before ending the turn.\n\n●━━━━━━━━━━━━━━━━━━━'
+user '\u2063FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle the reported wake. Watcher continuity is plugin-owned.\n\ncheck: rearm-resurface'
+user '\u2063FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle the reported wake. Watcher continuity is plugin-owned.\n\nsignal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.s'
+user 'DENYTEST please'
+tool '{"error":{"type":"unknown","message":"{\\"hookSpecificOutput\\":{\\"hookEventName\\":\\"PreToolUse\\",\\"permissionDecision\\":\\"deny\\"},\\"systemMessage\\":\\"[watcher-nested] a protected watcher command must not run through a wra'
+user 'second session in same live process'
+## (after DENYTEST, /new opened a second session in the same live process; its requests above show no session-start digest)
+## watch cycle rows (fresh-start process serve pid 96680):
+arm_pid=49845	watcher_pid=50032	origin=started	started_at=1795444944	ended_at=1795444945	exit_code=0	signal=none	reason=actionable-check	beacon_age=1	lock_before=pid:none|identity:none	lock_after=pid:none|identity:none	successor=started:50840
+arm_pid=50789	watcher_pid=50840	origin=started	started_at=1795444945	ended_at=1795445018	exit_code=0	signal=none	reason=actionable-signal	beacon_age=40	lock_before=pid:50840|identity:Mon Nov 23 14:42:25 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch.sh	lock_after=pid:none|i
+arm_pid=56666	watcher_pid=56970	origin=started	started_at=1795445019	ended_at=1795445090	exit_code=143	signal=TERM	reason=arm-interrupted	beacon_age=2	lock_before=pid:56970|identity:Mon Nov 23 14:43:39 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch.sh	lock_after=pid:56970|i
+arm_pid=5948	watcher_pid=6116	origin=started	started_at=1795445131	ended_at=1795445133	exit_code=0	signal=none	reason=actionable-check	beacon_age=1	lock_before=pid:6116|identity:Mon Nov 23 14:45:31 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch.sh	lock_after=pid:none|identi

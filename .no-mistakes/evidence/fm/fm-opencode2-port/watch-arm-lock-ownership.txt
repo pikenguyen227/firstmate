@@ -1,0 +1,11 @@
+## lock recorded by real fm-session-start.sh run by the OpenCode 2.3.2 shell tool
+lock=20749
+  PID  PPID COMMAND
+ 4649 99569 /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-oc2.TnAftm/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0
+20749  4649 /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.q7aIyb/oc/cache/opencode/bin/opencode-pty/0.6.0-9a39dc481a87f890/opencode-pty daemon --runtime-dir /var/folders/kb/v4dnb5gj6nl8pm3yy
+99569 99370 /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-oc2.TnAftm/node_modules/.bin/opencode --standalone
+## lab watcher processes after a completed turn with task-a.meta in flight:
+(none)
+## CONTROL: after rewriting .lock to the server pid 4649 and one more turn:
+ 5148  4649 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.q7aIyb/proj/bin/fm-watch-arm.sh --restart
+ 5456  5148 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.q7aIyb/proj/bin/fm-watch.sh

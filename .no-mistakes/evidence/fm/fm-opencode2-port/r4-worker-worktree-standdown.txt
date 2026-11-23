@@ -1,0 +1,9 @@
+## OpenCode 2.3.2 TUI in linked worktree /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.v61Ust/wt (git-dir != common-dir), FM_HOME=lab, task-a.meta in flight
+.lock before=44290 after=44290
+## watch locks in state:
+(none)
+## watcher processes:
+(none)
+## model-visible requests in this worker session
+user 'Here is the first message of the conversation:\n\n<message>\nworker copy turn\n</message>\n\nReply with only the title.'
+user 'worker copy turn'

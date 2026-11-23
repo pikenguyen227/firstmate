@@ -1,0 +1,14 @@
+## after /exit + opencode --standalone --continue (same session history restored), two user turns, task-a.meta in flight
+lock=44290 (pre-restart serve pid)
+alive? (eval):kill:3: kill 44290 failed: no such process
+no
+## current opencode / watcher processes
+82992 82021 /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.IU3bSP/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0
+## model-visible requests since resume
+user 'turn after resume'
+user '\u2063FIRSTMATE_OP: v1 turn-end-guard: TURN WOULD END BLIND - supervision is off. The watcher cycle is missing, failed, or unhealthy. Follow the harness recovery instruction below before ending the turn.\n\n'
+user 'second turn after resume'
+user '\u2063FIRSTMATE_OP: v1 turn-end-guard: TURN WOULD END BLIND - supervision is off. The watcher cycle is missing, failed, or unhealthy. Follow the harness recovery instruction below before ending the turn.\n\n'
+## last watch cycle row
+arm_pid=50558	watcher_pid=50648	origin=started	started_at=1795433603	ended_at=1795433690	exit_code=143	signal=TERM	reason=arm-interrupted	beacon_age=3	lock_before=pid:50648|identity:Mon Nov 23 11:33:2
+## what bin/fm-sessionstart-nudge.sh would print now (run from the lab primary with FM_HOME=lab)

@@ -1,0 +1,26 @@
+## before /exit: lock=96680
+56666 96680 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch-arm.sh --restart
+56970 56666 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch.sh
+96680 95802 /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.nORwGe/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0
+95802 95745 /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.nORwGe/node_modules/.bin/opencode --standalone
+## after /exit: lock=96680 alive=no
+## after --continue launch, before first message: lock=96680; new model requests=0
+## after first resumed turn: lock=74978
+10963 74978 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch-arm.sh --restart
+11040 10963 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj/bin/fm-watch.sh
+74978 67075 /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.nORwGe/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0
+67075 67035 /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.nORwGe/node_modules/.bin/opencode --standalone --continue
+## model-visible requests since resume
+user 'turn after resume'
+user '\u2063FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing any other instructions.'
+tool '\n================================================================================\nSESSION START - /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd\n======================================='
+user '\u2063FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle the reported wake. Watcher continuity is plugin-owned.\n\ncheck: rearm-resurface'
+## second resumed turn + post-resume status event (waited 2s): lock=74978
+user 'second turn after resume'
+## session-start digests delivered in whole lab run: 11 request rows containing it (last message)
+## corrected: last-message view since second resumed turn (waited up to 42s for status wake)
+user 'second turn after resume'
+user '\u2063FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle the reported wake. Watcher continuity is plugin-owned.\n\nsignal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.s'
+## total session-start digests as last message across whole lab run: 2
+## after second /exit: lock=74978 alive=no
+(no lab opencode/watcher processes listed above = clean exit)

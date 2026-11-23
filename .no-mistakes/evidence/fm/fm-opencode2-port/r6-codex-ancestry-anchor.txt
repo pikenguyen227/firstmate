@@ -1,0 +1,4 @@
+## real bin/fm-session-lock-lib.sh (78948e61) fm_harness_ancestry_pid, run by the shell tool inside a live 'codex exec --ephemeral' session (codex codex-cli 0.167.0)
+anchor pid=78406
+  PID  PPID COMM
+78406 78366 ~/.nvm/versions/node/v22.13.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex

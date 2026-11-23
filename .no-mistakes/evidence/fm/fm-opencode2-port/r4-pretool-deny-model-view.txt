@@ -1,0 +1,2 @@
+user 'DENYTEST please'
+tool '{"error":{"type":"unknown","message":"{\\"hookSpecificOutput\\":{\\"hookEventName\\":\\"PreToolUse\\",\\"permissionDecision\\":\\"deny\\"},\\"systemMessage\\":\\"[watcher-nested] a protected watcher command must not run through a wrapper, substitution, or compound command\\"}"},"content":[]}'

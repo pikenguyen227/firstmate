@@ -1,0 +1,18 @@
+## opencode run "hello headless" in lab primary, FM_HOME=lab, task-a.meta in flight, dead lock holder before run
+exit=0 elapsed=19s
+## stdout/stderr
+================================================================================
+Follow the supervision operating instructions block above for harness 'opencode'.
+This script never starts supervision itself.
+
+The digest above is complete for this session start. The READ-ONCE CONTRACT
+section near the top of it governs what may still be read from disk.
+> build · m
+tool step finished
+## model-visible requests (last message per request), incl. 15s after a post-exit status event
+user 'hello headless'
+user 'Here is the first message of the conversation:\n\n<message>\nhello headless\n</message>\n\nReply with only the title.'
+user '\u2063FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing any other instructions.'
+tool '\n================================================================================\nSESSION START - /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd\n==========================================================='
+## lock=73518 alive=no
+## lab opencode/watcher processes 15s after run exit:

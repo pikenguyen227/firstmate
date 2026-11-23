@@ -1,0 +1,45 @@
+   ack from lab mock               ack from lab mock             +
+
+  ┃                                                                                                           ack from lab mock
+  ┃  second session in same live process
+  ┃                                                                                                           Context
+                                                                                                              13 tokens
+     ack from lab mock                                                                                        0% used
+
+     Build · m · 526ms · 250.0 tok/s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                ⬖ Getting started                ✕
+
+                                                                                                                  OpenCode includes free models so
+                                                                                                                  you can start immediately.
+
+                                                                                                                  Connect from 75+ providers to
+                                                                                                                  use other models, including
+  ┃                                                                                                               Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                                               Connect provider        /connect
+  ┃  Build · m lab
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj     13 (0%)  ctrl+p commands    /…/v4dnb5gj6nl8p…/T/fm-lab.sjkFKd/proj
+

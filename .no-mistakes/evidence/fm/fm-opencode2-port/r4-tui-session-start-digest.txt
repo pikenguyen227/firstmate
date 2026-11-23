@@ -1,0 +1,45 @@
+   ack from lab mock             +
+
+  ┃                                                                                                           ack from lab mock
+  ┃  hello primary
+  ┃                                                                                                           Context
+                                                                                                              13 tokens
+     ack from lab mock                                                                                        0% used
+
+     Build · m · 334ms · 1500.0 tok/s
+
+  ┃
+  ┃  FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing
+  ┃  any other instructions.
+  ┃
+
+     + 1 command
+
+     tool step finished
+
+     Build · m · 7.5s · 1285.7 tok/s
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                ⬖ Getting started                ✕
+
+                                                                                                                  OpenCode includes free models so
+                                                                                                                  you can start immediately.
+
+                                                                                                                  Connect from 75+ providers to
+                                                                                                                  use other models, including
+  ┃                                                                                                               Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                                               Connect provider        /connect
+  ┃  Build · m LabMock
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.v61Ust/proj     13 (0%)  ctrl+p commands    /…/v4dnb5gj6nl8p…/T/fm-lab.v61Ust/proj
+

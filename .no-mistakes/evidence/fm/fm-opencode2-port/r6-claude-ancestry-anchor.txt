@@ -1,0 +1,4 @@
+## real bin/fm-session-lock-lib.sh (78948e61) fm_harness_ancestry_pid, called from a Bash tool shell inside this live Claude Code session
+anchor pid=60798
+  PID  PPID COMM
+60798 14112 ~/.local/bin/claude

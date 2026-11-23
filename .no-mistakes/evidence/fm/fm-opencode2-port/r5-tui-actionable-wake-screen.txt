@@ -1,0 +1,36 @@
+   ack from lab mock             +
+     ack from lab mock
+                                                                                                              ack from lab mock
+     Build · m · 304ms · 333.3 tok/s
+                                                                                                              Context
+  ┃                                                                                                           13 tokens
+  ┃  FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing        0% used
+  ┃  any other instructions.
+  ┃
+     + 1 command
+     tool step finished
+     Build · m · 13.6s · 428.6 tok/s
+  ┃
+  ┃  FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle
+  ┃  the reported wake. Watcher continuity is plugin-owned.
+  ┃
+  ┃  check: rearm-resurface
+  ┃
+     ack from lab mock
+     Build · m · 48ms · 1500.0 tok/s
+  ┃
+  ┃  FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle
+  ┃  the reported wake. Watcher continuity is plugin-owned.
+  ┃
+  ┃  signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.aMdrcQ/state/task-a.status                ⬖ Getting started                ✕
+  ┃
+                                                                                                                  OpenCode includes free models so
+     ack from lab mock                                                                                            you can start immediately.
+     Build · m · 50ms · 1500.0 tok/s                                                                              Connect from 75+ providers to
+                                                                                                                  use other models, including
+  ┃                                                                                                               Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                                               Connect provider        /connect
+  ┃  Build · m lab
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  /…/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.aMdrcQ/proj:lab-primary   13 (0%)  ctrl+p commands    /…/v…/T/fm-lab.aMdrcQ/proj:lab-primary

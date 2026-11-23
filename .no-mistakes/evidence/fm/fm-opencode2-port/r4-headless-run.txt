@@ -1,0 +1,10 @@
+## opencode run "hello headless" in lab primary, FM_HOME=lab, task-a.meta in flight
+exit=0 elapsed=3s
+## stdout/stderr
+> build · m
+ack from lab mock
+## model-visible requests
+user 'Here is the first message of the conversation:\n\n<message>\nhello headless\n</message>\n\nReply with only the title.'
+user 'hello headless'
+## lock=44290
+## opencode/watcher processes 15s after run exit

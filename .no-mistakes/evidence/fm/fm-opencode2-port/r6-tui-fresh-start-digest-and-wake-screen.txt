@@ -1,0 +1,45 @@
+   ack from lab mock             +
+  ┃  turn.
+  ┃                                                                                                           ack from lab mock
+  ┃  ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ┃  ●  TURN WOULD END BLIND - SUPERVISION IS OFF                                                             Context
+  ┃  ●  1 task(s) in flight, but no live watcher holds this home lock (last beat: never).                     13 tokens
+  ┃  ●  repair missing watcher supervision by letting the OpenCode TUI plugin arm after idle; use bin/        0% used
+  ┃  fm-watch-arm.sh only as a manual recovery probe if the plugin reports failure.
+  ┃  ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ┃
+  ┃
+
+     ack from lab mock
+
+     Build · m · 7.6s · 1000.0 tok/s
+
+  ┃
+  ┃  FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle
+  ┃  the reported wake. Watcher continuity is plugin-owned.
+  ┃
+  ┃  check: rearm-resurface
+  ┃
+
+     ack from lab mock
+
+     Build · m · 53ms · 1500.0 tok/s
+
+  ┃
+  ┃  FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle
+  ┃  the reported wake. Watcher continuity is plugin-owned.
+  ┃
+  ┃  signal: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/state/task-a.status                 ⬖ Getting started                ✕
+  ┃
+                                                                                                                  OpenCode includes free models so
+     ack from lab mock                                                                                            you can start immediately.
+
+     Build · m · 214ms · 375.0 tok/s                                                                              Connect from 75+ providers to
+                                                                                                                  use other models, including
+  ┃                                                                                                               Claude, GPT, Gemini etc
+  ┃
+  ┃                                                                                                               Connect provider        /connect
+  ┃  Build · m lab
+  ╹▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.sjkFKd/proj     13 (0%)  ctrl+p commands    /…/v4dnb5gj6nl8p…/T/fm-lab.sjkFKd/proj
+

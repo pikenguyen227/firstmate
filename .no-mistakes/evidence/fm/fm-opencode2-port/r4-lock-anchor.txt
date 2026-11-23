@@ -1,0 +1,17 @@
+## lock recorded by real bin/fm-session-start.sh run by the OpenCode 2.3.2 shell tool (commit d00eb7e8)
+lock=44290
+  PID  PPID COMMAND
+44290 40894 /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.IU3bSP/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0
+## opencode processes
+14071     1 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pi-watch-extension.L5Wn34/opencode-resetup-root/bin/fm-watch-arm.sh --restart
+40433 40404 /Library/Frameworks/Python.framework/Versions/3.13/Resources/Python.app/Contents/MacOS/Python /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.v61Ust/ptydrv.py /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w
+44290 40894 /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/oc2-test.IU3bSP/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0
+66449     1 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pi-watch-extension.NvDKoG/opencode-resetup-root/bin/fm-watch-arm.sh --restart
+77601     1 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pi-watch-extension.tQGQPP/opencode-resetup-root/bin/fm-watch-arm.sh --restart
+79306     1 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pi-watch-extension.Ng7RoO/opencode-resetup-root/bin/fm-watch-arm.sh --restart
+80220     1 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pi-watch-extension.gWfClW/opencode-resetup-root/bin/fm-watch-arm.sh --restart
+82442 44290 /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.v61Ust/oc/cache/opencode/bin/opencode-pty/0.6.0-9a39dc481a87f890/opencode-pty daemon --runtime-dir /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-l
+82872     1 bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-pi-watch-extension.IjHEwy/opencode-resetup-root/bin/fm-watch-arm.sh --restart
+40894 40433 /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//oc2-test.IU3bSP/node_modules/.bin/opencode --standalone
+45731 32986 ~/.nvm/versions/node/v22.13.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex --sandbox danger-full-access --ask-for-approval never --dan
+38619  7637 ~/.nvm/versions/node/v22.13.0/lib/node_modules/@openai/codex/node_modules/@openai/codex-darwin-arm64/vendor/aarch64-apple-darwin/bin/codex --sandbox danger-full-access --ask-for-approval never --dan
