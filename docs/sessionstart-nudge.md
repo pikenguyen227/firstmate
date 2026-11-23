@@ -303,12 +303,13 @@ Whenever the digest is incomplete, this approved containment keeps the prefix an
 OpenCode is a nudge-tier harness.
 The `.opencode/plugins/fm-primary-sessionstart-nudge.js` plugin does three things:
 
-- It listens only for `session.created`, so a session resumed with `--continue` or reopened in the TUI gets no new digest.
+- It subscribes to `session.created` before any other setup work, and listens for nothing else, so a session resumed with `--continue` or reopened in the TUI gets no new digest.
 - It runs once per session id.
 - It calls OpenCode 2 `ctx.session.prompt` with `delivery: "queue"` only when the wrapper prints a nudge.
 
-Interactive TUI delivery is supported.
-Headless `opencode run` is not a supported primary path: its session can be created before the plugin subscribes, so it may receive no digest, and it has no persistent TUI to receive a later watcher wake.
+Interactive TUI delivery is the supported path.
+The recorded live OpenCode 2 TUI digest predates the `session.created`-only subscription; [`verification/supervision.md`](verification/supervision.md#opencode-2-primary-plugin-port) records what is still pending.
+Headless `opencode run` is not a supported primary path: digest delivery there is not claimed, and it has no persistent TUI to receive a later watcher wake.
 That early exit is also why OpenCode cannot use the run tier.
 
 The OpenCode nudge runs once per session id.

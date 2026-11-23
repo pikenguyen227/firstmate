@@ -3681,6 +3681,7 @@ printf 'arm=%s\n' "$$" >> "${FM_ARM_LOG:?}"
 count=$(grep -c '^arm=' "$FM_ARM_LOG")
 printf 'watcher: started pid=%s (beacon fresh)\n' "$$"
 if [ "$count" -eq 1 ]; then
+  trap 'sleep 0.3; exit 0' TERM
   while :; do sleep 0.02; done
 fi
 if [ "$count" -eq 2 ]; then
@@ -3720,7 +3721,7 @@ await disposed.event(event);
 await waitFor(() => armRows().length === 1, "the first arm");
 disposed.cleanup();
 const live = await setupOpenCodePlugin(mod.default, { client: recorder(livePrompts), directory: process.env.WORKTREE });
-await new Promise((resolve) => setTimeout(resolve, 400));
+await new Promise((resolve) => setTimeout(resolve, 1000));
 if (armRows().length !== 1) throw new Error(`disposed instance started arm work after re-setup: ${armRows().join(" | ")}`);
 
 await live.event(event);

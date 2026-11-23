@@ -39,7 +39,7 @@ The live Herdr guard is `FM_HERDR_SUBMIT_CONFIRM_LIVE=1 ../../../tests/fm-herdr-
 
 The five tracked plugins export OpenCode 2 default definitions with `id` and `setup` from `.opencode/plugins/`.
 They use the V2 runtime context directly and have no package dependency; the verified CLI pin is 2.3.2.
-The session-start plugin subscribes only to `session.created`, then queues one nudge per session id when `../../../bin/fm-sessionstart-nudge.sh` prints one; a `--continue` resume or a session reopened in the TUI gets no new digest.
+The session-start plugin subscribes only to `session.created`, before any other setup work, then queues one nudge per session id when `../../../bin/fm-sessionstart-nudge.sh` prints one; a `--continue` resume or a session reopened in the TUI gets no new digest.
 The watcher and turn-end plugins subscribe to terminal `session.execution.*` events.
 The turn-end callback is passive and queues one follow-up with `ctx.session.prompt({ delivery: "queue" })` when `../../../bin/fm-turnend-guard.sh` returns 2.
 In a home with `config/supervision-host` the watch-arm plugin spawns the supervision host instead of `../../../bin/fm-watch-arm.sh`, with Claude's print mode as its headless engine; [`supervision-host.md`](../../../../../docs/supervision-host.md) owns the host.

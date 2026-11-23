@@ -1,5 +1,5 @@
 // Drive a V2 plugin's subscribed events with the existing Node fixture calls.
-export async function setupOpenCodePlugin(definition, { client, directory }) {
+export async function setupOpenCodePlugin(definition, { client, directory, duringSetup }) {
   const listeners = [];
   const ctx = {
     location: { directory },
@@ -36,22 +36,22 @@ export async function setupOpenCodePlugin(definition, { client, directory }) {
       },
     },
   };
-  const cleanup = await definition.setup(ctx);
-  return {
-    event: async ({ event }) => {
-      const type = event.type === "session.idle" ? "session.execution.succeeded" : event.type;
-      const delivered = listeners.filter(({ types }) => types.includes(type)).map((listener) => new Promise((resolve) => {
-        const item = { event: { type, data: event.properties ?? event.data }, done: resolve };
-        if (listener.wake) {
-          const wake = listener.wake;
-          listener.wake = null;
-          wake(item);
-        } else {
-          listener.queue.push(item);
-        }
-      }));
-      await Promise.all(delivered);
-    },
-    cleanup,
+  const event = async ({ event }) => {
+    const type = event.type === "session.idle" ? "session.execution.succeeded" : event.type;
+    const delivered = listeners.filter(({ types }) => types.includes(type)).map((listener) => new Promise((resolve) => {
+      const item = { event: { type, data: event.properties ?? event.data }, done: resolve };
+      if (listener.wake) {
+        const wake = listener.wake;
+        listener.wake = null;
+        wake(item);
+      } else {
+        listener.queue.push(item);
+      }
+    }));
+    await Promise.all(delivered);
   };
+  const setup = definition.setup(ctx);
+  if (duringSetup) await duringSetup({ event });
+  const cleanup = await setup;
+  return { event, cleanup };
 }

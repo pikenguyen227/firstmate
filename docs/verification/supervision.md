@@ -18,7 +18,7 @@ The OpenCode worker busy-state plugin written by `bin/fm-spawn.sh` was not porte
 | Boundary | Observed result |
 | --- | --- |
 | Plugin load | All five OpenCode 2 definitions loaded without V1 loader warnings. |
-| Session start | The persistent TUI queued one nudge and the model's shell call ran the disposable digest once; the count remained one after `--continue` resumed the same session. |
+| Session start | The persistent TUI queued one nudge and the model's shell call ran the disposable digest once; the count remained one after `--continue` resumed the same session. That pass also subscribed the session-start plugin to `session.inbox.enqueued`, which was later removed, so it does not show which event delivered the digest. A live persistent-TUI re-run with only `session.created`, now subscribed before any setup work, is pending. |
 | Watcher and wake | A real `fm-watch.sh` process armed after the terminal execution event. A status event closed it as `reason=actionable-signal`, and the plugin verified `successor=started` before delivering a `signal:` prompt to the same TUI session. |
 | Turn end | With the watcher plugin deliberately absent in a separate disposable primary, the guard queued exactly one `TURN WOULD END BLIND` follow-up, then its latch stopped a second follow-up. |
 | Pretool deny | `ctx.tool.hook("execute.before")` rejected a backgrounded `fm-watch-arm.sh` shell command; OpenCode stored the tool as `executed:false` and the command's sentinel was absent. |

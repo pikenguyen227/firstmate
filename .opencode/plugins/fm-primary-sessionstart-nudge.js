@@ -36,13 +36,14 @@ async function resolveRoot(anchor) {
 export default {
   id: "fm.primary.sessionstart-nudge",
   async setup(ctx) {
-    const root = await resolveRoot(ctx.location.directory);
     const controller = new AbortController();
+    const rootReady = resolveRoot(ctx.location.directory);
     void (async () => {
       for await (const event of ctx.event.subscribe({
         types: ["session.created"],
         signal: controller.signal,
       })) {
+        const root = await rootReady;
         const sessionID = event.data?.info?.id ?? event.data?.sessionID;
         if (!sessionID || handledSessions.has(sessionID) || !root) continue;
         handledSessions.add(sessionID);

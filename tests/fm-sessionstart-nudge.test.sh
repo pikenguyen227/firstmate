@@ -204,6 +204,43 @@ EOF
   pass "OpenCode session.created delivers the exact wrapper nudge once per session"
 }
 
+test_opencode_plugin_nudges_session_created_during_setup() {
+  local root="$TMP_ROOT/opencode-early-primary" out status=0
+  make_primary "$root"
+  cp "$ROOT/bin/fm-sessionstart-nudge.sh" "$ROOT/bin/fm-primary-scope-lib.sh" \
+    "$ROOT/bin/fm-gate-refuse-lib.sh" "$ROOT/bin/fm-operational-input.sh" "$root/bin/"
+  chmod +x "$root/bin/fm-sessionstart-nudge.sh"
+  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" HELPER="$ROOT/tests/lib-opencode2.mjs" \
+    WORKTREE="$root" EXPECTED="$NUDGE_LINE" node --input-type=module 2>&1 <<'EOF'
+import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
+
+const prompts = [];
+const client = {
+  session: {
+    promptAsync: async (request) => {
+      prompts.push(request.body.parts[0].text);
+    },
+  },
+};
+const mod = await import(pathToFileURL(process.env.PLUGIN).href);
+await setupOpenCodePlugin(mod.default, {
+  client,
+  directory: process.env.WORKTREE,
+  duringSetup: ({ event }) => event({
+    event: { type: "session.created", properties: { info: { id: "session-early" } } },
+  }),
+});
+for (let i = 0; i < 100 && prompts.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+if (prompts.length !== 1) throw new Error(`session created during plugin setup got ${prompts.length} digests`);
+if (prompts[0] !== process.env.EXPECTED) throw new Error(`unexpected prompt: ${prompts[0]}`);
+EOF
+  ) || status=$?
+  expect_code 0 "$status" "OpenCode session created during setup"
+  [ -z "$out" ] || fail "OpenCode session created during setup printed output: $out"
+  pass "OpenCode subscribes before setup work, so a session created during setup gets its digest"
+}
+
 test_opencode_plugin_skips_resumed_session_input() {
   local root="$TMP_ROOT/opencode-resume-primary" out status=0
   make_primary "$root"
@@ -1094,6 +1131,7 @@ test_owned_lock_is_silent
 test_namespace_pid1_lock_holder_is_silent
 test_opencode_plugin_delivers_exact_nudge_once
 test_opencode_plugin_skips_resumed_session_input
+test_opencode_plugin_nudges_session_created_during_setup
 test_run_startup_runs_the_full_digest
 test_run_clear_and_compact_reemit
 test_run_rebuild_forwards_source_to_drifted_instruction_refresh
