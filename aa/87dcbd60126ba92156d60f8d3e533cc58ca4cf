@@ -1,0 +1,19 @@
+.agents/skills/harness-adapters/references/harness/opencode.md
+  s_88f9f262a74dc5::t_a3373ba2308b2c 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa87dcbd60126ba92156d60f8d3e533cc58ca4cf",
+  "prompts": {},
+  "sessions": {
+    "s_88f9f262a74dc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d90f0ff1-76f2-4964-9baf-08172edd240c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
