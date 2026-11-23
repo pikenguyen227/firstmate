@@ -13,17 +13,17 @@ The CLI was installed in a disposable location, and every invocation used separa
 A local scripted OpenAI-compatible endpoint supplied deterministic model replies after OpenCode's free model returned a usage-limit error; this verifies the real OpenCode 2 TUI, plugin API, shell hook, and watcher processes without claiming a credentialed model pass.
 The earlier OpenCode 1 results in this record are historical for the retired primary API.
 `tests/fm-opencode-primary-live-e2e.test.sh` is an OpenCode 1 fixture and is not current OpenCode 2 evidence.
-The OpenCode worker busy-state plugin written by `bin/fm-spawn.sh` was not ported or exercised; OpenCode workers still need OpenCode 1.
+The OpenCode worker busy-state plugin written by `bin/fm-spawn.sh` also targets OpenCode 2.3.2; its live worker verification is recorded below.
 
 | Boundary | Observed result |
 | --- | --- |
 | Plugin load | All five OpenCode 2 definitions loaded without V1 loader warnings. |
-| Session start | The persistent TUI queued one nudge and the model's shell call ran the disposable digest once; the count remained one after `--continue` resumed the same session. That pass also subscribed `session.inbox.enqueued`. A later persistent-TUI run with only `session.created`, subscribed before any setup work, also queued exactly one digest on the first message. |
+| Session start | Three fresh persistent TUI launches each queued one nudge and ran the disposable digest exactly once; a later `--continue` launch ran it once more to reclaim the dead prior lock, with no duplicate in either process. The resumed pass subscribed `session.inbox.enqueued`; a separate `session.created`-only pass also queued one digest on the first message. |
 | Watcher and wake | A real `fm-watch.sh` process armed after the terminal execution event. A status event closed it as `reason=actionable-signal`, and the plugin verified `successor=started` before delivering a `signal:` prompt to the same TUI session. |
 | Turn end | With the watcher plugin deliberately absent in a separate disposable primary, the guard queued exactly one `TURN WOULD END BLIND` follow-up, then its latch stopped a second follow-up. |
 | Pretool deny | `ctx.tool.hook("execute.before")` rejected a backgrounded `fm-watch-arm.sh` shell command; OpenCode stored the tool as `executed:false` and the command's sentinel was absent. |
 | Worker scope | A real linked worker worktree with in-flight metadata and a TUI turn created no watch lock. |
-| Restart and trust | `/exit` followed by `--continue` kept the session id and resumed watcher arming with `session.inbox.enqueued` subscribed. With only `session.created` subscribed, the same resume queued no digest, left the dead pre-restart pid in `state/.lock`, and never re-armed, so the enqueued-input trigger was restored as the resume path; a live re-run after that restoration is pending. `--continue` launches without `--auto` opened the TUI without a project trust dialog. |
+| Restart and trust | `/exit` followed by `--continue` kept the session id, ran one digest in the new process, and reclaimed the dead pre-restart lock pid with `session.inbox.enqueued` subscribed. With only `session.created` subscribed, an earlier resume queued no digest and left the dead pid in `state/.lock`, which is why the enqueued-input trigger is retained. `--continue` launched without a project trust dialog. |
 | Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. That pass included the `session.inbox.enqueued` trigger, which ships; a run with only `session.created` queued no digest. |
 
 The same four isolated Firstmate behavior scripts were run before and after this port.
@@ -35,6 +35,23 @@ The full Pi and OpenCode watcher script stopped in early Pi cases before it reac
 The opt-in Claude Stop auto-arm smoke produced four arm cycles both before and after, against its existing expectation of two.
 The direct Codex CLI 0.167.0 continuity smoke passed both before and after with the one-second foreground checkpoint.
 The native session-start hook live suite could not run on this host because `tmux` was absent; it is not claimed as part of this comparison.
+
+## OpenCode 2 worker busy state
+
+On 2026-11-23, `bin/fm-spawn.sh` wrote its worker plugin into a linked worktree inside a disposable project with separate `HOME`, `FM_HOME`, and XDG directories.
+Pinned `@opencode/cli` 2.3.2 loaded that generated plugin in a real persistent TUI without a trust dialog.
+A local scripted OpenAI-compatible model delayed its reply long enough to observe the state during execution; this verifies the OpenCode 2 plugin lifecycle without claiming a credentialed model pass.
+The spawn seed was `seq=1 state=busy source=fm-spawn event=launch-brief`.
+During the real turn it became `seq=2 state=busy source=opencode-plugin event=session-execution-started`, with no `.turn-ended` marker yet.
+After the reply it became `seq=3 state=idle source=opencode-plugin event=session.execution.succeeded`, and `state/<id>.turn-ended` existed.
+The TUI exited through `/exit`, and the local model server was stopped.
+`tests/fm-busy-adapter-wiring.test.sh` drives the generated OpenCode 2 subscription through the real busy-state writer and classifier; it covers the main-session latch, a child terminal event, failed and interrupted terminal events, and the marker notification.
+Refresh the vendor event mapping with `FM_OPENCODE_WORKER_LIVE_E2E=1 tests/fm-opencode-worker-live-e2e.test.sh` on a PATH containing pinned OpenCode 2.3.2; the opt-in guard creates a separate local model and asserts busy, idle, and `.turn-ended` in a real TUI.
+In six isolated before-and-after scripts, `fm-busy-adapter-wiring` and `fm-busy-state` passed on both heads.
+`fm-watch-triage` failed both times at the same unchanged watcher TERM cleanup assertion, and `fm-wake-queue` failed both times at the same queue-lock concurrency assertion.
+`fm-remote-secondmate-lifecycle-e2e` failed only before the edit during disposable fixture cleanup and passed after it.
+`fm-captain-hold-lifecycle` passed before the edit, failed once after it when a disposable Lavish listener did not start, and passed on an isolated rerun.
+The opt-in OpenCode worker live guard, `fm-live-gate.test.sh`, `fm-test-run.test.sh`, and `bin/fm-lint.sh` passed after the edit.
 
 ## Native session-start delivery
 
@@ -249,7 +266,7 @@ Each pass polled `state/<id>.busy-state` while a real turn ran.
 | --- | --- | --- | --- |
 | Pi | 0.82.0 | Extension `agent_start` / `agent_settled` with `ctx.isIdle()` | The spawn seed `busy source=fm-spawn`, then `busy source=pi-ext event=agent-start`, then `idle source=pi-ext event=agent-settled`; the turn-end marker was still touched. |
 | omp | 18.1.11 | Extension `agent_start` / `agent_end` without `willContinue` | Live Herdr scout on `openai-codex/gpt-6-astra` (2026-09-05): the spawn seed `busy source=fm-spawn`, then `busy source=omp-ext event=agent-start`, then `idle source=omp-ext event=agent-end` at the natural end of the brief; a steer through `fm-send` reopened `busy … agent-start`, and a control-plane interrupt closed it with `idle … agent-end` (omp fires `agent_end` on an interrupted turn). `ctx.isIdle()` is deliberately not consulted because it reads false at a natural TUI `agent_end`. |
-| OpenCode | 1.17.18 | Plugin `session.status` | In a real TUI pane: seed, then `busy source=opencode-plugin event=session-busy`, then `idle source=opencode-plugin event=session-status-idle`. |
+| OpenCode | 1.17.18, historical | Plugin `session.status` | In a real TUI pane: seed, then `busy source=opencode-plugin event=session-busy`, then `idle source=opencode-plugin event=session-status-idle`. The current OpenCode 2 worker result is recorded above. |
 | Claude | 2.1.220 (Claude Code) | Hooks `UserPromptSubmit`, `Stop`, `StopFailure`, `SessionEnd` | `UserPromptSubmit` fired for the argv launch prompt and each steer, and `Stop` closed every completed turn. A mid-stream Escape interrupt fired no closing hook, which is why the firstmate-controlled clear exists. `StopFailure` and `SessionEnd` are wired from the four hook names present in the installed binary; only the abnormal paths they cover were not reproduced live. |
 | Codex | codex-cli 0.145.0 | None usable | See below; classifies `unknown codex-unverified`. |
 | Kimi (standalone) | not installed | None usable | No binary on `PATH`, so the gate stays closed and it classifies `unknown kimi-unverified`. |

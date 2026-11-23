@@ -2,7 +2,8 @@
 
 The tracked primary plugins target pinned OpenCode 2.3.2.
 OpenCode 1 primary plugin support is retired because the two plugin APIs require different entry points and lifecycle hooks.
-OpenCode workers are not ported: `../../../bin/fm-spawn.sh` still writes the OpenCode 1 busy-state plugin into each worker worktree, so an OpenCode worker needs OpenCode 1, and dispatching an OpenCode worker on OpenCode 2 is not supported yet.
+`../../../bin/fm-spawn.sh` writes an OpenCode 2 busy-state plugin into each OpenCode worker worktree.
+The generated OpenCode 1 worker plugin is retired with this port.
 Claude Code and Codex workers are unaffected.
 Earlier OpenCode 1 observations below are historical until reverified on OpenCode 2.
 
@@ -10,7 +11,7 @@ Earlier OpenCode 1 observations below are historical until reverified on OpenCod
 
 | Fact | Value |
 |---|---|
-| Busy state | The Firstmate-owned OpenCode 1 worker plugin's semantic `session.status`: `busy` and `retry` are active, `idle` is inactive, latched to the worker's own session. |
+| Busy state | The Firstmate-owned OpenCode 2 worker plugin subscribes to `session.execution.started` for busy and terminal `session.execution.*` events for idle, latched to the worker's own session, and every terminal event touches `.turn-ended` as a notification. |
 | Exit command | `/exit`. |
 | Interrupt | Double Escape; it is known to be flaky while a long shell command runs, so use `../../../bin/fm-control.sh <task-id> relaunch` for a wedged pane. |
 | Skill invocation | No separate verified form beyond normal slash-command behavior; use natural language when the exact command is uncertain. |
