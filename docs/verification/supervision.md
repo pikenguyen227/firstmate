@@ -45,8 +45,14 @@ The spawn seed was `seq=1 state=busy source=fm-spawn event=launch-brief`.
 During the real turn it became `seq=2 state=busy source=opencode-plugin event=session-execution-started`, with no `.turn-ended` marker yet.
 After the reply it became `seq=3 state=idle source=opencode-plugin event=session.execution.succeeded`, and `state/<id>.turn-ended` existed.
 The TUI exited through `/exit`, and the local model server was stopped.
+That 2026-11-23 pass launched OpenCode by hand rather than through fm-spawn's launch command.
+
+On 2026-11-24 the same pinned CLI ran the exact launch command `bin/fm-spawn.sh` staged for the task, with `--model openai/local-test --effort high` and a disposable user-level provider entry that pointed `openai` at the local scripted model but selected no model.
+The OpenCode 1 launch shape failed on 2.3.2: the TUI rejected `--model` as an unrecognized flag, and without `--standalone` it exited with code 1 because the TUI attaches to the user's shared background service, which another home already held on the managed port.
+The ported launch, `OPENCODE_CONFIG_CONTENT='{"permission":{"*":"allow"},"model":…,"agent":{"build":{"model":…,"variant":"high"}}}' opencode --standalone --prompt …`, sent its first model request to `local-test` with `reasoning_effort` `high`, so the private server applied the environment config's model and effort variant.
+The scripted model answered with a `shell` tool call; it ran without a permission prompt, its result reached the model, and the plugin recorded busy, then idle with `.turn-ended`.
 `tests/fm-busy-adapter-wiring.test.sh` drives the generated OpenCode 2 subscription through the real busy-state writer and classifier; it covers the main-session latch, a child terminal event, failed and interrupted terminal events, and the marker notification.
-Refresh the vendor event mapping with `FM_OPENCODE_WORKER_LIVE_E2E=1 tests/fm-opencode-worker-live-e2e.test.sh` on a PATH containing pinned OpenCode 2.3.2; the opt-in guard creates a separate local model and asserts busy, idle, and `.turn-ended` in a real TUI.
+Refresh the vendor event mapping with `FM_OPENCODE_WORKER_LIVE_E2E=1 tests/fm-opencode-worker-live-e2e.test.sh` on a PATH containing pinned OpenCode 2.3.2; the opt-in guard runs fm-spawn's staged launch command against a separate local model and asserts the configured model and effort, an unprompted shell tool call, busy, idle, and `.turn-ended` in a real TUI.
 In six isolated before-and-after scripts, `fm-busy-adapter-wiring` and `fm-busy-state` passed on both heads.
 `fm-watch-triage` failed both times at the same unchanged watcher TERM cleanup assertion, and `fm-wake-queue` failed both times at the same queue-lock concurrency assertion.
 `fm-remote-secondmate-lifecycle-e2e` failed only before the edit during disposable fixture cleanup and passed after it.
