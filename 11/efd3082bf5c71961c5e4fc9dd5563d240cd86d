@@ -1,0 +1,32 @@
+docs/verification/supervision.md
+  s_8009e605afcc97::t_e69ff8d791bfb1 21
+tests/fm-sessionstart-nudge.test.sh
+  s_8009e605afcc97::t_8dbdf58f10970d 207-243,1134
+.agents/skills/harness-adapters/references/harness/opencode.md
+  s_8009e605afcc97::t_e69ff8d791bfb1 42
+.opencode/plugins/fm-primary-sessionstart-nudge.js
+  s_8009e605afcc97::t_0df79da99e03df 40,46
+tests/fm-pi-watch-extension.test.sh
+  s_8009e605afcc97::t_8dbdf58f10970d 3684,3724
+tests/lib-opencode2.mjs
+  s_8009e605afcc97::t_0df79da99e03df 2,39
+  s_8009e605afcc97::t_756702d9ccb8d0 40-51,53-56
+docs/sessionstart-nudge.md
+  s_8009e605afcc97::t_e69ff8d791bfb1 306,310-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11efd3082bf5c71961c5e4fc9dd5563d240cd86d",
+  "prompts": {},
+  "sessions": {
+    "s_8009e605afcc97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f28b0b9-ecdc-45ee-aeac-c27f898ea4d1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
