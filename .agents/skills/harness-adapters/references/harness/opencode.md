@@ -1,6 +1,8 @@
 # OpenCode
 
-Verified on 2026-06-11 across versions 1.15.7 through 1.17.6, with busy-queue behavior re-verified on 2026-07-20 using 1.18.4.
+The tracked primary plugins target pinned OpenCode 2.3.2.
+OpenCode 1 primary plugin support is retired because the two plugin APIs require different entry points and lifecycle hooks.
+Earlier OpenCode 1 observations below are historical until reverified on OpenCode 2.
 
 ## Operating facts
 
@@ -33,13 +35,14 @@ The live Herdr guard is `FM_HERDR_SUBMIT_CONFIRM_LIVE=1 ../../../tests/fm-herdr-
 
 ## Primary integration
 
-The primary integration was verified on 2026-07-08 with OpenCode 1.17.6.
-`.opencode/plugins/fm-primary-turnend-guard.js` listens for `session.idle`.
-Throwing from `session.idle` does not block `opencode run`, so the primary adapter treats the event as passive and uses `client.session.promptAsync` to force one follow-up turn when `../../../bin/fm-turnend-guard.sh` returns 2.
-The follow-up was verified in the interactive TUI.
+The five tracked plugins export OpenCode 2 default definitions with `id` and `setup` from `.opencode/plugins/`.
+They use the V2 runtime context directly and have no package dependency; the verified CLI pin is 2.3.2.
+The session-start plugin subscribes to `session.created` and `session.inbox.enqueued`, then queues one nudge per session id when `../../../bin/fm-sessionstart-nudge.sh` prints one.
+The watcher and turn-end plugins subscribe to terminal `session.execution.*` events.
+The turn-end callback is passive and queues one follow-up with `ctx.session.prompt({ delivery: "queue" })` when `../../../bin/fm-turnend-guard.sh` returns 2.
 In a home with `config/supervision-host` the watch-arm plugin spawns the supervision host instead of `../../../bin/fm-watch-arm.sh`, with Claude's print mode as its headless engine; [`supervision-host.md`](../../../../../docs/supervision-host.md) owns the host.
-`opencode run` can exit before displaying a queued follow-up, so the adapter steps aside in headless mode.
+Headless `opencode run` may process an immediate queued follow-up, but cannot receive a later watcher wake after its process exits.
 On native Windows, the operational-input adapter runs its Bash helper through `bash`; macOS and Linux invoke it directly.
 
-The companion `.opencode/plugins/fm-primary-watch-arm.js` owns normal TUI watcher supervision, wakes it with `client.session.promptAsync`, and coordinates with the guard before a blind-turn follow-up.
-The PreToolUse-equivalent watcher-arm seatbelt blocks by throwing from `tool.execute.before`.
+The companion `.opencode/plugins/fm-primary-watch-arm.js` owns normal TUI watcher supervision, wakes it through `ctx.session.prompt`, and coordinates with the guard before a blind-turn follow-up.
+The PreToolUse-equivalent watcher-arm seatbelt blocks by throwing from `ctx.tool.hook("execute.before")` for shell commands.

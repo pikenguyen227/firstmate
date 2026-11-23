@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import { encodeFirstmateOperationalInput } from "./lib/fm-operational-input.js";
+import { encodeFirstmateOperationalInput, queueFirstmateOperationalInput } from "./lib/fm-operational-input.js";
 
 // Supervision host: a home opted in with config/supervision-host
 // (docs/configuration.md "Supervision host" owns the opt-in) spawns
@@ -37,6 +37,7 @@ let armClose = new WeakMap();
 let armReadiness = new WeakMap();
 let armRecovery = new WeakMap();
 let armHostMode = new WeakMap();
+let unloading = false;
 
 function positiveInteger(name, fallback) {
   const value = Number(process.env[name]);
@@ -225,14 +226,9 @@ function observeArmOutput(hostMode, stdout, stderr, settleReadiness) {
   }
 }
 
-async function sendPrompt(paths, client, sessionID, text) {
+async function sendPrompt(paths, ctx, sessionID, text) {
   const encoded = await encodeFirstmateOperationalInput(paths.root, "watcher", text);
-  await client.session.promptAsync({
-    path: { id: sessionID },
-    body: {
-      parts: [{ type: "text", text: encoded }],
-    },
-  });
+  await queueFirstmateOperationalInput(ctx, sessionID, encoded);
 }
 
 function confirmHandlingDelivery(paths, recovery) {
@@ -350,6 +346,7 @@ async function restoreAfterActionableClose(paths, sessionID, client, predecessor
 }
 
 async function scheduleRetry(paths, sessionID, client, reason, predecessorArmPid) {
+  if (unloading) return;
   if (child || retryTimer) return;
   if (!(await sessionOwnsLock(paths))) {
     setArmStatus("failed");
@@ -364,6 +361,7 @@ async function scheduleRetry(paths, sessionID, client, reason, predecessorArmPid
   }
   setArmStatus("retrying");
   const timer = setTimeout(() => {
+    if (unloading) return;
     if (retryTimer === timer) retryTimer = null;
     void ensureArm(paths, sessionID, client, predecessorArmPid).then((status) => {
       if (["armed", "starting", "wake"].includes(status)) return;
@@ -434,6 +432,7 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
     settled = true;
     resolveClosed();
     releaseChild();
+    if (unloading) return;
     const classification = classifyArmClose(paths, hostMode, stdout, stderr, code, signal);
     settleReadiness(classification.kind === "actionable" ? "wake" : "failed");
     const predecessor = String(armChild.pid ?? "");
@@ -472,6 +471,7 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
     settled = true;
     resolveClosed();
     releaseChild();
+    if (unloading) return;
     settleReadiness("failed");
     if (restorationInFlight) {
       setArmStatus("failed");
@@ -489,6 +489,7 @@ function spawnArm(paths, sessionID, client, predecessorArmPid = "") {
 }
 
 async function beginArm(paths, sessionID, client, predecessorArmPid) {
+  if (unloading) return { status: "skipped", armChild: null };
   if (!sessionID) return { status: "skipped", armChild: null };
   if (!(await isPrimaryRoot(paths.root, paths.home))) return { status: "not-primary", armChild: null };
   if (!(await sessionOwnsLock(paths))) return { status: "read-only", armChild: null };
@@ -522,19 +523,33 @@ async function ensureArm(paths, sessionID, client, predecessorArmPid = "", inclu
   return armAttempt(await waitForArmReady(armChild), armChild, includeArmChild);
 }
 
-export const FmPrimaryWatchArm = async ({ client, directory, worktree }) => {
-  const root = worktree ? resolvePath(worktree) : await resolveRoot(directory);
-  const paths = effectivePaths(root);
-  globalThis[COORDINATOR_KEY] = {
-    ensureArmed: (sessionID, activeClient) => ensureArm(paths, sessionID, activeClient ?? client),
-  };
-
-  return {
-    event: async ({ event }) => {
-      if (event.type !== "session.idle") return;
-      const sessionID = event.properties?.sessionID;
-      if (!sessionID) return;
-      void ensureArm(paths, sessionID, client);
-    },
-  };
+export default {
+  id: "fm.primary.watch-arm",
+  async setup(ctx) {
+    unloading = false;
+    const root = await resolveRoot(ctx.location.directory);
+    const paths = effectivePaths(root);
+    const coordinator = {
+      ensureArmed: (sessionID, activeCtx) => ensureArm(paths, sessionID, activeCtx ?? ctx),
+    };
+    globalThis[COORDINATOR_KEY] = coordinator;
+    const controller = new AbortController();
+    void (async () => {
+      for await (const event of ctx.event.subscribe({
+        types: ["session.execution.succeeded", "session.execution.failed", "session.execution.interrupted"],
+        signal: controller.signal,
+      })) {
+        const sessionID = event.data?.sessionID;
+        if (sessionID) void ensureArm(paths, sessionID, ctx);
+      }
+    })().catch(() => {});
+    return () => {
+      unloading = true;
+      controller.abort();
+      if (retryTimer) clearTimeout(retryTimer);
+      retryTimer = null;
+      if (globalThis[COORDINATOR_KEY] === coordinator) delete globalThis[COORDINATOR_KEY];
+      void retireArm(child);
+    };
+  },
 };

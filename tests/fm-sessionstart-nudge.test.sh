@@ -171,9 +171,10 @@ test_opencode_plugin_delivers_exact_nudge_once() {
   cp "$ROOT/bin/fm-sessionstart-nudge.sh" "$ROOT/bin/fm-primary-scope-lib.sh" \
     "$ROOT/bin/fm-gate-refuse-lib.sh" "$ROOT/bin/fm-operational-input.sh" "$root/bin/"
   chmod +x "$root/bin/fm-sessionstart-nudge.sh"
-  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" \
+  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" HELPER="$ROOT/tests/lib-opencode2.mjs" \
     WORKTREE="$root" EXPECTED="$NUDGE_LINE" node --input-type=module 2>&1 <<'EOF'
 import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
 
 const prompts = [];
 const client = {
@@ -184,7 +185,7 @@ const client = {
   },
 };
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
-const hooks = await mod.FmPrimarySessionstartNudge({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
   worktree: process.env.WORKTREE,

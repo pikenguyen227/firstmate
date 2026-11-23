@@ -303,16 +303,16 @@ Whenever the digest is incomplete, this approved containment keeps the prefix an
 OpenCode is a nudge-tier harness.
 The `.opencode/plugins/fm-primary-sessionstart-nudge.js` plugin does three things:
 
-- It listens for `session.created`.
+- It listens for `session.created` and the first `session.inbox.enqueued` event when a headless session was created before plugin subscription.
 - It runs once per session id.
-- It calls `client.session.promptAsync` only when the wrapper prints a nudge.
+- It calls OpenCode 2 `ctx.session.prompt` with `delivery: "queue"` only when the wrapper prints a nudge.
 
 Interactive TUI delivery is supported.
-Headless `opencode run` is intentionally fail-open, because the process can exit before the queued turn.
+Headless `opencode run` can process an immediate queued nudge, but it has no persistent TUI to receive a later watcher wake.
 That early exit is also why OpenCode cannot use the run tier.
 
-The OpenCode nudge runs only on `session.created`.
-The watcher-arm and turn-end plugins run later, on `session.idle`.
+The OpenCode nudge runs once per session id.
+The watcher-arm and turn-end plugins run later, on `session.execution.succeeded`, `session.execution.failed`, or `session.execution.interrupted`.
 The guard lets the watcher coordinator act first, so the plugins do not race for one lifecycle event.
 
 ### Cursor

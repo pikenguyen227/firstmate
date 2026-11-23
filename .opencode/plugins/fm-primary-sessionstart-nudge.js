@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
+import { queueFirstmateOperationalInput } from "./lib/fm-operational-input.js";
 
 const handledSessions = new Set();
 
@@ -32,29 +33,30 @@ async function resolveRoot(anchor) {
   return resolvePath(anchor);
 }
 
-export const FmPrimarySessionstartNudge = async ({ client, directory, worktree }) => {
-  const root = worktree ? resolvePath(worktree) : await resolveRoot(directory);
+export default {
+  id: "fm.primary.sessionstart-nudge",
+  async setup(ctx) {
+    const root = await resolveRoot(ctx.location.directory);
+    const controller = new AbortController();
+    void (async () => {
+      for await (const event of ctx.event.subscribe({
+        types: ["session.created", "session.inbox.enqueued"],
+        signal: controller.signal,
+      })) {
+        const sessionID = event.data?.info?.id ?? event.data?.sessionID;
+        if (!sessionID || handledSessions.has(sessionID) || !root) continue;
+        handledSessions.add(sessionID);
 
-  return {
-    event: async ({ event }) => {
-      if (event.type !== "session.created") return;
-      const sessionID = event.properties?.info?.id ?? event.properties?.sessionID;
-      if (!sessionID || handledSessions.has(sessionID) || !root) return;
-      handledSessions.add(sessionID);
-
-      const result = await runProcess(`${root}/bin/fm-sessionstart-nudge.sh`, []);
-      const nudge = result.code === 0 ? result.stdout.trim() : "";
-      if (!nudge) return;
-
-      try {
-        await client.session.promptAsync({
-          path: { id: sessionID },
-          body: {
-            parts: [{ type: "text", text: nudge }],
-          },
-        });
-      } catch {
+        const result = await runProcess(`${root}/bin/fm-sessionstart-nudge.sh`, []);
+        const nudge = result.code === 0 ? result.stdout.trim() : "";
+        if (!nudge) continue;
+        try {
+          await queueFirstmateOperationalInput(ctx, sessionID, nudge);
+        } catch {
+          // The session may have closed before delivery.
+        }
       }
-    },
-  };
+    })().catch(() => {});
+    return () => controller.abort();
+  },
 };

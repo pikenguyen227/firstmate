@@ -821,6 +821,7 @@ test_opencode_plugin_anchors_guard_to_worktree() {
   worktree_dir="$parent/nested/opencode-plugin-worktree"
   wrong_dir="$TMP_ROOT/opencode-plugin-cwd/subdir"
   mkdir -p "$worktree_dir/bin" "$wrong_dir"
+  git init -q "$worktree_dir"
   cat > "$worktree_dir/bin/fm-turnend-guard.sh" <<'EOF'
 #!/usr/bin/env bash
 cat >/dev/null
@@ -829,8 +830,9 @@ exit 2
 EOF
   chmod +x "$worktree_dir/bin/fm-turnend-guard.sh"
   # Runtime module-format warnings are host noise; this assertion owns plugin output only.
-  out=$(NODE_NO_WARNINGS=1 PLUGIN="$plugin" DIRECTORY="$wrong_dir" WORKTREE="$worktree_dir" node 2>&1 <<'EOF'
+  out=$(NODE_NO_WARNINGS=1 PLUGIN="$plugin" HELPER="$ROOT/tests/lib-opencode2.mjs" DIRECTORY="$wrong_dir" WORKTREE="$worktree_dir" node 2>&1 <<'EOF'
 import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let promptBody = "";
@@ -841,7 +843,7 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryTurnendGuard({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.DIRECTORY,
   worktree: process.env.WORKTREE,
@@ -866,9 +868,9 @@ if (promptBody.includes("Resume supervision according to the session-start opera
 EOF
 )
   status=$?
-  expect_code 0 "$status" "OpenCode plugin must run the guard from worktree even when directory is elsewhere"
+  expect_code 0 "$status" "OpenCode plugin must run the guard from its V2 location"
   [ -z "$out" ] || fail "OpenCode plugin worktree-root test printed output: $out"
-  pass ".opencode primary plugin: guard path is anchored to worktree, not directory"
+  pass ".opencode primary plugin: guard path is anchored to the V2 location root"
 }
 
 test_pi_extension_injects_once_per_logical_agent_run() {

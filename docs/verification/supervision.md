@@ -6,6 +6,35 @@ This record supports current session-start, turn-end, watcher-continuity, superv
 Operator behavior and active limits remain in the linked current guides.
 Task-specific chronology, temporary paths, run identifiers, and delivery transcripts remain in private reports or PR evidence.
 
+## OpenCode 2 primary plugin port
+
+On 2026-11-23 the five tracked primary plugins were exercised with pinned `@opencode/cli` 2.3.2.
+The CLI was installed in a disposable location, and every invocation used separate disposable `HOME`, `FM_HOME`, and XDG directories.
+A local scripted OpenAI-compatible endpoint supplied deterministic model replies after OpenCode's free model returned a usage-limit error; this verifies the real OpenCode 2 TUI, plugin API, shell hook, and watcher processes without claiming a credentialed model pass.
+The earlier OpenCode 1 results in this record are historical for the retired primary API.
+`tests/fm-opencode-primary-live-e2e.test.sh` is an OpenCode 1 fixture and is not current OpenCode 2 evidence.
+
+| Boundary | Observed result |
+| --- | --- |
+| Plugin load | All five OpenCode 2 definitions loaded without V1 loader warnings. |
+| Session start | The persistent TUI queued one nudge and the model's shell call ran the disposable digest once; the count remained one after `--continue` resumed the same session. |
+| Watcher and wake | A real `fm-watch.sh` process armed after the terminal execution event. A status event closed it as `reason=actionable-signal`, and the plugin verified `successor=started` before delivering a `signal:` prompt to the same TUI session. |
+| Turn end | With the watcher plugin deliberately absent in a separate disposable primary, the guard queued exactly one `TURN WOULD END BLIND` follow-up, then its latch stopped a second follow-up. |
+| Pretool deny | `ctx.tool.hook("execute.before")` rejected a backgrounded `fm-watch-arm.sh` shell command; OpenCode stored the tool as `executed:false` and the command's sentinel was absent. |
+| Worker scope | A real linked worker worktree with in-flight metadata and a TUI turn created no watch lock. |
+| Restart and trust | `/exit` followed by `--continue` kept the session id and resumed watcher arming. A separate `--continue` launch without `--auto` also opened the TUI without a project trust dialog. |
+| Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. |
+
+The same four isolated Firstmate behavior scripts were run before and after this port.
+Before the edit, `fm-captain-hold-lifecycle`, `fm-watch-triage`, and `fm-remote-secondmate-lifecycle-e2e` failed, while `fm-wake-queue` passed.
+After the edit, `fm-watch-triage` and `fm-remote-secondmate-lifecycle-e2e` failed at different timing assertions, while `fm-captain-hold-lifecycle` and `fm-wake-queue` passed.
+The after run introduced no new failing script; the pre-edit captain-hold failure was a disposable Lavish listener startup error, and the same script passed on two after runs. The other changed failure points are in unchanged shared shell paths and indicate timing-sensitive baseline behavior.
+The updated OpenCode 2 Node fixtures passed the session-start and turn-end scripts and all 16 focused OpenCode cases in `fm-pi-watch-extension.test.sh`.
+The full Pi and OpenCode watcher script stopped in early Pi cases before it reached OpenCode, with different failing assertions on two runs; the committed pre-port version also stopped in an early Pi case on this host.
+The opt-in Claude Stop auto-arm smoke produced four arm cycles both before and after, against its existing expectation of two.
+The direct Codex CLI 0.167.0 continuity smoke passed both before and after with the one-second foreground checkpoint.
+The native session-start hook live suite could not run on this host because `tmux` was absent; it is not claimed as part of this comparison.
+
 ## Native session-start delivery
 
 The cross-harness transport pass ran on 2026-07-17 with Codex 0.144.4, OpenCode 1.17.18, Pi 0.80.10, and the tracked Claude hook wiring.
