@@ -992,7 +992,7 @@ test_stop_ends_the_home_watcher_and_publishes_downtime() {
 # original primary is gone. The queued check is already durable, but an arm
 # that merely attaches to the inherited live watcher cannot deliver it.
 test_claude_inherited_watcher_restarts_and_delivers_queued_wake() {
-  local dir home state fakebin other other_watcher old_owner new_owner old_identity new_identity old_watcher arm_pid
+  local dir home state fakebin other other_watcher old_owner new_owner old_identity new_identity old_watcher old_lock_owner arm_pid
   dir=$(make_case claude-inherited-watcher)
   home="$dir/home"
   state="$dir/state"
@@ -1006,6 +1006,8 @@ test_claude_inherited_watcher_restarts_and_delivers_queued_wake() {
     FM_WATCH_CLAUDE_OWNER_IDENTITY="$old_identity" \
     start_seed_watcher "$state" "$fakebin" "$dir/watch.out"
   old_watcher=$SEED_PID
+  old_lock_owner=$(readlink "$state/.watch.lock") || fail "the inherited watcher holds no lock"
+  [ -f "$old_lock_owner/claude-owner" ] || fail "the inherited watcher did not record its Claude owner"
   other=$(make_case claude-inherited-other-home)
   mkdir -p "$other/home/data"
   HOME="$other/home" FM_HOME="$other/home" \
@@ -1032,6 +1034,7 @@ test_claude_inherited_watcher_restarts_and_delivers_queued_wake() {
   grep -F 'inherited primary queued check' "$state/.wake-queue" >/dev/null \
     || fail "replacement lost the queued check"
   ! kill -0 "$old_watcher" 2>/dev/null || fail "the inherited watcher still runs"
+  [ ! -e "$old_lock_owner" ] || fail "the inherited watcher's lock owner dir leaked: $(ls -A "$old_lock_owner")"
   kill -0 "$other_watcher" 2>/dev/null || fail "takeover stopped another home's watcher"
   kill "$new_owner" 2>/dev/null || true
   wait "$new_owner" 2>/dev/null || true
