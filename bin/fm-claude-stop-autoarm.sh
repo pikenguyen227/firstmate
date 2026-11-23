@@ -266,6 +266,27 @@ elif fm_session_lock_needs_reanchor "$STATE"; then
   fm_session_lock_owned_by_self "$STATE" || exit 0
 fi
 
+# Carry this verified lock owner's process identity into each watcher cycle.
+# A later Claude session can replace its watcher only after that exact process
+# has ended, even if the watcher itself survived the prior session.
+unset FM_WATCH_CLAUDE_OWNER_PID FM_WATCH_CLAUDE_OWNER_IDENTITY
+CLAUDE_OWNER_PID=$(sed -n '1p' "$STATE/.lock" 2>/dev/null || true)
+case "$CLAUDE_OWNER_PID" in
+  ''|*[!0-9]*) ;;
+  *)
+    if CLAUDE_OWNER_IDENTITY=$(fm_pid_identity "$CLAUDE_OWNER_PID" 2>/dev/null); then
+      case "$CLAUDE_OWNER_IDENTITY" in
+        ''|*$'\n'*|*$'\r'*) ;;
+        *)
+          FM_WATCH_CLAUDE_OWNER_PID=$CLAUDE_OWNER_PID
+          FM_WATCH_CLAUDE_OWNER_IDENTITY=$CLAUDE_OWNER_IDENTITY
+          export FM_WATCH_CLAUDE_OWNER_PID FM_WATCH_CLAUDE_OWNER_IDENTITY
+          ;;
+      esac
+    fi
+    ;;
+esac
+
 # --- single-flight generation claim --------------------------------------------
 # Claude runs one background process per firing with no dedupe. Exactly one
 # generation owner arms and translates per event epoch: every firing defers to

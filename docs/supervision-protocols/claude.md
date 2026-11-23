@@ -23,7 +23,7 @@ When this session owns supervision and away mode is not active:
 9. Waiting on the hook-owned cycle is silent: do not send idle progress while the watcher is parked.
 
 The watcher itself remains `bin/fm-watch.sh`, and `bin/fm-watch-arm.sh` remains the verified arm wrapper that the Stop hook foregrounds unless this home opts into the [supervision host](../supervision-host.md).
-Re-arm attaches to an existing healthy cycle when one is already present and follows its verified successor chain.
+Re-arm attaches to an existing healthy cycle when its recorded Claude primary is still live, and replaces a cycle left by an ended primary as described in [`watcher-continuity.md`](../watcher-continuity.md#inherited-claude-watcher).
 See [`watcher-continuity.md`](../watcher-continuity.md) for the arm-layer successor and clean-close failure contract and the Claude ownership model.
 
 While away or quiet mode is active, the same Stop hook arms nothing and delivers the away/quiet daemon's digests instead, as `Stop hook feedback` beginning `Supervisor escalate`; the [afk skill](../../.agents/skills/afk/SKILL.md) owns how to handle them.

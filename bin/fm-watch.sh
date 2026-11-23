@@ -2816,6 +2816,15 @@ printf '%s\n' "$WATCH_PATH" > "$WATCH_LOCK/watcher-path" || true
 FM_WATCH_DELIVERY_PID=$WATCHER_PID
 FM_WATCH_DELIVERY_IDENTITY=$(fm_pid_identity "$WATCHER_PID" 2>/dev/null || true)
 printf '%s\n' "$FM_WATCH_DELIVERY_IDENTITY" > "$WATCH_LOCK/pid-identity" 2>/dev/null || true
+case "${FM_WATCH_CLAUDE_OWNER_PID:-}" in
+  ''|*[!0-9]*) ;;
+  *)
+    if [ -n "${FM_WATCH_CLAUDE_OWNER_IDENTITY:-}" ]; then
+      printf '%s\n%s\n' "$FM_WATCH_CLAUDE_OWNER_PID" "$FM_WATCH_CLAUDE_OWNER_IDENTITY" \
+        > "$WATCH_LOCK/claude-owner" 2>/dev/null || true
+    fi
+    ;;
+esac
 
 [ -e "$STATE/.last-heartbeat" ] || touch "$STATE/.last-heartbeat"
 

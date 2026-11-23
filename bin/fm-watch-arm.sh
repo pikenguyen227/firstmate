@@ -41,8 +41,9 @@
 # watcher's identity-bound delivery record: a matching record reports that wake
 # and exits 0, and only a cycle that delivered nothing is the typed nonzero
 # failure. Neither is ever a clean empty completion. On FAILED it exits non-zero
-# so the failure is loud. A live cycle already present means re-arm attaches - do
-# not start a second watcher.
+# so the failure is loud. A live cycle already present means re-arm attaches,
+# except when a verified Claude primary has ended and left its watcher behind;
+# then the current lock-owning primary retires that home-bound cycle first.
 #
 # Every observed watcher cycle appends one tab-separated lifecycle record to
 # state/.watch-cycle-exits.log. The arm layer owns that bounded ledger; it records
@@ -522,11 +523,14 @@ fi
 # reclaims a now-dead-pid stale lock instead of seeing the dying one as a live
 # holder and no-opping. Sets STOPPED_PID to the pid it stopped.
 STOPPED_PID=
-stop_home_watcher() {
-  local lock_pid i
+stop_home_watcher() {  # [expected-watcher-pid] [expected-watcher-identity]
+  local lock_pid i expected_pid=${1:-} expected_identity=${2:-}
   lock_pid=$(cat "$WATCH_LOCK/pid" 2>/dev/null || true)
   fm_pid_alive "$lock_pid" || return 0
+  [ -z "$expected_pid" ] || [ "$lock_pid" = "$expected_pid" ] || return 0
   if fm_watcher_lock_matches_pid "$STATE" "$WATCH" "$lock_pid" "$FM_HOME"; then
+    [ -z "$expected_identity" ] \
+      || [ "$FM_WATCHER_MATCHED_IDENTITY" = "$expected_identity" ] || return 0
     kill -TERM "$lock_pid" 2>/dev/null || true
     i=0
     while [ "$i" -lt 50 ] && fm_pid_alive "$lock_pid"; do
@@ -538,6 +542,30 @@ stop_home_watcher() {
     echo "watcher: FAILED - stale watcher recovery state could not be persisted" >&2
     return 1
   fi
+}
+
+# Only a Claude hook with this home's current session lock may request an
+# inherited-cycle takeover. A live original primary keeps its watcher; an
+# unreadable owner identity is uncertainty and also keeps the healthy cycle.
+claude_owner_ended() {
+  local recorded_pid recorded_identity status
+  case "${FM_WATCH_CLAUDE_OWNER_PID:-}" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [ -n "${FM_WATCH_CLAUDE_OWNER_IDENTITY:-}" ] || return 1
+  [ "$(sed -n '1p' "$STATE/.lock" 2>/dev/null || true)" = "$FM_WATCH_CLAUDE_OWNER_PID" ] || return 1
+  recorded_pid=$(sed -n '1p' "$WATCH_LOCK/claude-owner" 2>/dev/null || true)
+  recorded_identity=$(sed -n '2p' "$WATCH_LOCK/claude-owner" 2>/dev/null || true)
+  case "$recorded_pid" in ''|*[!0-9]*) return 1 ;; esac
+  [ -n "$recorded_identity" ] || return 1
+  if [ "$recorded_pid" = "$FM_WATCH_CLAUDE_OWNER_PID" ] \
+    && [ "$recorded_identity" = "$FM_WATCH_CLAUDE_OWNER_IDENTITY" ]; then
+    return 1
+  fi
+  fm_pid_alive "$recorded_pid" || return 0
+  status=0
+  fm_pid_identity_matches "$recorded_pid" "$recorded_identity" || status=$?
+  [ "$status" -eq 1 ]
 }
 
 if [ "$mode" = restart ]; then
@@ -555,6 +583,19 @@ if [ "$mode" = stop ]; then
     echo "watcher: none running"
   fi
   exit 0
+fi
+
+# A prior Claude primary may have ended while its watcher stayed healthy.
+# Retire only the identity-matched watcher observed with that ended owner, then
+# let the normal start/attach path decide who holds the singleton now.
+if [ "$mode" = arm ] && healthy_watcher && claude_owner_ended; then
+  inherited_pid=$HEALTHY_PID
+  inherited_identity=$HEALTHY_IDENTITY
+  stop_home_watcher "$inherited_pid" "$inherited_identity" || exit 1
+  if [ -n "$STOPPED_PID" ] && fm_pid_alive "$STOPPED_PID"; then
+    echo "watcher: FAILED - inherited pid=$STOPPED_PID did not stop"
+    exit 1
+  fi
 fi
 
 # If a genuinely live+fresh watcher already holds the lock, do not start a second

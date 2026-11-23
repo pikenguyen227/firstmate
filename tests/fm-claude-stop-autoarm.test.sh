@@ -107,6 +107,10 @@ if [ -n "${FM_WATCH_PREDECESSOR_ARM_PID:-}" ]; then
   exit 0
 fi
 echo "$$" >> "$FM_HOME/state/arm-ran"
+if [ "${FM_WATCH_CAPTURE_OWNER:-0}" = 1 ]; then
+  printf '%s\n%s\n' "${FM_WATCH_CLAUDE_OWNER_PID:-}" \
+    "${FM_WATCH_CLAUDE_OWNER_IDENTITY:-}" > "$FM_HOME/state/arm-owner"
+fi
 SH
   case "$kind" in
     actionable)
@@ -526,6 +530,23 @@ test_actionable_close_rewakes_with_reason() {
   [ ! -e "$dir/state/.claude-autoarm.lock" ] || fail "owner lock must be released after the cycle"
   [ -e "$dir/state/arm-ran" ] || fail "hook never foregrounded the arm wrapper"
   pass "auto-arm: actionable close translates to exactly one exit-2 rewake with reason"
+}
+
+test_arm_receives_only_the_verified_claude_primary_identity() {
+  local dir out status
+  dir=$(make_primary_dir "$TMP_ROOT/arm-owner")
+  : > "$dir/state/task.meta"
+  write_arm_fixture "$dir" actionable
+  out=$(FM_WATCH_CAPTURE_OWNER=1 FM_WATCH_CLAUDE_OWNER_PID=9999999 \
+    FM_WATCH_CLAUDE_OWNER_IDENTITY=untrusted run_autoarm "$dir" 2>/dev/null); status=$?
+  expect_code 2 "$status" "verified Claude owner fixture must rewake"
+  [ "$(sed -n '1p' "$dir/state/arm-owner")" = "$(cat "$dir/state/.lock")" ] \
+    || fail "arm received an owner other than the verified session lock holder"
+  [ -n "$(sed -n '2p' "$dir/state/arm-owner")" ] \
+    || fail "arm received no owner process identity"
+  [ "$(sed -n '2p' "$dir/state/arm-owner")" != untrusted ] \
+    || fail "arm inherited an untrusted owner identity"
+  pass "auto-arm: the arm receives the verified primary identity, not ambient owner variables"
 }
 
 # pi-code (Pi's Claude-hook compatibility extension) delivers a Claude-shaped
@@ -1662,6 +1683,7 @@ test_stale_lock_recovery_preserves_afk_and_need_gates
 test_resolves_outermost_claude_pid_in_nested_bgspare_chain
 test_inert_when_fleet_idle
 test_actionable_close_rewakes_with_reason
+test_arm_receives_only_the_verified_claude_primary_identity
 test_actionable_close_with_live_successor_rewakes_once
 test_attached_cycle_end_starts_handling_successor
 test_unconfirmed_handling_successor_still_rewakes
