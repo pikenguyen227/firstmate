@@ -1,0 +1,19 @@
+tests/fm-turnend-guard.test.sh
+  s_49ec767bd32888::t_200c9e012c1bc4 832
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2d1c6fb144dc48bcb8c5cc1ec2efe41b734bb13",
+  "prompts": {},
+  "sessions": {
+    "s_49ec767bd32888": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c0130f5-c87e-4e82-9f78-3aeb1d4c8ae2",
+        "model": "unknown"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
