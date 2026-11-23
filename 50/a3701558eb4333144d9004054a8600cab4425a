@@ -1,0 +1,35 @@
+tests/fm-opencode-worker-live-e2e.test.sh
+  s_fd478615e6b6af::t_edcf9c66b8972d 3-5,25-26,29,31,49,66-78,82,100,104,117,120,122-123,127,131,171-178
+docs/configuration.md
+  s_fd478615e6b6af::t_1042cff4ea29c6 1126
+tests/fm-spawn-dispatch-profile.test.sh
+  s_fd478615e6b6af::t_9ccd6767c4dd23 792
+  s_fd478615e6b6af::t_989148a982c1b0 764-766,768-770,774,789-790,807,824-825
+docs/verification/runtime-backends.md
+  s_fd478615e6b6af::t_9d45623da6f79a 10
+.agents/skills/harness-adapters/references/harness/opencode.md
+  s_fd478615e6b6af::t_1042cff4ea29c6 5-6,20-21
+tests/fm-send-inbox-doorbell-live-e2e.test.sh
+  s_fd478615e6b6af::t_989148a982c1b0 86
+bin/fm-spawn.sh
+  s_fd478615e6b6af::t_e004d3fc6bc738 97-101,2119-2123,2646,2649-2650,2654-2661,2711-2714,2722,2729
+  s_fd478615e6b6af::t_7bc33c61d88b15 2720-2721
+docs/verification/supervision.md
+  s_fd478615e6b6af::t_9d45623da6f79a 48-53,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50a3701558eb4333144d9004054a8600cab4425a",
+  "prompts": {},
+  "sessions": {
+    "s_fd478615e6b6af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fb0da9f-ee1b-401f-ab0b-f256617cc08b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pike Nguyen <pikenguyen227@gmail.com>"
+    }
+  }
+}
