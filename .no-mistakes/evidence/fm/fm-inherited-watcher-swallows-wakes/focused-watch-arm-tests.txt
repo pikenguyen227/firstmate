@@ -1,0 +1,4 @@
+ok - watch-arm: a fresh Claude primary replaces an ended primary's watcher and delivers the queued check
+ok - watch-arm: an original primary that is still alive keeps its healthy watcher
+bash tests/.focus-watch-arm.test.sh  1.95s user 4.29s system 74% cpu 8.384 total
+watch-arm exit=0

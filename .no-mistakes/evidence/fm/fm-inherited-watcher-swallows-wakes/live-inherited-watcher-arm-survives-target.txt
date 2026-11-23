@@ -1,0 +1,27 @@
+[00:04:23] lab home: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.TYMk7s  source: target 1c19815f  mode: ended  timings: fast test timings (FM_POLL=1)
+[00:04:28] old primary pid=45001 armed watcher pid=48712 lockdir=.watch.lock.owner.5YasNW
+[00:04:29] watcher lock owner record (claude-owner): 45001 Mon Nov 23 17:04:23 2026     claude -c printf "%s\n" "$$" > "$FM_HOME/state/.lock"; "$FM_HOME/bin/fm-claude-stop-autoarm.sh" > "$FM_HOME/old-hook.out" 2>&1; echo "RC=$?" >> "$FM_HOME/old-hook.out"; if [ "${KEEP_ALIVE:-0}" = 1 ]; then sleep 300; fi 
+claude: line 1: 45062 Killed: 9               "$FM_HOME/bin/fm-claude-stop-autoarm.sh" > "$FM_HOME/old-hook.out" 2>&1
+[00:04:29] old arm pid=48282 left running (orphaned with its watcher)
+[00:04:30] old primary ended; inherited watcher pid=48712 SURVIVES
+[00:04:31] .wake-queue now: 1795453470	1	check	inherited-check	check: inherited primary queued check|
+[00:04:31] new primary pid=59018 fired Stop hook
+[00:04:35] new primary's Stop hook finished
+[00:04:35] --- new-hook.out ---
+firstmate watcher wake - one supervision event needs a handling turn now.
+check: rearm-resurface
+Run bin/fm-wake-drain.sh first, handle the wake, then run its exact WAKE_ACK_REQUIRED --ack-through command. Until that post-handling acknowledgement, interruption leaves the wake durable for idempotent re-handling. This Stop hook owns watcher continuity: when the handling turn ends, the next needed cycle arms automatically - do NOT run bin/fm-watch-arm.sh after an ordinary wake.
+RC=2
+[00:04:35] --- old watcher pid=48712 alive? no
+[00:04:36] --- current watcher lock pid: 65366
+[00:04:36] --- old lockdir .watch.lock.owner.5YasNW exists? no
+[00:04:36] --- leftover .watch.lock.owner.* dirs: .watch.lock.owner.okZ0HN 
+[00:04:36] --- autoarm outcome records ---
+epoch=2 owner_pid=59078 outcome=rewake updated_at=1795453474 session_pid=59018 recovery_generation=57068.1795453471.nMAjs5
+Mon Nov 23 17:04:31 2026     bash /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.TYMk7s/bin/fm-claude-stop-autoarm.sh
+watcher: started pid=48712 (beacon fresh)
+watcher: FAILED - watcher cycle exited 143 without an actionable reason
+[00:04:36] --- watch-cycle-exits.log ---
+arm_pid=48282	watcher_pid=48712	origin=started	started_at=1795453465	ended_at=1795453472	exit_code=143	signal=TERM	reason=signal-exit	beacon_age=0	lock_before=pid:48712|identity:Mon Nov 23 17:04:25 2026     bash /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.TYMk7s/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=none
+arm_pid=61198	watcher_pid=62841	origin=started	started_at=1795453472	ended_at=1795453473	exit_code=0	signal=none	reason=actionable-check	beacon_age=0	lock_before=pid:none|identity:none	lock_after=pid:none|identity:none	successor=started:65366
+[00:04:37] lab removed; leftover lab processes: 0

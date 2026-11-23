@@ -1,0 +1,2 @@
+not ok - the inherited watcher did not record its Claude owner
+base exit=1

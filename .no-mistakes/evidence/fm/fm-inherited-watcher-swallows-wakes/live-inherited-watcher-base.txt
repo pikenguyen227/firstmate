@@ -1,0 +1,24 @@
+[23:59:05] lab home: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.RGrPW3  source: base b69fcebc  mode: ended
+[23:59:08] old primary pid=31117 armed watcher pid=33266 lockdir=.watch.lock.owner.yvvD2A
+~/.no-mistakes/evidence/01M84MFGY4683S0FPFQ7G849EG/scripts/inherited-watcher-live.sh: line 33: /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.RGrPW3/state/.watch.lock.owner.yvvD2A/claude-owner: No such file or directory
+[23:59:08] watcher lock owner record (claude-owner): <absent>
+[23:59:09] old primary ended; inherited watcher pid=33266 SURVIVES
+[23:59:09] .wake-queue now: 1795453149	1	check	inherited-check	check: inherited primary queued check|
+[23:59:09] new primary pid=40842 fired Stop hook
+[23:59:38] new primary's Stop hook finished
+[23:59:38] --- new-hook.out ---
+firstmate watcher wake - one supervision event needs a handling turn now.
+check: rearm-resurface
+Run bin/fm-wake-drain.sh first, handle the wake, then run its exact WAKE_ACK_REQUIRED --ack-through command. Until that post-handling acknowledgement, interruption leaves the wake durable for idempotent re-handling. This Stop hook owns watcher continuity: when the handling turn ends, the next needed cycle arms automatically - do NOT run bin/fm-watch-arm.sh after an ordinary wake.
+RC=2
+[23:59:38] --- old watcher pid=33266 alive? no
+[23:59:38] --- current watcher lock pid: 82916
+[23:59:38] --- old lockdir .watch.lock.owner.yvvD2A exists? no
+[23:59:38] --- leftover .watch.lock.owner.* dirs: .watch.lock.owner.2qRHRl 
+[23:59:38] --- autoarm outcome records ---
+epoch=2 owner_pid=40851 outcome=rewake updated_at=1795453177 session_pid=40842 recovery_generation=40402.1795453149.F0vuzi
+Mon Nov 23 16:59:09 2026     bash /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.RGrPW3/bin/fm-claude-stop-autoarm.sh
+watcher: started pid=33266 (beacon fresh)
+[23:59:38] --- watch-cycle-exits.log ---
+arm_pid=46278	watcher_pid=33266	origin=attached	started_at=1795453152	ended_at=1795453176	exit_code=unknown	signal=unknown	reason=attached-delivered-wake	beacon_age=26	lock_before=pid:33266|identity:Mon Nov 23 16:59:06 2026     bash /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.RGrPW3/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=started:82916
+[23:59:41] lab removed; leftover lab processes: 0

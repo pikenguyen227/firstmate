@@ -1,0 +1,24 @@
+[23:58:38] lab home: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.snC629  source: target 1c19815f  mode: ended
+[23:58:45] old primary pid=79450 armed watcher pid=82400 lockdir=.watch.lock.owner.Hu3kyw
+[23:58:45] watcher lock owner record (claude-owner): 79450 Mon Nov 23 16:58:38 2026     claude -c printf "%s\n" "$$" > "$FM_HOME/state/.lock"; "$FM_HOME/bin/fm-claude-stop-autoarm.sh" > "$FM_HOME/old-hook.out" 2>&1; echo "RC=$?" >> "$FM_HOME/old-hook.out" 
+claude: line 1: 79460 Killed: 9               "$FM_HOME/bin/fm-claude-stop-autoarm.sh" > "$FM_HOME/old-hook.out" 2>&1
+[23:58:46] old primary ended; inherited watcher pid=82400 SURVIVES
+[23:58:46] .wake-queue now: 1795453126	1	check	inherited-check	check: inherited primary queued check|
+[23:58:46] new primary pid=95694 fired Stop hook
+[23:58:53] new primary's Stop hook finished
+[23:58:53] --- new-hook.out ---
+firstmate watcher wake - one supervision event needs a handling turn now.
+check: rearm-resurface
+Run bin/fm-wake-drain.sh first, handle the wake, then run its exact WAKE_ACK_REQUIRED --ack-through command. Until that post-handling acknowledgement, interruption leaves the wake durable for idempotent re-handling. This Stop hook owns watcher continuity: when the handling turn ends, the next needed cycle arms automatically - do NOT run bin/fm-watch-arm.sh after an ordinary wake.
+RC=2
+[23:58:53] --- old watcher pid=82400 alive? no
+[23:58:53] --- current watcher lock pid: 3650
+[23:58:53] --- old lockdir .watch.lock.owner.Hu3kyw exists? no
+[23:58:53] --- leftover .watch.lock.owner.* dirs: .watch.lock.owner.zIbdGt 
+[23:58:53] --- autoarm outcome records ---
+epoch=2 owner_pid=95708 outcome=rewake updated_at=1795453132 session_pid=95694 recovery_generation=94979.1795453126.Qb1RCw
+Mon Nov 23 16:58:47 2026     bash /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.snC629/bin/fm-claude-stop-autoarm.sh
+watcher: started pid=82400 (beacon fresh)
+[23:58:53] --- watch-cycle-exits.log ---
+arm_pid=97060	watcher_pid=97775	origin=started	started_at=1795453128	ended_at=1795453130	exit_code=0	signal=none	reason=actionable-check	beacon_age=1	lock_before=pid:97775|identity:Mon Nov 23 16:58:48 2026     bash /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-lab.snC629/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=started:3650
+[23:58:55] lab removed; leftover lab processes: 0

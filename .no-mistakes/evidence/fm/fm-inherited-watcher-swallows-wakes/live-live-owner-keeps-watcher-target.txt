@@ -1,0 +1,17 @@
+[00:06:25] lab home: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.jmblDq  source: target 1c19815f  mode: live-owner  timings: fast test timings (FM_POLL=1)
+[00:06:26] old primary pid=45814 armed watcher pid=46391 lockdir=.watch.lock.owner.jyx0XR
+[00:06:26] watcher lock owner record (claude-owner): 45814 Mon Nov 23 17:06:25 2026     claude -c printf "%s\n" "$$" > "$FM_HOME/state/.lock"; "$FM_HOME/bin/fm-claude-stop-autoarm.sh" > "$FM_HOME/old-hook.out" 2>&1; echo "RC=$?" >> "$FM_HOME/old-hook.out"; if [ "${KEEP_ALIVE:-0}" = 1 ]; then sleep 300; fi 
+claude: line 1: 45824 Killed: 9               "$FM_HOME/bin/fm-claude-stop-autoarm.sh" > "$FM_HOME/old-hook.out" 2>&1
+[00:06:26] old arm pid=46271 left running with its watcher
+[00:06:27] original primary STILL ALIVE (pid=45814: alive); its hook/arm interrupted; watcher pid=46391 alive: yes
+~/.no-mistakes/evidence/01M84MFGY4683S0FPFQ7G849EG/scripts/inherited-watcher-live.sh: line 63: /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T//fm-lab.jmblDq/state/.wake-queue: No such file or directory
+[00:06:27] .wake-queue now: 
+[00:06:32] pre-arm: original primary 45814 alive=yes; inherited watcher 46391 alive=yes
+[00:06:35] --- new lock-owner's arm output after 3s ---
+watcher: attached pid=46391 (beacon 1s)
+[00:06:35] inherited watcher 46391 alive=yes; lock pid now 46391
+[00:06:42] --- arm output at end (arm alive=yes) ---
+watcher: attached pid=46391 (beacon 1s)
+[00:06:42] --- watch-cycle-exits.log ---
+~/.no-mistakes/evidence/01M84MFGY4683S0FPFQ7G849EG/scripts/inherited-watcher-live.sh: line 85: 58540 Killed: 9               FM_WATCH_CLAUDE_OWNER_PID=$NEWP FM_WATCH_CLAUDE_OWNER_IDENTITY="$NEW_ID" FM_ARM_ATTACH_POLL=0.2 "$LAB/bin/fm-watch-arm.sh" > "$LAB/live-arm.out" 2>&1
+[00:06:42] lab removed; leftover lab processes: 0
