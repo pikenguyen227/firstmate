@@ -39,8 +39,12 @@ export default {
     const controller = new AbortController();
     const rootReady = resolveRoot(ctx.location.directory);
     void (async () => {
+      // A `--continue` resume reopens an existing session without
+      // `session.created`, so its first enqueued input is that session's start
+      // in this process. The wrapper stays silent while this process holds the
+      // lock, so only a session whose lock holder is gone gets the nudge.
       for await (const event of ctx.event.subscribe({
-        types: ["session.created"],
+        types: ["session.created", "session.inbox.enqueued"],
         signal: controller.signal,
       })) {
         const root = await rootReady;

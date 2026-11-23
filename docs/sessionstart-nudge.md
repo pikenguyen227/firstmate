@@ -303,13 +303,16 @@ Whenever the digest is incomplete, this approved containment keeps the prefix an
 OpenCode is a nudge-tier harness.
 The `.opencode/plugins/fm-primary-sessionstart-nudge.js` plugin does three things:
 
-- It subscribes to `session.created` before any other setup work, and listens for nothing else, so a session resumed with `--continue` or reopened in the TUI gets no new digest.
+- It subscribes, before any other setup work, to `session.created` and to `session.inbox.enqueued`, the first enqueued input of any session this process has not handled yet.
+  The second trigger is the resume path: `/exit` then `--continue` reopens the same session without `session.created`, leaving the dead previous process in `state/.lock`.
+  Like Claude's `source=resume` route, the wrapper prints the nudge only when the lock holder is not in this process's ancestry, so switching sessions inside a process that already holds the helm stays silent.
+  On resume the digest is queued after the user's first message, and the turn-end guard may queue its blind-turn follow-up for that first turn.
 - It runs once per session id.
 - It calls OpenCode 2 `ctx.session.prompt` with `delivery: "queue"` only when the wrapper prints a nudge.
 
 Interactive TUI delivery is the supported path.
-The recorded live OpenCode 2 TUI digest predates the `session.created`-only subscription; [`verification/supervision.md`](verification/supervision.md#opencode-2-primary-plugin-port) records what is still pending.
-Headless `opencode run` is not a supported primary path: digest delivery there is not claimed, and it has no persistent TUI to receive a later watcher wake.
+[`verification/supervision.md`](verification/supervision.md#opencode-2-primary-plugin-port) records the live OpenCode 2 evidence for each trigger.
+Headless `opencode run` is not a supported primary path: the enqueued-input trigger can queue a digest that the run may consume before it exits, but it has no persistent TUI to receive a later watcher wake.
 That early exit is also why OpenCode cannot use the run tier.
 
 The OpenCode nudge runs once per session id.

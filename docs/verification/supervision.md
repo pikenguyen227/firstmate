@@ -18,13 +18,13 @@ The OpenCode worker busy-state plugin written by `bin/fm-spawn.sh` was not porte
 | Boundary | Observed result |
 | --- | --- |
 | Plugin load | All five OpenCode 2 definitions loaded without V1 loader warnings. |
-| Session start | The persistent TUI queued one nudge and the model's shell call ran the disposable digest once; the count remained one after `--continue` resumed the same session. That pass also subscribed the session-start plugin to `session.inbox.enqueued`, which was later removed, so it does not show which event delivered the digest. A live persistent-TUI re-run with only `session.created`, now subscribed before any setup work, is pending. |
+| Session start | The persistent TUI queued one nudge and the model's shell call ran the disposable digest once; the count remained one after `--continue` resumed the same session. That pass also subscribed `session.inbox.enqueued`. A later persistent-TUI run with only `session.created`, subscribed before any setup work, also queued exactly one digest on the first message. |
 | Watcher and wake | A real `fm-watch.sh` process armed after the terminal execution event. A status event closed it as `reason=actionable-signal`, and the plugin verified `successor=started` before delivering a `signal:` prompt to the same TUI session. |
 | Turn end | With the watcher plugin deliberately absent in a separate disposable primary, the guard queued exactly one `TURN WOULD END BLIND` follow-up, then its latch stopped a second follow-up. |
 | Pretool deny | `ctx.tool.hook("execute.before")` rejected a backgrounded `fm-watch-arm.sh` shell command; OpenCode stored the tool as `executed:false` and the command's sentinel was absent. |
 | Worker scope | A real linked worker worktree with in-flight metadata and a TUI turn created no watch lock. |
-| Restart and trust | `/exit` followed by `--continue` kept the session id and resumed watcher arming. A separate `--continue` launch without `--auto` also opened the TUI without a project trust dialog. |
-| Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. That pass included a `session.inbox.enqueued` session-start trigger that was later removed, so headless digest delivery is no longer claimed. |
+| Restart and trust | `/exit` followed by `--continue` kept the session id and resumed watcher arming with `session.inbox.enqueued` subscribed. With only `session.created` subscribed, the same resume queued no digest, left the dead pre-restart pid in `state/.lock`, and never re-armed, so the enqueued-input trigger was restored as the resume path; a live re-run after that restoration is pending. `--continue` launches without `--auto` opened the TUI without a project trust dialog. |
+| Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. That pass included the `session.inbox.enqueued` trigger, which ships; a run with only `session.created` queued no digest. |
 
 The same four isolated Firstmate behavior scripts were run before and after this port.
 Before the edit, `fm-captain-hold-lifecycle`, `fm-watch-triage`, and `fm-remote-secondmate-lifecycle-e2e` failed, while `fm-wake-queue` passed.
