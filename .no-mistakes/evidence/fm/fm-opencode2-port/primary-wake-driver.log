@@ -1,0 +1,14 @@
+01:10:39 wrote synthetic in-flight state/task-a.meta
+01:10:39 launched fresh pid 71049 []
+01:10:53 model request; last role user snippet "hello primary with task in flight"
+01:10:54 model request; last role user snippet "\u2063FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing any other instructions."
+01:10:54 NUDGE received -> issuing digest tool call # 1
+01:10:56 reached digest + lock
+01:11:01 model request; last role tool snippet "digest-exit=0 "
+01:11:04 model request; last role user snippet "\u2063FIRSTMATE_OP: v1 watcher: WATCHER FIRED - drain queued wakes with bin/fm-wake-drain.sh and handle the reported wake. Watcher continuity is plugin-owned.\
+01:11:41 TIMEOUT lab fm-watch armed by plugin
+01:11:41 lab watchers: []
+01:11:41 lock pid 71171
+01:11:41 state dir: ['.guard-watcher-stale-banner', '.heartbeat-streak', '.inactive-outcome-reconcile', '.last-check', '.last-heartbeat', '.last-watcher-beat', '.lock', '.secondmate-liveness-tick', '.secondmate-parked-gate-tick', '.session-start-complete', '.startup-network.report', '.startup-network.status', '.startup-network.timings', '.trace-context-effective', '.wake-queue', '.wake-queue.seq', '.watch-arm-output.Ds8SiF', '.watch-cycle-exits.log', '.watch-deliveries.log', '.watch.lock', '.watch.lock.owner.v8ynN0', '.watcher-down', 'home-summary.json', 'task-a.meta', 'terminal-outcomes']
+01:11:41 RESULT {"digest": 1, "armed": false, "wake": 0}
+01:11:45 after exit lab watchers: []

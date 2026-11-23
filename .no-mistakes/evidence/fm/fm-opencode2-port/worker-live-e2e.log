@@ -1,0 +1,2 @@
+ok - fm-spawn's OpenCode 2.3.2 worker launch honours its config, runs a tool unprompted, reports busy then idle, and touches .turn-ended
+exit=0

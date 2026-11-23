@@ -1,0 +1,11 @@
+== .watch-cycle-exits.log
+arm_pid=17175	watcher_pid=18396	origin=started	started_at=1795457462	ended_at=1795457463	exit_code=0	signal=none	reason=actionable-check	beacon_age=0	lock_before=pid:18396|identity:Mon Nov 23 18:11:02 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-oc2-driver/primary-clone/bin/fm-watch.sh	lock_after=pid:none|identity:none	successor=started:22968
+arm_pid=22840	watcher_pid=22968	origin=started	started_at=1795457463	ended_at=1795457503	exit_code=143	signal=TERM	reason=arm-interrupted	beacon_age=8	lock_before=pid:22968|identity:Mon Nov 23 18:11:03 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-oc2-driver/primary-clone/bin/fm-watch.sh	lock_after=pid:22968|identity:Mon Nov 23 18:11:03 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-oc2-driver/primary-clone/bin/fm-watch.sh	successor=none
+== .watch-deliveries.log
+18396	Mon Nov 23 18:11:02 2026     bash /private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-oc2-driver/primary-clone/bin/fm-watch.sh	check: rearm-resurface
+== .wake-queue
+1795457462	1	check	startup-network	check: startup-network: deferred startup network checks finished (done); read them with /var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-oc2-driver/primary-clone/bin/fm-startup-network.sh report
+== .watcher-down
+announced:handling:2787.1795457462.PpqWtl
+== .guard-watcher-stale-banner
+stale-beacon

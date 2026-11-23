@@ -1,0 +1,49 @@
+// Firstmate semantic busy-state events + turn-end notification; written by
+// fm-spawn under the contract owned by bin/fm-busy-lib.sh.
+// Semantic state comes from OpenCode 2's session.execution events. Scoping
+// latches the first session that starts (the worker's main session - a
+// subagent child can only start while the main session is already busy) and
+// ignores other sessions until the latched session settles. Every terminal
+// event touches the watcher's wake NOTIFICATION, never current-state truth.
+import { execFile } from "node:child_process";
+const busyEvent = (state, event) =>
+  new Promise((resolve) => {
+    execFile("{run-worktree}/bin/fm-busy-event.sh", [
+      "apply", "/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-opencode-worker-live.QxQRIw/fmhome/state", "opencode-worker-live", state,
+      "--gen", "g1795457070.45878.18999", "--source", "opencode-plugin", "--event", event,
+    ], () => resolve());
+  });
+export default {
+  id: "fm.worker.busy-state",
+  async setup(ctx) {
+    const controller = new AbortController();
+    let activeSession = null;
+    void (async () => {
+      for await (const event of ctx.event.subscribe({
+        types: [
+          "session.execution.started",
+          "session.execution.succeeded",
+          "session.execution.failed",
+          "session.execution.interrupted",
+        ],
+        signal: controller.signal,
+      })) {
+        const sessionID = event.data?.sessionID;
+        if (!sessionID) continue;
+        if (event.type === "session.execution.started") {
+          if (activeSession === null) activeSession = sessionID;
+          if (sessionID === activeSession) await busyEvent("busy", "session-execution-started");
+          continue;
+        }
+        if (sessionID === activeSession) {
+          activeSession = null;
+          await busyEvent("idle", event.type);
+        }
+        await new Promise((resolve) => {
+          execFile("touch", ["/private/var/folders/kb/v4dnb5gj6nl8pm3yy31nzw9w0000gn/T/fm-opencode-worker-live.QxQRIw/fmhome/state/opencode-worker-live.turn-ended"], () => resolve());
+        });
+      }
+    })().catch(() => {});
+    return () => controller.abort();
+  },
+};

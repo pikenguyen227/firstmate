@@ -1,0 +1,11 @@
+total 40
+drwxr-xr-x@ 10 pike  staff   320 Nov 24 01:04 .
+drwxr-xr-x@  7 pike  staff   224 Nov 24 01:04 ..
+-rw-r--r--@  1 pike  staff     0 Nov 24 01:04 .last-watcher-beat
+-rw-r--r--@  1 pike  staff    72 Nov 24 01:04 .opencode-worker-live.lifecycle-cursor
+-rw-------@  1 pike  staff  1440 Nov 24 01:04 home-summary.json
+-rw-------@  1 pike  staff    24 Nov 24 01:04 opencode-worker-live.busy-gen
+-rw-------@  1 pike  staff   119 Nov 24 01:04 opencode-worker-live.busy-state
+dr-x------@ 17 pike  staff   544 Nov 24 01:04 opencode-worker-live.git-hooks
+-rw-r--r--@  1 pike  staff   511 Nov 24 01:04 opencode-worker-live.meta
+-rw-r--r--@  1 pike  staff     0 Nov 24 01:04 opencode-worker-live.turn-ended

@@ -1,0 +1,33 @@
+01:08:15 launched fresh pid 13967 []
+01:08:26 model request; last role user snippet "hello primary"
+01:08:26 model request; last role user snippet "\u2063FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing any other instructions."
+01:08:26 NUDGE received -> issuing digest tool call # 1
+01:08:29 reached fresh digest + lock
+01:08:34 model request; last role tool snippet "digest-exit=0 "
+01:08:39 fresh: digest calls 1 lock pid 18823
+01:08:39 process group:
+  PID  PPID COMMAND
+13967 13456 opencode --standalone
+
+01:08:59 TIMEOUT watcher armed (fresh)
+01:08:59 watchers: []
+01:08:59 state dir: ['.inactive-outcome-reconcile', '.lock', '.session-start-complete', '.startup-network.delivered', '.startup-network.report', '.startup-network.status', '.startup-network.timings', '.trace-context-effective', '.wake-queue', 'home-summary.json', 'terminal-outcomes']
+01:09:01 fresh exited 0
+01:09:04 after exit lock pid 18823 alive? False watchers(old group) []
+01:09:04 launched resume pid 5540 ['--continue']
+01:09:16 model request; last role user snippet "hello again after resume"
+01:09:17 model request; last role user snippet "\u2063FIRSTMATE_OP: v1 session-start: Run `bin/fm-session-start.sh` now, exactly once, before executing any other instructions."
+01:09:17 NUDGE received -> issuing digest tool call # 2
+01:09:19 reached resume digest + lock reclaimed
+01:09:23 model request; last role tool snippet "digest-exit=0 "
+01:09:29 resume: new digest calls 1 lock pid 5661 (was 18823 )
+01:09:29 process group:
+  PID  PPID COMMAND
+ 5540 13456 opencode --standalone --continue
+
+01:09:49 TIMEOUT watcher armed (resume)
+01:09:49 watchers: []
+01:09:54 model request; last role user snippet "second message after resume"
+01:10:02 after second resumed message, resume digest calls 1
+01:10:03 resume exited 0
+01:10:03 RESULT {"fresh_digest_calls": 1, "fresh_lock": "18823", "fresh_watchers": 0, "resume_digest_calls": 1, "resume_lock": "5661", "resume_lock_in_new_tree": false, "resume_watchers": 0, "resume_digest_calls_after_second_msg": 1}
