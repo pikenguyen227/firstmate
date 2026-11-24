@@ -988,6 +988,98 @@ test_stop_ends_the_home_watcher_and_publishes_downtime() {
   pass "watch-arm: --stop ends only this home's watcher, publishes downtime, and reports when none runs"
 }
 
+# A Claude hook from a new primary must not park behind a watcher whose
+# original primary is gone. The queued check is already durable, but an arm
+# that merely attaches to the inherited live watcher cannot deliver it.
+test_claude_inherited_watcher_restarts_and_delivers_queued_wake() {
+  local dir home state fakebin other other_watcher old_owner new_owner old_identity new_identity old_watcher old_lock_owner arm_pid
+  dir=$(make_case claude-inherited-watcher)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  mkdir -p "$home/data" "$dir/user-home"
+
+  HOME="$dir/user-home" sleep 300 & old_owner=$!
+  old_identity=$(bash -c '. "$1"; fm_pid_identity "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$old_owner") \
+    || fail "could not identify the old primary"
+  HOME="$dir/user-home" FM_HOME="$home" FM_WATCH_CLAUDE_OWNER_PID="$old_owner" \
+    FM_WATCH_CLAUDE_OWNER_IDENTITY="$old_identity" \
+    start_seed_watcher "$state" "$fakebin" "$dir/watch.out"
+  old_watcher=$SEED_PID
+  old_lock_owner=$(readlink "$state/.watch.lock") || fail "the inherited watcher holds no lock"
+  [ -f "$old_lock_owner/claude-owner" ] || fail "the inherited watcher did not record its Claude owner"
+  other=$(make_case claude-inherited-other-home)
+  mkdir -p "$other/home/data"
+  HOME="$other/home" FM_HOME="$other/home" \
+    start_seed_watcher "$other/state" "$other/fakebin" "$other/watch.out"
+  other_watcher=$SEED_PID
+  kill "$old_owner" 2>/dev/null || true
+  wait "$old_owner" 2>/dev/null || true
+
+  HOME="$dir/user-home" append_wake "$state" check inherited-check 'check: inherited primary queued check' \
+    || fail "could not queue the inherited check"
+  HOME="$dir/user-home" sleep 300 & new_owner=$!
+  new_identity=$(bash -c '. "$1"; fm_pid_identity "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$new_owner") \
+    || fail "could not identify the new primary"
+  printf '%s\n' "$new_owner" > "$state/.lock"
+  PATH="$fakebin:$PATH" HOME="$dir/user-home" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_WATCH_CLAUDE_OWNER_PID="$new_owner" \
+    FM_WATCH_CLAUDE_OWNER_IDENTITY="$new_identity" \
+    FM_POLL=1 FM_SIGNAL_GRACE=0 FM_CHECK_INTERVAL=999999 FM_HEARTBEAT=999999 \
+    FM_ARM_CONFIRM_TIMEOUT=10 "$WATCH_ARM" > "$dir/arm.out" &
+  arm_pid=$!
+  wait_for_exit "$arm_pid" 120 || fail "the new primary stayed attached to the inherited watcher"
+  grep -F 'check: rearm-resurface' "$dir/arm.out" >/dev/null \
+    || fail "the queued check was not delivered after replacing the inherited watcher: $(cat "$dir/arm.out")"
+  grep -F 'inherited primary queued check' "$state/.wake-queue" >/dev/null \
+    || fail "replacement lost the queued check"
+  ! kill -0 "$old_watcher" 2>/dev/null || fail "the inherited watcher still runs"
+  [ ! -e "$old_lock_owner" ] || fail "the inherited watcher's lock owner dir leaked: $(ls -A "$old_lock_owner")"
+  kill -0 "$other_watcher" 2>/dev/null || fail "takeover stopped another home's watcher"
+  kill "$new_owner" 2>/dev/null || true
+  wait "$new_owner" 2>/dev/null || true
+  pass "watch-arm: a fresh Claude primary replaces an ended primary's watcher and delivers the queued check"
+}
+
+test_claude_live_owner_keeps_its_watcher() {
+  local dir home state fakebin old_owner new_owner old_identity new_identity watcher arm_pid i
+  dir=$(make_case claude-live-owner)
+  home="$dir/home"
+  state="$dir/state"
+  fakebin="$dir/fakebin"
+  mkdir -p "$home/data"
+  sleep 300 & old_owner=$!
+  old_identity=$(bash -c '. "$1"; fm_pid_identity "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$old_owner") \
+    || fail "could not identify the live original primary"
+  FM_HOME="$home" FM_WATCH_CLAUDE_OWNER_PID="$old_owner" \
+    FM_WATCH_CLAUDE_OWNER_IDENTITY="$old_identity" \
+    start_seed_watcher "$state" "$fakebin" "$dir/watch.out"
+  watcher=$SEED_PID
+  sleep 300 & new_owner=$!
+  new_identity=$(bash -c '. "$1"; fm_pid_identity "$2"' _ "$ROOT/bin/fm-wake-lib.sh" "$new_owner") \
+    || fail "could not identify the candidate primary"
+  printf '%s\n' "$new_owner" > "$state/.lock"
+  PATH="$fakebin:$PATH" FM_HOME="$home" FM_STATE_OVERRIDE="$state" \
+    FM_WATCH_CLAUDE_OWNER_PID="$new_owner" \
+    FM_WATCH_CLAUDE_OWNER_IDENTITY="$new_identity" \
+    FM_ARM_ATTACH_POLL=0.1 "$WATCH_ARM" > "$dir/arm.out" &
+  arm_pid=$!
+  i=0
+  while [ "$i" -lt 80 ]; do
+    grep -qF "watcher: attached pid=$watcher" "$dir/arm.out" 2>/dev/null && break
+    sleep 0.1
+    i=$((i + 1))
+  done
+  grep -qF "watcher: attached pid=$watcher" "$dir/arm.out" \
+    || fail "a live original primary's watcher was not preserved: $(cat "$dir/arm.out")"
+  kill -0 "$watcher" 2>/dev/null || fail "a live original primary's watcher was stopped"
+  kill -TERM "$arm_pid" 2>/dev/null || true
+  wait "$arm_pid" 2>/dev/null || true
+  kill "$old_owner" "$new_owner" 2>/dev/null || true
+  wait "$old_owner" "$new_owner" 2>/dev/null || true
+  pass "watch-arm: an original primary that is still alive keeps its healthy watcher"
+}
+
 test_downtime_marker_does_not_follow_symlink() {
   local dir home state fakebin armout watcher_pid sentinel
   dir=$(make_case downtime-marker-symlink)
@@ -1312,6 +1404,8 @@ test_reaper_stops_a_tracked_watcher() {
   pass "watch-arm: the test reaper stops a watcher armed for a tracked temporary home"
 }
 
+test_claude_inherited_watcher_restarts_and_delivers_queued_wake
+test_claude_live_owner_keeps_its_watcher
 test_attached_arm_reports_the_delivered_wake
 test_attached_arm_reports_the_delivered_wake_after_drain
 test_unread_successor_reports_a_close_no_turn_end_carried

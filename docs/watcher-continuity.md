@@ -15,6 +15,7 @@ In this document, an arm is one run of `bin/fm-watch-arm.sh`, which starts a wat
 | How each actor consumes the wake queue | [Per-actor acknowledgement](#per-actor-acknowledgement) |
 | What `bin/fm-watch-arm.sh` guarantees about each cycle | [Arm-layer cycle contract](#arm-layer-cycle-contract) |
 | How a re-arm treats a live watcher whose beacon is stale, such as after system sleep | [Stale live holder](#stale-live-holder) |
+| How a new Claude session takes over a watcher left by an ended session | [Inherited Claude watcher](#inherited-claude-watcher) |
 | Which test suites pin these contracts | [Regression coverage](#regression-coverage) |
 | What is not guaranteed, and where live evidence lives | [Active limits and verification](#active-limits-and-verification) |
 
@@ -103,6 +104,16 @@ That verdict accepts either of two cases:
 With that verdict, a background session keeps arming after its transient helper chain is recycled.
 [`turnend-guard.md`](turnend-guard.md#guard-predicates) owns the Claude guard's behavior when that live owner is genuinely another session.
 The stale-owner claim occurs only after the existing AFK and supervision-need gates pass.
+
+### Inherited Claude watcher
+
+The Stop hook passes its verified session-lock PID and process identity to each arm it starts, including its detached handling successor.
+The watcher records that pair beside its home-scoped lock.
+When a later lock-owning Claude session arms in the same home, `bin/fm-watch-arm.sh` checks the recorded owner's process identity before attaching to a healthy watcher.
+If that original primary has ended, the arm stops only the identity-matched watcher in that home's lock and starts a fresh cycle, which resurfaces durable queued wakes.
+If the original primary remains live, or its identity cannot be read, the arm preserves the healthy watcher and attaches as usual.
+An older watcher with no owner record is also preserved because its original primary cannot be identified safely from the watcher lock alone.
+The home-scoped `bin/fm-watch-arm.sh --stop` remains the recovery path for that one upgrade case.
 
 ### Claude arm failures
 
@@ -456,6 +467,7 @@ They also prove that a legacy or handoff-phase watcher marker from an absent rep
 
 `tests/fm-watch-arm.test.sh` covers:
 
+- A new Claude primary replacing an inherited watcher only after its recorded original primary ends, while preserving a live owner's watcher and another home's watcher.
 - Durable queue replay.
 - Real remote parent-replies ingestion into the authoritative status log.
 - Decision-only OPEN DECISIONS recovery.
@@ -470,6 +482,8 @@ They also prove that a legacy or handoff-phase watcher marker from an absent rep
 - The disposable-checkout arm refusal.
 - The home-gone and state-gone watcher exits.
 - The test reaper that stops a watcher armed for a temporary home.
+
+`tests/fm-claude-stop-autoarm.test.sh` checks that the Stop hook passes its verified session-lock owner identity to the arm instead of trusting ambient owner variables.
 
 `tests/fm-watch-recovery-loop.test.sh` covers:
 
