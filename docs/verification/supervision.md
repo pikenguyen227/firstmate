@@ -6,6 +6,59 @@ This record supports current session-start, turn-end, watcher-continuity, superv
 Operator behavior and active limits remain in the linked current guides.
 Task-specific chronology, temporary paths, run identifiers, and delivery transcripts remain in private reports or PR evidence.
 
+## OpenCode 2 primary plugin port
+
+On 2026-11-23 the five tracked primary plugins were exercised with pinned `@opencode/cli` 2.3.2.
+The CLI was installed in a disposable location, and every invocation used separate disposable `HOME`, `FM_HOME`, and XDG directories.
+A local scripted OpenAI-compatible endpoint supplied deterministic model replies after OpenCode's free model returned a usage-limit error; this verifies the real OpenCode 2 TUI, plugin API, shell hook, and watcher processes without claiming a credentialed model pass.
+The earlier OpenCode 1 results in this record are historical for the retired primary API.
+`tests/fm-opencode-primary-live-e2e.test.sh` is an OpenCode 1 fixture and is not current OpenCode 2 evidence.
+The OpenCode worker busy-state plugin written by `bin/fm-spawn.sh` also targets OpenCode 2.3.2; its live worker verification is recorded below.
+
+| Boundary | Observed result |
+| --- | --- |
+| Plugin load | All five OpenCode 2 definitions loaded without V1 loader warnings. |
+| Session start | Three fresh persistent TUI launches each queued one nudge and ran the disposable digest exactly once; a later `--continue` launch ran it once more to reclaim the dead prior lock, with no duplicate in either process. The resumed pass subscribed `session.inbox.enqueued`; a separate `session.created`-only pass also queued one digest on the first message. |
+| Watcher and wake | A real `fm-watch.sh` process armed after the terminal execution event. A status event closed it as `reason=actionable-signal`, and the plugin verified `successor=started` before delivering a `signal:` prompt to the same TUI session. |
+| Turn end | With the watcher plugin deliberately absent in a separate disposable primary, the guard queued exactly one `TURN WOULD END BLIND` follow-up, then its latch stopped a second follow-up. |
+| Pretool deny | `ctx.tool.hook("execute.before")` rejected a backgrounded `fm-watch-arm.sh` shell command; OpenCode stored the tool as `executed:false` and the command's sentinel was absent. |
+| Worker scope | A real linked worker worktree with in-flight metadata and a TUI turn created no watch lock. |
+| Restart and trust | `/exit` followed by `--continue` kept the session id, ran one digest in the new process, and reclaimed the dead pre-restart lock pid with `session.inbox.enqueued` subscribed. With only `session.created` subscribed, an earlier resume queued no digest and left the dead pid in `state/.lock`, which is why the enqueued-input trigger is retained. `--continue` launched without a project trust dialog. |
+| Headless limit | `opencode run` consumed an immediate queued digest, exited, and received no later watcher prompt after a status event; no persistent watcher remained. That pass included the `session.inbox.enqueued` trigger, which ships; a run with only `session.created` queued no digest. |
+
+The same four isolated Firstmate behavior scripts were run before and after this port.
+Before the edit, `fm-captain-hold-lifecycle`, `fm-watch-triage`, and `fm-remote-secondmate-lifecycle-e2e` failed, while `fm-wake-queue` passed.
+After the edit, `fm-watch-triage` and `fm-remote-secondmate-lifecycle-e2e` failed at different timing assertions, while `fm-captain-hold-lifecycle` and `fm-wake-queue` passed.
+The after run introduced no new failing script; the pre-edit captain-hold failure was a disposable Lavish listener startup error, and the same script passed on two after runs. The other changed failure points are in unchanged shared shell paths and indicate timing-sensitive baseline behavior.
+The updated OpenCode 2 Node fixtures passed the session-start and turn-end scripts and all 16 focused OpenCode cases in `fm-pi-watch-extension.test.sh`.
+The full Pi and OpenCode watcher script stopped in early Pi cases before it reached OpenCode, with different failing assertions on two runs; the committed pre-port version also stopped in an early Pi case on this host.
+The opt-in Claude Stop auto-arm smoke produced four arm cycles both before and after, against its existing expectation of two.
+The direct Codex CLI 0.167.0 continuity smoke passed both before and after with the one-second foreground checkpoint.
+The native session-start hook live suite could not run on this host because `tmux` was absent; it is not claimed as part of this comparison.
+
+## OpenCode 2 worker busy state
+
+On 2026-11-23, `bin/fm-spawn.sh` wrote its worker plugin into a linked worktree inside a disposable project with separate `HOME`, `FM_HOME`, and XDG directories.
+Pinned `@opencode/cli` 2.3.2 loaded that generated plugin in a real persistent TUI without a trust dialog.
+A local scripted OpenAI-compatible model delayed its reply long enough to observe the state during execution; this verifies the OpenCode 2 plugin lifecycle without claiming a credentialed model pass.
+The spawn seed was `seq=1 state=busy source=fm-spawn event=launch-brief`.
+During the real turn it became `seq=2 state=busy source=opencode-plugin event=session-execution-started`, with no `.turn-ended` marker yet.
+After the reply it became `seq=3 state=idle source=opencode-plugin event=session.execution.succeeded`, and `state/<id>.turn-ended` existed.
+The TUI exited through `/exit`, and the local model server was stopped.
+That 2026-11-23 pass launched OpenCode by hand rather than through fm-spawn's launch command.
+
+On 2026-11-24 the same pinned CLI ran the exact launch command `bin/fm-spawn.sh` staged for the task, with `--model openai/local-test --effort high` and a disposable user-level provider entry that pointed `openai` at the local scripted model but selected no model.
+The OpenCode 1 launch shape failed on 2.3.2: the TUI rejected `--model` as an unrecognized flag, and without `--standalone` it exited with code 1 because the TUI attaches to the user's shared background service, which another home already held on the managed port.
+The ported launch, `OPENCODE_CONFIG_CONTENT='{"permission":{"*":"allow"},"model":…,"agent":{"build":{"model":…,"variant":"high"}}}' opencode --standalone --prompt …`, sent its first model request to `local-test` with `reasoning_effort` `high`, so the private server applied the environment config's model and effort variant.
+The scripted model answered with a `shell` tool call; it ran without a permission prompt, its result reached the model, and the plugin recorded busy, then idle with `.turn-ended`.
+`tests/fm-busy-adapter-wiring.test.sh` drives the generated OpenCode 2 subscription through the real busy-state writer and classifier; it covers the main-session latch, a child terminal event, failed and interrupted terminal events, and the marker notification.
+Refresh the vendor event mapping with `FM_OPENCODE_WORKER_LIVE_E2E=1 tests/fm-opencode-worker-live-e2e.test.sh` on a PATH containing pinned OpenCode 2.3.2; the opt-in guard runs fm-spawn's staged launch command against a separate local model and asserts the configured model and effort, an unprompted shell tool call, busy, idle, and `.turn-ended` in a real TUI.
+In six isolated before-and-after scripts, `fm-busy-adapter-wiring` and `fm-busy-state` passed on both heads.
+`fm-watch-triage` failed both times at the same unchanged watcher TERM cleanup assertion, and `fm-wake-queue` failed both times at the same queue-lock concurrency assertion.
+`fm-remote-secondmate-lifecycle-e2e` failed only before the edit during disposable fixture cleanup and passed after it.
+`fm-captain-hold-lifecycle` passed before the edit, failed once after it when a disposable Lavish listener did not start, and passed on an isolated rerun.
+The opt-in OpenCode worker live guard, `fm-live-gate.test.sh`, `fm-test-run.test.sh`, and `bin/fm-lint.sh` passed after the edit.
+
 ## Native session-start delivery
 
 The cross-harness transport pass ran on 2026-07-17 with Codex 0.144.4, OpenCode 1.17.18, Pi 0.80.10, and the tracked Claude hook wiring.
@@ -219,7 +272,7 @@ Each pass polled `state/<id>.busy-state` while a real turn ran.
 | --- | --- | --- | --- |
 | Pi | 0.82.0 | Extension `agent_start` / `agent_settled` with `ctx.isIdle()` | The spawn seed `busy source=fm-spawn`, then `busy source=pi-ext event=agent-start`, then `idle source=pi-ext event=agent-settled`; the turn-end marker was still touched. |
 | omp | 18.1.11 | Extension `agent_start` / `agent_end` without `willContinue` | Live Herdr scout on `openai-codex/gpt-6-astra` (2026-09-05): the spawn seed `busy source=fm-spawn`, then `busy source=omp-ext event=agent-start`, then `idle source=omp-ext event=agent-end` at the natural end of the brief; a steer through `fm-send` reopened `busy … agent-start`, and a control-plane interrupt closed it with `idle … agent-end` (omp fires `agent_end` on an interrupted turn). `ctx.isIdle()` is deliberately not consulted because it reads false at a natural TUI `agent_end`. |
-| OpenCode | 1.17.18 | Plugin `session.status` | In a real TUI pane: seed, then `busy source=opencode-plugin event=session-busy`, then `idle source=opencode-plugin event=session-status-idle`. |
+| OpenCode | 1.17.18, historical | Plugin `session.status` | In a real TUI pane: seed, then `busy source=opencode-plugin event=session-busy`, then `idle source=opencode-plugin event=session-status-idle`. The current OpenCode 2 worker result is recorded above. |
 | Claude | 2.1.220 (Claude Code) | Hooks `UserPromptSubmit`, `Stop`, `StopFailure`, `SessionEnd` | `UserPromptSubmit` fired for the argv launch prompt and each steer, and `Stop` closed every completed turn. A mid-stream Escape interrupt fired no closing hook, which is why the firstmate-controlled clear exists. `StopFailure` and `SessionEnd` are wired from the four hook names present in the installed binary; only the abnormal paths they cover were not reproduced live. |
 | Codex | codex-cli 0.145.0 | None usable | See below; classifies `unknown codex-unverified`. |
 | Kimi (standalone) | not installed | None usable | No binary on `PATH`, so the gate stays closed and it classifies `unknown kimi-unverified`. |
@@ -313,6 +366,7 @@ For such a session `bin/fm-lock.sh` records `CLAUDE_PID` on lock line 1 instead 
 A confirmed acquisition whose line 1 still names another pid, such as the front-end that started a background session, re-anchors line 1 onto `CLAUDE_PID` and records the move in `state/.lock-reanchor`, so a later daemon restart plus `/clear` re-key still owns the lock through ancestry, and readers that captured the old pid follow the move through `fm_session_lock_names_pid`.
 A lock written before that re-anchor existed is covered by `fm_session_lock_owner_reclaimable`: a live Claude owner is reclaimed only when Claude's session registry shows the owner's own record naming no conversation and no live process running the recorded conversation, so an owner mid-`/clear` whose record names its new id is never taken over, and [`runtime-backends.md`](runtime-backends.md#claude-session-registry) records that registry's live verification.
 Harness identity is read from the executable path and `argv[0]` as well as the command basename, because Claude Code's native installer names the per-session executable by its version (`.../share/claude/versions/2.1.220`): `ps -o comm=` reports that path on macOS and the bare version string on Linux, and neither basename names a harness.
+OpenCode 2's `opencode-pty daemon` helper is excluded from harness identity even though its name and cache path say opencode: it is a child of the `opencode serve` process that hosts the plugins, and every shell-tool command runs under it, so treating it as the session anchored the lock where the watch-arm plugin, which walks up from its own serve pid, could never see it, and the watcher never armed (observed live on 2.3.2). `test_opencode_pty_helper_is_not_the_session` in `tests/fm-session-lock-ancestry.test.sh` pins that process shape.
 `tests/fm-session-lock-ancestry.test.sh` pins both platforms' reporting semantics behind a deterministic process table and runs the real Stop auto-arm in version-named, daemon-parented, and combined real process trees.
 The same suite drives the ancestry, session-id, and reclaim verdicts apart in that table, asserting the divergence itself so no case is vacuous, and runs two real orphaned front-end, daemon, pty-host, and bg-spare trees through the real `bin/fm-lock.sh`, `bin/fm-claude-stop-autoarm.sh`, and `bin/fm-turnend-guard.sh --claude`.
 In the first, the forked session's first Stop re-anchors line 1 onto the spare; after the daemon ends and the id is re-keyed as `/clear` does, the spare still prints `lock acquired`, and an outside session carrying the old id is refused naming the spare and the new id.

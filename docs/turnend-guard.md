@@ -259,7 +259,7 @@ Each enabled primary harness adapts its own turn-end mechanism to the shared gua
 | --- | --- | --- |
 | Claude | Two `Stop` hooks in `.claude/settings.json` | Blocks with exit status 2, cooperating with the Stop auto-arm |
 | Codex | `Stop` hook in `.codex/hooks.json` | Blocks with exit status 2 |
-| OpenCode | `session.idle` in `.opencode/plugins/fm-primary-turnend-guard.js` | Passive callback that schedules one follow-up |
+| OpenCode | Terminal `session.execution.*` events in `.opencode/plugins/fm-primary-turnend-guard.js` | Passive callback that queues one follow-up |
 | Pi | `agent_settled` in `.pi/extensions/fm-primary-turnend-guard.ts` | Passive callback that schedules one follow-up |
 | omp | `session_stop` in `.omp/extensions/fm-primary-turnend-guard.ts` | Blocking hook that compels one continuation |
 | Cursor | `stop` hook in `.cursor/hooks.json` | Cannot block, so it parks and returns at most one follow-up |
@@ -268,7 +268,7 @@ The registrations in detail:
 
 - Claude registers two `Stop` hooks in `.claude/settings.json`, both anchored through `CLAUDE_PROJECT_DIR`: `bin/fm-turnend-guard.sh --claude`, and `bin/fm-claude-stop-autoarm.sh` with `asyncRewake: true` and `timeout: 28800`.
 - Codex registers a `Stop` hook in `.codex/hooks.json`, anchors the executable to the hook process working directory, verifies a Firstmate-shaped hook-bearing root, and passes the original payload to the shared guard.
-- OpenCode listens for `session.idle` in `.opencode/plugins/fm-primary-turnend-guard.js`, lets the watcher coordinator act first, and calls `client.session.promptAsync` once when the guard returns 2.
+- OpenCode 2 listens for terminal `session.execution.*` events in `.opencode/plugins/fm-primary-turnend-guard.js`, lets the watcher coordinator act first, and calls `ctx.session.prompt` with `delivery: "queue"` once when the guard returns 2.
 - Pi listens for `agent_settled` in `.pi/extensions/fm-primary-turnend-guard.ts`, runs once per logical agent run, and calls `pi.sendUserMessage(..., { deliverAs: "followUp" })` once when the guard returns 2.
 - omp answers its blocking `session_stop` hook in `.omp/extensions/fm-primary-turnend-guard.ts`, passing the payload's own `stop_hook_active` to the shared guard.
   When the guard returns 2, it returns `{ continue: true, additionalContext }`, so the continuation is compelled rather than requested.
@@ -418,7 +418,8 @@ The generated prompts use the canonical `turn-end-guard` kind after the U+2063 `
 Each passive adapter owns a loop latch:
 
 - Pi keeps the latch across internal tool turns and clears it only when the generated follow-up settles or delivery fails.
-- OpenCode's forced follow-up is supported for persistent TUI sessions and remains fail-open in headless `opencode run`.
+- OpenCode's forced follow-up is supported for persistent TUI sessions.
+  Headless `opencode run` can consume an immediate queued follow-up, but cannot receive a later watcher wake after exit.
 
 ### Cursor park
 

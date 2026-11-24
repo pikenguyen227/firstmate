@@ -38,3 +38,7 @@ export function encodeFirstmateOperationalInput(root, kind, content) {
     child.stdin.end(content);
   });
 }
+
+export function queueFirstmateOperationalInput(ctx, sessionID, text) {
+  return ctx.session.prompt({ sessionID, text, delivery: "queue" });
+}

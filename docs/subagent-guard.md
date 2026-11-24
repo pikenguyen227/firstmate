@@ -224,7 +224,7 @@ Codex is therefore not applicable today, and this table row is the tripwire: if 
 
 The integration surface of each was inspected and each is structurally wireable for the shipped guard.
 
-- OpenCode's tracked plugins gate on `input?.tool !== "bash"` inside `tool.execute.before`, and block by throwing.
+- OpenCode 2's tracked plugins gate on `event.tool !== "shell"` inside `ctx.tool.hook("execute.before")`, and block by throwing.
   Swapping that comparison for a call into this checker with `--tool` is the whole change.
 - Pi's tracked extension gates on `event.toolName !== "bash"` inside `pi.on("tool_call", ...)` and blocks by returning `{block: true}`.
   The same change applies. A parallel evaluation reports that Pi exposes no delegation tool at all, which would make it not applicable, but that was not verified here.

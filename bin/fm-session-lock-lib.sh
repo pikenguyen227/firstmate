@@ -75,11 +75,18 @@ fm_harness_process_matches() {  # <comm> <args>
   local comm=$1 args=$2 base argv0 name
   FM_HARNESS_IS_CLAUDE=0
   base=$(basename -- "$comm")
+  argv0=${args%% *}
+  # OpenCode 2 runs every shell-tool command under an `opencode-pty daemon`
+  # helper that is a child of the `opencode serve` session hosting the plugins.
+  # Its name and cache path both say opencode, but it is not the session: the
+  # walk must climb past it to the serve process the watch-arm plugin runs in.
+  if [ "$base" = opencode-pty ] || [ "$(basename -- "${argv0:-.}")" = opencode-pty ]; then
+    return 1
+  fi
   if printf '%s' "$base" | grep -qE "$FM_HARNESS_RE"; then
     case "$base" in *claude*) FM_HARNESS_IS_CLAUDE=1 ;; esac
     return 0
   fi
-  argv0=${args%% *}
   if name=$(fm_harness_path_name "$comm") || name=$(fm_harness_path_name "$argv0"); then
     case "$name" in claude) FM_HARNESS_IS_CLAUDE=1 ;; esac
     return 0

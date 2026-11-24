@@ -232,6 +232,55 @@ SH
   pass "session-lock: ownership stops at the first non-harness gap above the contiguous run"
 }
 
+# OpenCode 2 runs every shell-tool command under its own `opencode-pty daemon`
+# helper, a child of the `opencode serve` process that hosts the plugins and the
+# conversation. That helper lives under OpenCode's cache tree, so both its name
+# and its path look like OpenCode, yet it is not the session: the watch-arm
+# plugin proves ownership by walking up from its own (serve) pid, which can never
+# reach a child. Process shape verified live on @opencode/cli 2.3.2 (macOS).
+test_opencode_pty_helper_is_not_the_session() {
+  local dir fakebin got
+  dir="$TMP_ROOT/opencode-pty"
+  fakebin=$(fm_fakebin "$dir")
+  mkdir -p "$dir/state"
+  cat > "$fakebin/ps" <<'SH'
+#!/usr/bin/env bash
+set -u
+field= pid=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o) field=$2; shift 2 ;;
+    -p) pid=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+pty=/var/folders/T/lab/cache/opencode/bin/opencode-pty/0.6.0-9a39dc481a87f890/opencode-pty
+case "$pid:$field" in
+  20749:comm=) printf '%s\n' "$pty" ;;
+  20749:args=) printf '%s\n' "$pty daemon --runtime-dir /var/folders/T/run" ;;
+  20749:ppid=) printf '%s\n' 4649 ;;
+  4649:comm=) printf '%s\n' /tmp/oc/node_modules/@opencode/cli/bin/opencode.exe ;;
+  4649:args=) printf '%s\n' '/tmp/oc/node_modules/@opencode/cli/bin/opencode.exe serve --stdio --port 0' ;;
+  4649:ppid=) printf '%s\n' 1 ;;
+  *:comm=) printf '%s\n' bash ;;
+  *:args=) printf '%s\n' 'bash /repo/bin/fm-session-start.sh' ;;
+  *:ppid=) printf '%s\n' 20749 ;;
+esac
+SH
+  chmod +x "$fakebin/ps"
+
+  got=$(lib_eval "$fakebin" 'fm_harness_ancestry_pid') \
+    || fail "the OpenCode serve session was not found above its pty helper"
+  [ "$got" = 4649 ] || fail "ancestry resolved '$got', expected the OpenCode serve session pid 4649, not its pty helper"
+  if lib_eval "$fakebin" 'fm_harness_pid_alive 20749'; then
+    fail "the OpenCode pty helper passed the harness-liveness predicate"
+  fi
+  printf '4649\n' > "$dir/state/.lock"
+  lib_eval "$fakebin" "fm_session_lock_owned_by_self '$dir/state'" \
+    || fail "a shell under the OpenCode pty helper did not recognize the serve session's lock"
+  pass "session-lock: OpenCode 2's pty helper is skipped so the serve session owns the lock"
+}
+
 test_competing_version_named_session_is_seen_as_live() {
   local dir fakebin
   dir="$TMP_ROOT/competing"
@@ -1319,6 +1368,7 @@ test_version_named_session_is_identified_on_both_platforms
 test_harness_at_namespace_pid1_is_examined
 test_ordinary_paths_are_never_harness_processes
 test_harness_beyond_a_gap_never_owns_the_lock
+test_opencode_pty_helper_is_not_the_session
 test_competing_version_named_session_is_seen_as_live
 test_same_session_id_owns_a_recycled_background_chain
 test_anchor_pid_is_the_model_loop_process_only_for_a_trusted_id

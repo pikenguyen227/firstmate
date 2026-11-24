@@ -171,9 +171,10 @@ test_opencode_plugin_delivers_exact_nudge_once() {
   cp "$ROOT/bin/fm-sessionstart-nudge.sh" "$ROOT/bin/fm-primary-scope-lib.sh" \
     "$ROOT/bin/fm-gate-refuse-lib.sh" "$ROOT/bin/fm-operational-input.sh" "$root/bin/"
   chmod +x "$root/bin/fm-sessionstart-nudge.sh"
-  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" \
+  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" HELPER="$ROOT/tests/lib-opencode2.mjs" \
     WORKTREE="$root" EXPECTED="$NUDGE_LINE" node --input-type=module 2>&1 <<'EOF'
 import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
 
 const prompts = [];
 const client = {
@@ -184,10 +185,9 @@ const client = {
   },
 };
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
-const hooks = await mod.FmPrimarySessionstartNudge({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 const event = {
   type: "session.created",
@@ -202,6 +202,106 @@ EOF
   expect_code 0 "$status" "OpenCode exact nudge delivery"
   [ -z "$out" ] || fail "OpenCode exact nudge delivery printed output: $out"
   pass "OpenCode session.created delivers the exact wrapper nudge once per session"
+}
+
+test_opencode_plugin_nudges_session_created_during_setup() {
+  local root="$TMP_ROOT/opencode-early-primary" out status=0
+  make_primary "$root"
+  cp "$ROOT/bin/fm-sessionstart-nudge.sh" "$ROOT/bin/fm-primary-scope-lib.sh" \
+    "$ROOT/bin/fm-gate-refuse-lib.sh" "$ROOT/bin/fm-operational-input.sh" "$root/bin/"
+  chmod +x "$root/bin/fm-sessionstart-nudge.sh"
+  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" HELPER="$ROOT/tests/lib-opencode2.mjs" \
+    WORKTREE="$root" EXPECTED="$NUDGE_LINE" node --input-type=module 2>&1 <<'EOF'
+import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
+
+const prompts = [];
+const client = {
+  session: {
+    promptAsync: async (request) => {
+      prompts.push(request.body.parts[0].text);
+    },
+  },
+};
+const mod = await import(pathToFileURL(process.env.PLUGIN).href);
+await setupOpenCodePlugin(mod.default, {
+  client,
+  directory: process.env.WORKTREE,
+  duringSetup: ({ event }) => event({
+    event: { type: "session.created", properties: { info: { id: "session-early" } } },
+  }),
+});
+for (let i = 0; i < 100 && prompts.length === 0; i += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+if (prompts.length !== 1) throw new Error(`session created during plugin setup got ${prompts.length} digests`);
+if (prompts[0] !== process.env.EXPECTED) throw new Error(`unexpected prompt: ${prompts[0]}`);
+EOF
+  ) || status=$?
+  expect_code 0 "$status" "OpenCode session created during setup"
+  [ -z "$out" ] || fail "OpenCode session created during setup printed output: $out"
+  pass "OpenCode subscribes before setup work, so a session created during setup gets its digest"
+}
+
+# A `--continue` resume reopens an existing session in a new OpenCode process
+# without `session.created`, so the session's first enqueued input is its start
+# in this process. The oracle is the nudge wrapper's lock contract (the same one
+# Claude's `source=resume` route uses): a lock left by the dead previous process
+# gets exactly one digest, and a lock this process already holds stays silent.
+# The pre-fix plugin queued nothing on resume, so supervision stayed blind.
+test_opencode_plugin_nudges_resumed_session_input() {
+  local root="$TMP_ROOT/opencode-resume-primary" out status=0
+  make_primary "$root"
+  cp "$ROOT/bin/fm-sessionstart-nudge.sh" "$ROOT/bin/fm-primary-scope-lib.sh" \
+    "$ROOT/bin/fm-gate-refuse-lib.sh" "$ROOT/bin/fm-operational-input.sh" "$root/bin/"
+  chmod +x "$root/bin/fm-sessionstart-nudge.sh"
+  out=$(PLUGIN="$ROOT/.opencode/plugins/fm-primary-sessionstart-nudge.js" HELPER="$ROOT/tests/lib-opencode2.mjs" \
+    WORKTREE="$root" EXPECTED="$NUDGE_LINE" node --input-type=module 2>&1 <<'EOF'
+import { spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
+
+const prompts = [];
+const client = {
+  session: {
+    promptAsync: async (request) => {
+      prompts.push(`${request.path.id}:${request.body.parts[0].text}`);
+    },
+  },
+};
+const settle = async (count) => {
+  for (let i = 0; i < 100 && prompts.length < count; i += 1) await new Promise((resolve) => setTimeout(resolve, 20));
+  await new Promise((resolve) => setTimeout(resolve, 200));
+};
+const lock = `${process.env.WORKTREE}/state/.lock`;
+const mod = await import(pathToFileURL(process.env.PLUGIN).href);
+const hooks = await setupOpenCodePlugin(mod.default, {
+  client,
+  directory: process.env.WORKTREE,
+});
+
+// The pre-restart OpenCode process that took the helm has exited.
+const dead = spawnSync("sh", ["-c", "echo $$"], { encoding: "utf8" }).stdout.trim();
+writeFileSync(lock, `${dead}\n`);
+const resumed = { type: "session.inbox.enqueued", properties: { sessionID: "session-resumed" } };
+await hooks.event({ event: resumed });
+await hooks.event({ event: resumed });
+await settle(1);
+if (prompts.length !== 1) throw new Error(`resumed session with a dead lock holder got ${prompts.length} digests`);
+if (prompts[0] !== `session-resumed:${process.env.EXPECTED}`) throw new Error(`unexpected prompt: ${prompts[0]}`);
+
+// After this process holds the helm, reopening another session is silent.
+writeFileSync(lock, `${process.pid}\n`);
+await hooks.event({
+  event: { type: "session.inbox.enqueued", properties: { sessionID: "session-reopened" } },
+});
+await settle(2);
+if (prompts.length !== 1) throw new Error(`a session reopened under this process's lock got a digest: ${prompts.slice(1).join(" | ")}`);
+await hooks.cleanup();
+EOF
+  ) || status=$?
+  expect_code 0 "$status" "OpenCode resumed-session input"
+  [ -z "$out" ] || fail "OpenCode resumed-session input printed output: $out"
+  pass "OpenCode nudges a resumed session's first input once, only when the lock holder is gone"
 }
 
 # --- run tier ----------------------------------------------------------------
@@ -1057,6 +1157,8 @@ test_missing_state_is_silent
 test_owned_lock_is_silent
 test_namespace_pid1_lock_holder_is_silent
 test_opencode_plugin_delivers_exact_nudge_once
+test_opencode_plugin_nudges_resumed_session_input
+test_opencode_plugin_nudges_session_created_during_setup
 test_run_startup_runs_the_full_digest
 test_run_clear_and_compact_reemit
 test_run_rebuild_forwards_source_to_drifted_instruction_refresh

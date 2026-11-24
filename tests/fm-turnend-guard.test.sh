@@ -813,24 +813,30 @@ EOF
 }
 
 test_opencode_plugin_anchors_guard_to_worktree() {
-  local plugin parent worktree_dir wrong_dir out status
+  local plugin parent primary_dir subdir decoy out status
   plugin="$ROOT/.opencode/plugins/fm-primary-turnend-guard.js"
   [ -f "$plugin" ] || fail "tracked OpenCode primary plugin is missing"
   parent="$TMP_ROOT/opencode-plugin-parent"
+  primary_dir="$parent/nested/opencode-plugin-primary"
+  subdir="$primary_dir/nested/deep"
+  mkdir -p "$parent/bin" "$primary_dir/bin" "$subdir/bin"
   git init -q "$parent"
-  worktree_dir="$parent/nested/opencode-plugin-worktree"
-  wrong_dir="$TMP_ROOT/opencode-plugin-cwd/subdir"
-  mkdir -p "$worktree_dir/bin" "$wrong_dir"
-  cat > "$worktree_dir/bin/fm-turnend-guard.sh" <<'EOF'
+  git init -q "$primary_dir"
+  cat > "$primary_dir/bin/fm-turnend-guard.sh" <<'EOF'
 #!/usr/bin/env bash
 cat >/dev/null
 printf 'guard-fired\n' >&2
 exit 2
 EOF
-  chmod +x "$worktree_dir/bin/fm-turnend-guard.sh"
+  for decoy in "$parent/bin/fm-turnend-guard.sh" "$subdir/bin/fm-turnend-guard.sh"; do
+    # shellcheck disable=SC2016 # $0 expands in the generated decoy script.
+    printf '#!/usr/bin/env bash\ncat >/dev/null\nprintf "wrong-guard %%s\\n" "$0" >&2\nexit 2\n' > "$decoy"
+  done
+  chmod +x "$primary_dir/bin/fm-turnend-guard.sh" "$parent/bin/fm-turnend-guard.sh" "$subdir/bin/fm-turnend-guard.sh"
   # Runtime module-format warnings are host noise; this assertion owns plugin output only.
-  out=$(NODE_NO_WARNINGS=1 PLUGIN="$plugin" DIRECTORY="$wrong_dir" WORKTREE="$worktree_dir" node 2>&1 <<'EOF'
+  out=$(NODE_NO_WARNINGS=1 PLUGIN="$plugin" HELPER="$ROOT/tests/lib-opencode2.mjs" DIRECTORY="$subdir" node 2>&1 <<'EOF'
 import { pathToFileURL } from "node:url";
+const { setupOpenCodePlugin } = await import(pathToFileURL(process.env.HELPER).href);
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let promptBody = "";
@@ -841,12 +847,15 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryTurnendGuard({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.DIRECTORY,
-  worktree: process.env.WORKTREE,
 });
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
+if (promptBody.includes("wrong-guard")) {
+  console.error(`guard ran outside the git root of the V2 location: ${promptBody}`);
+  process.exit(1);
+}
 if (!promptBody.startsWith("\u2063FIRSTMATE_OP: v1 turn-end-guard: ")) {
   console.error(`untyped operational prompt: ${promptBody}`);
   process.exit(1);
@@ -866,9 +875,9 @@ if (promptBody.includes("Resume supervision according to the session-start opera
 EOF
 )
   status=$?
-  expect_code 0 "$status" "OpenCode plugin must run the guard from worktree even when directory is elsewhere"
+  expect_code 0 "$status" "OpenCode plugin must run the guard from the git root of its V2 location"
   [ -z "$out" ] || fail "OpenCode plugin worktree-root test printed output: $out"
-  pass ".opencode primary plugin: guard path is anchored to worktree, not directory"
+  pass ".opencode primary plugin: guard path is anchored to the git root of the V2 location"
 }
 
 test_pi_extension_injects_once_per_logical_agent_run() {

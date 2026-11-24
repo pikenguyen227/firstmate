@@ -3380,13 +3380,13 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" node 2>&1 <<'EOF'
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const client = { session: { promptAsync: async () => {} } };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -3430,13 +3430,13 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const client = { session: { promptAsync: async () => {} } };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -3479,13 +3479,13 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" node 2>&1 <<'EOF'
 import { existsSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const client = { session: { promptAsync: async () => {} } };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 const event = { event: { type: "session.idle", properties: { sessionID: "session-test" } } };
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, "999999\n");
@@ -3541,13 +3541,13 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" node 2>&1 <<'EOF'
 import { existsSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const client = { session: { promptAsync: async () => {} } };
-await mod.FmPrimaryWatchArm({
+await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 const status = await globalThis.__firstmateOpenCodeWatchArm.ensureArmed("session-test", client);
@@ -3600,6 +3600,7 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_STOP_FILE="$stop" node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let prompts = 0;
@@ -3619,10 +3620,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 const event = { event: { type: "session.idle", properties: { sessionID: "session-test" } } };
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
@@ -3659,6 +3659,85 @@ EOF
   [ "$status" -eq 0 ] || fail "OpenCode watch plugin must start one successor before wake prompt delivery settles: $out"
   [ -z "$out" ] || fail "OpenCode rearm test printed output: $out"
   pass "OpenCode watcher plugin starts one successor before wake prompt delivery settles"
+}
+
+# OpenCode 2 may dispose a plugin and run setup again in the same process; the
+# disposed instance's SIGTERMed arm must not retry onto the disposed context.
+test_opencode_resetup_keeps_disposed_instance_inert() {
+  local plugin repo home log wake stop out status
+  plugin="$ROOT/.opencode/plugins/fm-primary-watch-arm.js"
+  repo="$TMP_ROOT/opencode-resetup-root"
+  home="$TMP_ROOT/opencode-resetup-home"
+  log="$TMP_ROOT/opencode-resetup.log"
+  wake="$TMP_ROOT/opencode-resetup.wake"
+  stop="$TMP_ROOT/opencode-resetup.stop"
+  mkdir -p "$repo/bin" "$home/state" "$home/config"
+  git init -q "$repo"
+  : > "$repo/AGENTS.md"
+  : > "$home/state/task.meta"
+  cat > "$repo/bin/fm-watch-arm.sh" <<'SH'
+#!/usr/bin/env bash
+printf 'arm=%s\n' "$$" >> "${FM_ARM_LOG:?}"
+count=$(grep -c '^arm=' "$FM_ARM_LOG")
+printf 'watcher: started pid=%s (beacon fresh)\n' "$$"
+if [ "$count" -eq 1 ]; then
+  trap 'sleep 0.3; exit 0' TERM
+  while :; do sleep 0.02; done
+fi
+if [ "$count" -eq 2 ]; then
+  while [ ! -e "$FM_WAKE_FILE" ]; do sleep 0.02; done
+  printf 'signal: resetup wake\n'
+  exit 0
+fi
+trap 'exit 0' TERM INT
+while [ ! -e "$FM_STOP_FILE" ]; do sleep 0.02; done
+SH
+  chmod +x "$repo/bin/fm-watch-arm.sh"
+  out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_WAKE_FILE="$wake" FM_STOP_FILE="$stop" \
+    FM_WATCH_REARM_RETRY_BASE_MS=20 node 2>&1 <<'EOF'
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
+
+const mod = await import(pathToFileURL(process.env.PLUGIN).href);
+const armRows = () => existsSync(process.env.FM_ARM_LOG)
+  ? readFileSync(process.env.FM_ARM_LOG, "utf8").trim().split("\n").filter((row) => row.startsWith("arm="))
+  : [];
+const waitFor = async (predicate, label) => {
+  for (let i = 0; i < 300; i += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`timed out waiting for ${label}: ${armRows().join(" | ")}`);
+};
+const recorder = (prompts) => ({ session: { promptAsync: async (request) => { prompts.push(request.body.parts[0].text); } } });
+const disposedPrompts = [];
+const livePrompts = [];
+const event = { event: { type: "session.idle", properties: { sessionID: "session-test" } } };
+writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
+
+const disposed = await setupOpenCodePlugin(mod.default, { client: recorder(disposedPrompts), directory: process.env.WORKTREE });
+await disposed.event(event);
+await waitFor(() => armRows().length === 1, "the first arm");
+disposed.cleanup();
+const live = await setupOpenCodePlugin(mod.default, { client: recorder(livePrompts), directory: process.env.WORKTREE });
+await new Promise((resolve) => setTimeout(resolve, 1000));
+if (armRows().length !== 1) throw new Error(`disposed instance started arm work after re-setup: ${armRows().join(" | ")}`);
+
+await live.event(event);
+await waitFor(() => armRows().length === 2, "the live instance arm");
+writeFileSync(process.env.FM_WAKE_FILE, "wake\n");
+await waitFor(() => livePrompts.length === 1, "the live wake prompt");
+if (!livePrompts[0].includes("signal: resetup wake")) throw new Error(`unexpected live prompt: ${livePrompts[0]}`);
+if (disposedPrompts.length !== 0) throw new Error(`disposed context received prompts: ${disposedPrompts.join(" | ")}`);
+writeFileSync(process.env.FM_STOP_FILE, "stop\n");
+live.cleanup();
+EOF
+  )
+  status=$?
+  [ "$status" -eq 0 ] || fail "OpenCode re-setup must keep the disposed watch-arm instance inert: $out"
+  [ -z "$out" ] || fail "OpenCode re-setup test printed output: $out"
+  pass "OpenCode watcher re-setup keeps the disposed instance inert and wakes the live context"
 }
 
 # An opted-in home spawns the supervision host in the arm's place; its
@@ -3705,11 +3784,12 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_STOP_FILE="$stop" node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const prompts = [];
 const client = { session: { promptAsync: async (request) => { prompts.push(request.body.parts[0].text); } } };
-const hooks = await mod.FmPrimaryWatchArm({ client, directory: process.env.WORKTREE, worktree: process.env.WORKTREE });
+const hooks = await setupOpenCodePlugin(mod.default, { client, directory: process.env.WORKTREE });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
 for (let i = 0; i < 400 && prompts.length < 1; i += 1) await new Promise((resolve) => setTimeout(resolve, 10));
@@ -3776,6 +3856,7 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_PRE_READY_RELEASE_FILE="$release" FM_PRE_READY_RETIRED_FILE="$retired" FM_STOP_FILE="$stop" FM_WATCH_REARM_RETRY_BASE_MS=5 FM_WATCH_REARM_RETRY_MAX_MS=10 FM_WATCH_REARM_RETRY_LIMIT=2 node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const prompts = [];
@@ -3786,10 +3867,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -3849,6 +3929,7 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_OPENCODE_ARM_READY_TIMEOUT_MS="$ARM_READY_TIMEOUT_MS" FM_WATCH_REARM_RETRY_BASE_MS=5 FM_WATCH_REARM_RETRY_MAX_MS=10 FM_WATCH_REARM_RETRY_LIMIT=2 node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let prompt = "";
@@ -3863,10 +3944,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -3925,6 +4005,7 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_RELEASE_FILE="$release" FM_OPENCODE_ARM_READY_TIMEOUT_MS="$ARM_READY_TIMEOUT_MS" FM_WATCH_ARM_RETIRE_TIMEOUT_MS=20 FM_WATCH_REARM_RETRY_BASE_MS=5 FM_WATCH_REARM_RETRY_MAX_MS=10 FM_WATCH_REARM_RETRY_LIMIT=2 node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let prompt = "";
@@ -3939,10 +4020,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -4005,6 +4085,7 @@ SH
     out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_UNRETIRED_READY_FILE="$ready" FM_UNRETIRED_RETIRE_FILE="$retired" FM_RELEASE_FILE="$release" FM_STOP_FILE="$stop" FM_LATE_KIND="$kind" FM_OPENCODE_ARM_READY_TIMEOUT_MS="$ARM_READY_TIMEOUT_MS" FM_WATCH_ARM_RETIRE_TIMEOUT_MS=20 FM_WATCH_REARM_RETRY_BASE_MS=5 FM_WATCH_REARM_RETRY_MAX_MS=10 FM_WATCH_REARM_RETRY_LIMIT=2 node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 const prompts = [];
@@ -4025,10 +4106,9 @@ async function waitFor(predicate, message) {
   }
   throw new Error(message);
 }
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -4089,6 +4169,7 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_STOP_FILE="$stop" FM_WATCH_REARM_RETRY_BASE_MS=5 FM_WATCH_REARM_RETRY_MAX_MS=10 FM_WATCH_REARM_RETRY_LIMIT=2 node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let prompts = 0;
@@ -4099,10 +4180,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -4145,6 +4225,7 @@ SH
   out=$(PLUGIN="$plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_WATCH_REARM_RETRY_BASE_MS=5 FM_WATCH_REARM_RETRY_MAX_MS=10 FM_WATCH_REARM_RETRY_LIMIT=2 node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let prompt = "";
@@ -4155,10 +4236,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await hooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -4200,6 +4280,7 @@ SH
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const mod = await import(pathToFileURL(process.env.PLUGIN).href);
 let prompt = "";
@@ -4210,10 +4291,9 @@ const client = {
     },
   },
 };
-const hooks = await mod.FmPrimaryWatchArm({
+const hooks = await setupOpenCodePlugin(mod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 const lock = `${process.env.FM_HOME}/state/.lock`;
 writeFileSync(lock, `${process.pid}\n`);
@@ -4270,6 +4350,7 @@ SH
   out=$(ARM_PLUGIN="$arm_plugin" GUARD_PLUGIN="$guard_plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_GUARD_LOG="$guard_log" node 2>&1 <<'EOF'
 import { existsSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const armMod = await import(pathToFileURL(process.env.ARM_PLUGIN).href);
 const guardMod = await import(pathToFileURL(process.env.GUARD_PLUGIN).href);
@@ -4281,15 +4362,13 @@ const client = {
     },
   },
 };
-await armMod.FmPrimaryWatchArm({
+await setupOpenCodePlugin(armMod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
-const guardHooks = await guardMod.FmPrimaryTurnendGuard({
+const guardHooks = await setupOpenCodePlugin(guardMod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await guardHooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -4343,6 +4422,7 @@ SH
   out=$(ARM_PLUGIN="$arm_plugin" GUARD_PLUGIN="$guard_plugin" WORKTREE="$repo" FM_HOME="$home" FM_ARM_LOG="$log" FM_GUARD_LOG="$guard_log" node 2>&1 <<'EOF'
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { setupOpenCodePlugin } from "./tests/lib-opencode2.mjs";
 
 const armMod = await import(pathToFileURL(process.env.ARM_PLUGIN).href);
 const guardMod = await import(pathToFileURL(process.env.GUARD_PLUGIN).href);
@@ -4354,15 +4434,13 @@ const client = {
     },
   },
 };
-await armMod.FmPrimaryWatchArm({
+await setupOpenCodePlugin(armMod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
-const guardHooks = await guardMod.FmPrimaryTurnendGuard({
+const guardHooks = await setupOpenCodePlugin(guardMod.default, {
   client,
   directory: process.env.WORKTREE,
-  worktree: process.env.WORKTREE,
 });
 writeFileSync(`${process.env.FM_HOME}/state/.lock`, `${process.pid}\n`);
 await guardHooks.event({ event: { type: "session.idle", properties: { sessionID: "session-test" } } });
@@ -4434,6 +4512,7 @@ test_opencode_primary_watch_plugin_sources_effective_config
 test_opencode_primary_watch_plugin_requires_session_lock
 test_opencode_watch_arm_coordinator_respects_primary_scope
 test_opencode_primary_watch_plugin_rearms_after_wake
+test_opencode_resetup_keeps_disposed_instance_inert
 test_opencode_primary_watch_plugin_runs_the_supervision_host
 test_opencode_pre_ready_actionable_close_preserves_its_successor
 test_opencode_hung_successor_falls_back_to_typed_wake

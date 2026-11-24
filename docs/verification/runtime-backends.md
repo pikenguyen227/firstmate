@@ -6,6 +6,10 @@ This record contains reusable version-scoped evidence for active runtime guarant
 The backend guides own current setup, safety boundaries, and limitations.
 Exact task chronology, branch names, temporary homes, local paths, process ids, thread ids, and delivery transcripts remain in private reports or PR evidence.
 
+On 2026-11-23, pinned OpenCode 2.3.2 emitted the worker `session.execution.started` and terminal events in a real TUI, and the generated plugin recorded busy, idle, and `.turn-ended` in a disposable home.
+On 2026-11-24 the guard ran fm-spawn's staged worker launch unchanged; 2.3.2 needs `--standalone` and carries the model in `OPENCODE_CONFIG_CONTENT` because its TUI rejects `--model`.
+The opt-in `FM_OPENCODE_WORKER_LIVE_E2E=1 tests/fm-opencode-worker-live-e2e.test.sh` guard refreshes that version-scoped result; [`supervision.md`](supervision.md#opencode-2-worker-busy-state) holds the detailed state sequence.
+
 ## Harness detection precedence
 
 Firstmate's own harness comes from two kinds of evidence, and `bin/fm-harness.sh` owns how they combine: an environment marker names its harness, and the nearest harness process in the parent chain proves who owns the process tree.
